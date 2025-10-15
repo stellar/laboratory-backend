@@ -2,6 +2,10 @@
 
 A Node.js REST API for managing contract data using Express.js and Prisma ORM with PostgreSQL.
 
+## API Design Doc by Data Team
+
+https://github.com/stellar/platform-design-docs/blob/contract-data-api/contract-data-api/design.md#api-design
+
 ## Prerequisites
 
 - Node.js (v16 or higher)
