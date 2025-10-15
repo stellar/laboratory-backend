@@ -1,0 +1,10 @@
+node_modules
+# Keep environment variables out of version control
+.env
+creds.json
+
+/dist
+/generated/prisma
+/db
+
+.DS_Store
