@@ -140,9 +140,10 @@ pnpm dev
 
 #### API Endpoints
 
-| Method | Endpoint                                | Description             |
-| ------ | --------------------------------------- | ----------------------- |
-| GET    | `/api/${network}/contracts/:id/storage` | Get contract data by ID |
+| Method | Endpoint                                | Description                     |
+| ------ | --------------------------------------- | ------------------------------- |
+| GET    | `/api/${network}/contracts/:id/storage` | Get contract data by ID         |
+| GET    | `/api/${network}/contracts/keys`        | Get all available keys in array |
 
 `curl http://localhost:3000/api/{network}/contract/{contract_id}/storage`
 
