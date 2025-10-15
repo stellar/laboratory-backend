@@ -11,6 +11,40 @@ const buildQueryString = (params: Record<string, any>): string => {
   return filteredParams ? `?${filteredParams}` : "";
 };
 
+export const getAllKeysForContract = async (
+  req: Request,
+  res: Response
+): Promise<void | Response> => {
+  try {
+    const { contract_id, network = "mainnet" } = req.params;
+
+    // Use Prisma ORM to get distinct key_decoded values
+    const result = await prisma.contract_data.findMany({
+      where: {
+        id: contract_id,
+      },
+      select: {
+        key_decoded: true,
+      },
+      distinct: ["key_decoded"],
+    });
+
+    // Filter out null values and extract just the key_decoded strings
+    const keys = result
+      .filter((row) => row.key_decoded !== null)
+      .map((row) => row.key_decoded!);
+
+    res.json({
+      contract_id,
+      network,
+      total_keys: keys.length,
+      keys,
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Internal server error" });
+  }
+};
+
 export const getContractDataByContractId = async (
   req: Request,
   res: Response

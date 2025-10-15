@@ -1,7 +1,10 @@
 import express, { Request, Response, Router } from "express";
 import { z } from "zod";
 
-import { getContractDataByContractId } from "../controllers/contract_data";
+import {
+  getContractDataByContractId,
+  getAllKeysForContract,
+} from "../controllers/contract_data";
 
 const router: Router = express.Router();
 
@@ -26,6 +29,11 @@ function parseStorageQuery(
     res.status(400).json({ error: "Invalid query params" });
   }
 }
+
+// Get all unique keys for a contract
+router.get("/:network/contract/:contract_id/keys", (req, res) => {
+  getAllKeysForContract(req, res);
+});
 
 // Route supports query parameters: ?cursor=xxx&limit=10&order=desc
 router.get(
