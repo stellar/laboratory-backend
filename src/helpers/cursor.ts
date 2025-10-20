@@ -7,6 +7,16 @@
  */
 
 /**
+ * Custom error thrown when a cursor string cannot be decoded or parsed.
+ */
+export class InvalidCursorError extends Error {
+  constructor(cursor: string) {
+    super(`Invalid cursor: ${cursor}`);
+    this.name = "InvalidCursorError";
+  }
+}
+
+/**
  * Creates a pagination cursor from record data
  *
  * @param pkId - Primary key ID of the last record
@@ -14,22 +24,34 @@
  * @param sortBy - Field name used for sorting
  * @returns Base64 encoded cursor string
  */
-export const encodeCursor = (
-  pkId: bigint,
-  sortValue?: any,
-  sortBy?: string
-): string => {
-  if (sortBy && sortValue !== null && sortValue !== undefined) {
-    const compound = { pkId: pkId.toString(), sortValue, sortBy };
-    return Buffer.from(JSON.stringify(compound)).toString("base64");
+export const encodeCursor = (cursorData: CursorData): string => {
+  if (cursorData.sortDirection !== "asc") {
+    cursorData.sortDirection = "desc";
   }
-  return Buffer.from(pkId.toString()).toString("base64");
+
+  if (typeof cursorData.position.sortValue === "bigint") {
+    cursorData.position.sortValue =
+      cursorData.position.sortValue.toString() as any;
+  }
+
+  return Buffer.from(JSON.stringify(cursorData)).toString("base64");
 };
 
+/**
+ * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
+ */
 export type CursorData = {
-  pkId: bigint;
-  sortValue?: any;
-  sortBy?: string;
+  /** The direction of sorting (ascending or descending) */
+  sortDirection: "asc" | "desc";
+  /** The field name used for sorting (e.g., 'pk_id', 'updated_at', 'durability') */
+  sortField?: string;
+  /** Position information for pagination. Stores the `pk_id` and `sortValue` of the boundary record used for next/prev navigation */
+  position: {
+    /** Primary key ID of the boundary record for pagination */
+    pkId: string;
+    /** The value of the sort field. Example: `"2025-01-01T00:00:00Z"` when `sortField: "updated_at"` */
+    sortValue?: any;
+  };
 };
 
 /**
@@ -42,15 +64,8 @@ export const decodeCursor = (cursor: string): CursorData => {
   const decoded = Buffer.from(cursor, "base64").toString();
   try {
     const parsed = JSON.parse(decoded);
-    if (parsed.pkId && parsed.sortBy) {
-      return {
-        pkId: BigInt(parsed.pkId),
-        sortValue: parsed.sortValue,
-        sortBy: parsed.sortBy,
-      };
-    }
-  } catch {
-    // Fallback for old cursor format or invalid JSON
+    return parsed as CursorData;
+  } catch (error) {
+    throw new InvalidCursorError(cursor);
   }
-  return { pkId: BigInt(decoded) };
 };
