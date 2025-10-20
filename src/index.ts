@@ -15,9 +15,10 @@ app.get("/", (_req, res) => {
   res.json({ message: "Stellar Lab API is running!" });
 });
 
-let connectionClose: (() => Promise<void>) | null = null;
+let server: any = null;
+let closeDbConnection: (() => Promise<void>) | null = null;
 
-app.listen(PORT, async () => {
+server = app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
   try {
@@ -27,7 +28,7 @@ app.listen(PORT, async () => {
       database: process.env.DB_NAME!,
     });
 
-    connectionClose = close;
+    closeDbConnection = close;
 
     // Test the connection
     await prisma.$connect();
@@ -41,20 +42,6 @@ app.listen(PORT, async () => {
     `;
     console.log("Available tables:", tables);
 
-    // Try to get count of contract_data records
-    // const count =
-    //   await prisma.$queryRaw`SELECT COUNT(*) FROM "public"."contract_data"`;
-
-    // Try using Prisma ORM method
-    try {
-      const contractData = await prisma.contract_data.findMany({
-        take: 5,
-      });
-      console.log("Contract data (ORM):", contractData);
-    } catch (error) {
-      console.log("ORM method failed:", error);
-    }
-
     console.log("Connected to PostgreSQL database");
   } catch (error) {
     console.error("Failed to connect to database:", error);
@@ -62,18 +49,22 @@ app.listen(PORT, async () => {
 });
 
 // Cleanup on exit
-process.on("SIGINT", async () => {
+const gracefulShutdown = async () => {
   console.log("Shutting down gracefully...");
-  if (connectionClose) {
-    await connectionClose();
-  }
-  process.exit(0);
-});
 
-process.on("SIGTERM", async () => {
-  console.log("Shutting down gracefully...");
-  if (connectionClose) {
-    await connectionClose();
+  if (server) {
+    server.close(() => {
+      console.log("HTTP server closed");
+    });
   }
+
+  if (closeDbConnection) {
+    await closeDbConnection();
+  }
+
   process.exit(0);
-});
+};
+
+process.on("SIGINT", gracefulShutdown);
+process.on("SIGUSR2", gracefulShutdown);
+process.on("SIGTERM", gracefulShutdown);

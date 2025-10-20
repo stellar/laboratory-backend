@@ -12,8 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import path from "path";
 import fs from "fs";
+import net from "net";
+import path from "path";
 import { resolve } from "node:path";
 import {
   AuthTypes,
@@ -25,12 +26,32 @@ import { PrismaClient } from "../../generated/prisma";
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
 
-async function cleanupSocket() {
+async function cleanupSocketIfNeeded() {
   const socketPath = path.join(process.cwd(), ".s.PGSQL.5432");
+
   try {
     if (fs.existsSync(socketPath)) {
-      fs.unlinkSync(socketPath);
-      console.log("🧹 Cleaned up existing socket file");
+      // Check if socket is actually in use
+      const client = new net.Socket();
+
+      const isInUse = await new Promise<boolean>((resolve) => {
+        client.connect(socketPath, () => {
+          client.destroy();
+          resolve(true); // Socket is in use
+        });
+
+        client.on("error", () => resolve(false)); // Socket not in use
+
+        setTimeout(() => {
+          client.destroy();
+          resolve(false);
+        }, 100);
+      });
+
+      if (!isInUse) {
+        fs.unlinkSync(socketPath);
+        console.log("🧹 Cleaned up existing socket file");
+      }
     }
   } catch (error: any) {
     console.warn("Warning: Could not clean up socket file:", error.message);
@@ -50,7 +71,7 @@ async function connect({
   const socketPath = resolve(`.s.PGSQL.5432`);
 
   // Cleanup before starting
-  await cleanupSocket();
+  await cleanupSocketIfNeeded();
 
   await connector.startLocalProxy({
     instanceConnectionName,
