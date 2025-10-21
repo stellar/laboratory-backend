@@ -60,21 +60,33 @@ export class CursorParameterMismatchError extends Error {
 const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id, network = "mainnet" } = req.params;
 
-  const {
+  let {
     cursor,
     limit = "20",
     order = SortDirection.DESC,
     sort_by = SortField.PK_ID,
   } = req.query;
+  sort_by = (sort_by as string).toLowerCase().trim() as SortField;
+  order = (order as string).toLowerCase().trim() as SortDirection;
 
   // limit
+  // if limit cannot be parsed from string to integer, or if it's outside the range of 1-200, throw an error
+  if (limit) {
+    if (
+      isNaN(parseInt(limit as string)) ||
+      parseInt(limit as string) < 1 ||
+      parseInt(limit as string) > 200
+    ) {
+      throw new Error(
+        `Invalid limit=${limit}, must be an integer between 1 and 200`
+      );
+    }
+  }
   const limitNum = Math.min(parseInt(limit as string) || 10, 200); // Max 200 records
 
   // sort direction
   const sortDirection =
-    (order as string).toLowerCase() === SortDirection.ASC
-      ? SortDirection.ASC
-      : SortDirection.DESC;
+    order === SortDirection.ASC ? SortDirection.ASC : SortDirection.DESC;
 
   // sort field
   const validSortFields = [
@@ -83,11 +95,10 @@ const parseRequestParams = (req: Request): RequestParams => {
     SortField.TTL,
     SortField.UPDATED_AT,
   ];
-  const sortField = validSortFields.includes(
-    (sort_by as string).toLowerCase() as SortField
-  )
-    ? (sort_by as SortField)
-    : SortField.PK_ID;
+  if (sort_by && !validSortFields.includes(sort_by as SortField)) {
+    throw new Error(`Invalid sort_by parameter: ${sort_by}`);
+  }
+  const sortField = sort_by ? (sort_by as SortField) : SortField.PK_ID;
 
   // cursor data
   let cursorData: CursorData | undefined = undefined;
@@ -95,7 +106,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     cursorData = decodeCursor(cursor as string);
 
     // Validate cursor parameters match request parameters
-    if (cursorData.sortField && cursorData.sortField !== sortField) {
+    if ((cursorData.sortField ?? SortField.PK_ID) !== sortField) {
       throw new CursorParameterMismatchError(
         "sort_by",
         sortField,
@@ -116,11 +127,78 @@ const parseRequestParams = (req: Request): RequestParams => {
   };
 };
 
-const writeIndexAndAddParam = (newParam: any, params: any[]) => {
+/**
+ * Adds a parameter to the params array and returns its PostgreSQL placeholder.
+ * @param newParam - The parameter value to add
+ * @param params - The array of parameters to append to (mutated by this function)
+ * @returns The PostgreSQL parameter placeholder (e.g., "$1", "$2")
+ */
+const addParamAndGetPlaceholder = (newParam: any, params: any[]) => {
   params.push(newParam);
   return `$${params.length}`;
 };
 
+/**
+ * Builds SQL pagination clause using cursor-based pagination.
+ * @param params - Array to add parameters to
+ * @param sortDbField - Database field name for sorting
+ * @param cursorData - Cursor data for pagination position
+ * @returns SQL WHERE clause for pagination or empty string
+ */
+const preparePaginationClause = (
+  params: any[],
+  sortDbField: string,
+  cursorData?: CursorData
+): string => {
+  if (!cursorData) {
+    return "";
+  }
+
+  const operator = cursorData.sortDirection === SortDirection.ASC ? ">" : "<";
+
+  if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
+    return `
+    AND ${sortDbField} ${operator} ${addParamAndGetPlaceholder(
+      cursorData.position.sortValue,
+      params
+    )}
+    OR (
+      ${sortDbField} = $${params.length}
+      AND pk_id ${operator} ${addParamAndGetPlaceholder(
+      BigInt(cursorData.position.pkId),
+      params
+    )}
+    )`;
+  }
+
+  return `AND pk_id ${operator} ${addParamAndGetPlaceholder(
+    BigInt(cursorData.position.pkId),
+    params
+  )}`;
+};
+
+/**
+ * Builds SQL ORDER BY clause for sorting results.
+ * @param sortField - Field to sort by
+ * @param sortDirection - ASC or DESC
+ * @returns SQL ORDER BY clause
+ */
+const prepareOrderByClause = (
+  sortField: SortField,
+  sortDirection: SortDirection
+): string => {
+  if (sortField === SortField.PK_ID) {
+    return `ORDER BY pk_id ${sortDirection}`;
+  } else {
+    return `ORDER BY ${APIFieldToDBFieldMap[sortField]} ${sortDirection}, pk_id ${sortDirection}`;
+  }
+};
+
+/**
+ * Fetches contract data with cursor-based pagination and TTL caching.
+ * @param requestParams - Request parameters including contract ID, cursor, limit, and sorting
+ * @returns Promise resolving to array of contract data
+ */
 const getContractDataWithTTL = async (
   requestParams: RequestParams
 ): Promise<any[]> => {
@@ -134,48 +212,6 @@ const getContractDataWithTTL = async (
   } = requestParams;
 
   const params: any[] = [contractId];
-
-  const perparePaginationClause = (
-    params: any[],
-    cursorData?: CursorData
-  ): string => {
-    if (!cursorData) {
-      return "";
-    }
-
-    const operator = cursorData.sortDirection === SortDirection.ASC ? ">" : "<";
-
-    if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
-      return `
-      AND ${sortDbField} ${operator} ${writeIndexAndAddParam(
-        cursorData.position.sortValue,
-        params
-      )}
-      OR (
-        ${sortDbField} = $${params.length}
-        AND pk_id ${operator} ${writeIndexAndAddParam(
-        BigInt(cursorData.position.pkId),
-        params
-      )}
-      )`;
-    }
-
-    return `AND pk_id ${operator} ${writeIndexAndAddParam(
-      BigInt(cursorData.position.pkId),
-      params
-    )}`;
-  };
-
-  const prepareOrderByClause = (
-    sortField: SortField,
-    sortDirection: SortDirection
-  ): string => {
-    if (sortField === SortField.PK_ID) {
-      return `ORDER BY pk_id ${sortDirection}`;
-    } else {
-      return `ORDER BY ${APIFieldToDBFieldMap[sortField]} ${sortDirection}, pk_id ${sortDirection}`;
-    }
-  };
 
   const query = `
     WITH cd_latest AS (
@@ -199,9 +235,9 @@ const getContractDataWithTTL = async (
     FROM final_result
     WHERE
       1=1
-      ${perparePaginationClause(params, cursorData)}
+      ${preparePaginationClause(params, sortDbField, cursorData)}
     ${prepareOrderByClause(sortField, sortDirection)} -- ORDER BY (...)
-    LIMIT ${writeIndexAndAddParam(limit + 1, params)};
+    LIMIT ${addParamAndGetPlaceholder(limit + 1, params)};
   `;
 
   const results = await prisma.$queryRawUnsafe(query, ...params);
@@ -256,7 +292,12 @@ export const getContractDataByContractId = async (
   req: Request,
   res: Response
 ): Promise<void | Response> => {
-  const requestParams = parseRequestParams(req);
+  let requestParams: RequestParams;
+  try {
+    requestParams = parseRequestParams(req);
+  } catch (e) {
+    return res.status(400).json({ error: (e as Error).message });
+  }
 
   const { limit, network } = requestParams;
   if (network !== "mainnet") {
