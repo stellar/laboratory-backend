@@ -2,7 +2,7 @@
   "name": "stellar-lab-api",
   "version": "1.0.0",
   "main": "index.js",
-  "repository": "git@github.com:jeesunikim/stellar-lab-api.git",
+  "repository": "https://github.com/stellar/laboratory-backend",
   "author": "<3912060+jeesunikim@users.noreply.github.com>",
   "license": "MIT",
   "scripts": {
