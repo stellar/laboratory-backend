@@ -70,6 +70,12 @@ class ContractDataQueryBuilder {
         WHERE id = $1
         ORDER BY key_hash, ledger_sequence DESC
       ),
+      latest_ledger AS (
+        SELECT ledger_sequence
+        FROM ttl
+        ORDER BY pk_id DESC
+        LIMIT 1
+      ),
       final_result AS (
         SELECT cd_latest.*, ttl_latest.live_until_ledger_sequence
         FROM cd_latest
@@ -99,14 +105,16 @@ class ContractDataQueryBuilder {
 
     if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
       return `
-        AND ${sortDbField} ${operator} ${this.paramManager.add(
+        AND (
+          ${sortDbField} ${operator} ${this.paramManager.add(
         cursorData.position.sortValue
       )}
-        OR (
-          ${sortDbField} = $${this.paramManager.getCount()}
-          AND pk_id ${operator} ${this.paramManager.add(
+          OR (
+            ${sortDbField} = $${this.paramManager.getCount()}
+            AND pk_id ${operator} ${this.paramManager.add(
         BigInt(cursorData.position.pkId)
       )}
+          )
         )`;
     }
 
@@ -156,11 +164,27 @@ class ContractDataQueryBuilder {
     const finalLimit = this.paramManager.add(limit);
 
     const query = `${baseQuery}${paginatedCTE}
-      SELECT *
+      SELECT
+        *,
+        (live_until_ledger_sequence < latest_ledger.ledger_sequence) AS expired
       FROM ${fromClause}
+      CROSS JOIN latest_ledger
       WHERE 1=1
       ${finalOrderBy}
       LIMIT ${finalLimit};`;
+
+    // Debug: Print the query with parameters substituted
+    let debugQuery = query;
+    const params = this.paramManager.getParams();
+    params.forEach((param, index) => {
+      const placeholder = `$${index + 1}`;
+      const value = typeof param === "string" ? `'${param}'` : param;
+      debugQuery = debugQuery.replace(
+        new RegExp(`\\${placeholder}\\b`, "g"),
+        String(value)
+      );
+    });
+    console.log("Final SQL Query with parameters:", debugQuery);
 
     return {
       query: query.trim(),

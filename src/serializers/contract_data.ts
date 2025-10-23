@@ -7,9 +7,7 @@
 export const serializeContractDataResults = (results: any[]): any[] => {
   return results.map((row: any) => ({
     durability: row.durability,
-    expired: row.live_until_ledger_sequence
-      ? Date.now() > row.live_until_ledger_sequence * 1000
-      : false,
+    expired: row.expired,
     key_hash: row.key_hash,
     key: row.key ? Buffer.from(row.key).toString() : null,
     ttl: row.live_until_ledger_sequence ?? null,
