@@ -72,7 +72,8 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
     expect(mockResponse.json).toHaveBeenCalledWith({
-      error: "Invalid sort_by parameter: invalid_field",
+      error:
+        "Invalid sort_by parameter invalid_field must be one of durability, pk_id, ttl, updated_at",
     });
   });
 
@@ -84,8 +85,8 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockResponse as Response
     );
 
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
-    expect(mockResponse.status).not.toHaveBeenCalled();
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
     expect(responseData.results).toEqual([]);
@@ -103,8 +104,8 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockResponse as Response
     );
 
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
-    expect(mockResponse.status).not.toHaveBeenCalled();
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -120,7 +121,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     // Verify result structure
     responseData.results.forEach((item: any) => {
       expect(item).toEqual({
-        durability: "persistent",
+        durability: expect.any(String),
         expired: expect.any(Boolean),
         key_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
         key: expect.any(String),
@@ -138,8 +139,8 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       key_hash:
         "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
       key: expect.stringContaining("BillingCyclePlanName"),
-      ttl: 61482909,
-      updated: Math.floor(new Date("2025-10-16T15:00:36Z").getTime() / 1000),
+      ttl: 61482901,
+      updated: Math.floor(new Date("2025-10-03T15:00:36Z").getTime() / 1000),
       value: expect.stringContaining("invite"),
     });
   });
@@ -151,6 +152,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockRequest as Request,
       mockResponse as Response
     );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -172,6 +176,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockRequest as Request,
       mockResponse as Response
     );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -200,6 +207,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockResponse as Response
     );
 
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    expect(mockResponse.json).toHaveBeenCalledTimes(1);
+
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
     expect(responseData.results.length).toBeGreaterThan(0);
@@ -227,6 +237,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       mockResponse as Response
     );
 
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    expect(mockResponse.json).toHaveBeenCalledTimes(1);
+
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
     expect(responseData.results.length).toBeGreaterThan(0);
@@ -240,7 +253,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     // Assert sorting order of ttl
     for (let i = 1; i < responseData.results.length; i++) {
-      expect(responseData.results[i - 1].ttl).toBeGreaterThanOrEqual(
+      expect(responseData.results[i - 1].ttl).toBeLessThanOrEqual(
         responseData.results[i].ttl
       );
     }
@@ -274,7 +287,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
         mockResponse as Response
       );
 
-      // expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         error: expect.stringContaining(
           `Cursor parameter mismatch for field "sort_by"`
@@ -290,6 +303,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
         mockRequest as Request,
         mockResponse as Response
       );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
       let responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);

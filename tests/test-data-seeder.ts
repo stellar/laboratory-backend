@@ -43,41 +43,41 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
         "base64"
       ),
       val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
-      closed_at: new Date("2025-10-16T15:00:36Z"),
+      closed_at: new Date("2025-10-03T15:00:36Z"),
       pk_id: BigInt("114585509"),
-      live_until_ledger_sequence: 61482909,
+      live_until_ledger_sequence: 61482901,
     },
     {
       key_hash:
         "0617ea10a459976834fa9ce5a189133586ad546528a1407f026d4d27810a4af8",
       id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
-      durability: "persistent",
+      durability: "instance",
       key_decoded: "BillingCycleTimestamp",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
         "base64"
       ),
       val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
-      closed_at: new Date("2025-10-16T15:00:36Z"),
+      closed_at: new Date("2025-10-02T15:00:36Z"),
       pk_id: BigInt("114585471"),
-      live_until_ledger_sequence: 61482909,
+      live_until_ledger_sequence: 61482902,
     },
     {
       key_hash:
         "0c62c69563827a93daa2a3dc9247eeb71c07a504e9d9d41694bcb98e9183f525",
       id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
-      durability: "persistent",
+      durability: "temporary",
       key_decoded: "BillingCyclePrice",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
         "base64"
       ),
       val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
-      closed_at: new Date("2025-10-16T15:00:36Z"),
+      closed_at: new Date("2025-10-01T15:00:36Z"),
       pk_id: BigInt("114585490"),
-      live_until_ledger_sequence: 61482909,
+      live_until_ledger_sequence: 61482903,
     },
   ];
 

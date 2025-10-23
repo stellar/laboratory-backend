@@ -61,7 +61,11 @@ const parseRequestParams = (req: Request): RequestParams => {
     SortField.UPDATED_AT,
   ];
   if (sort_by && !validSortFields.includes(sort_by as SortField)) {
-    throw new Error(`Invalid sort_by parameter: ${sort_by}`);
+    throw new Error(
+      `Invalid sort_by parameter ${sort_by} must be one of ${validSortFields.join(
+        ", "
+      )}`
+    );
   }
   const sortField = sort_by ? (sort_by as SortField) : SortField.PK_ID;
 
@@ -170,7 +174,7 @@ export const getContractDataByContractId = async (
   // Params for links
   const links = buildPaginationLinks(requestParams, contractData);
 
-  return res.json({
+  return res.status(200).json({
     _links: links,
     results: serializeContractDataResults(contractData),
   });

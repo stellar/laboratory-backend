@@ -30,8 +30,7 @@ export const encodeCursor = (cursorData: CursorData): string => {
   }
 
   if (typeof cursorData.position.sortValue === "bigint") {
-    cursorData.position.sortValue =
-      cursorData.position.sortValue.toString() as any;
+    cursorData.position.sortValue = cursorData.position.sortValue.toString();
   }
 
   return Buffer.from(JSON.stringify(cursorData)).toString("base64");
@@ -50,7 +49,7 @@ export type CursorData = {
     /** Primary key ID of the boundary record for pagination */
     pkId: string;
     /** The value of the sort field. Example: `"2025-01-01T00:00:00Z"` when `sortField: "updated_at"` */
-    sortValue?: any;
+    sortValue?: number | string | bigint;
   };
 };
 
