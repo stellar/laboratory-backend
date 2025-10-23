@@ -34,7 +34,7 @@ async function cleanupSocketIfNeeded() {
       // Check if socket is actually in use
       const client = new net.Socket();
 
-      const isInUse = await new Promise<boolean>((resolve) => {
+      const isInUse = await new Promise<boolean>(resolve => {
         client.connect(socketPath, () => {
           client.destroy();
           resolve(true); // Socket is in use
@@ -90,6 +90,7 @@ async function connect({
     async close() {
       await prisma.$disconnect();
       connector.close();
+      await new Promise(resolve => setTimeout(resolve, 1000));
     },
   };
 }

@@ -25,8 +25,8 @@ export class InvalidCursorError extends Error {
  * @returns Base64 encoded cursor string
  */
 export const encodeCursor = (cursorData: CursorData): string => {
-  if (cursorData.sortDirection !== "asc") {
-    cursorData.sortDirection = "desc";
+  if (cursorData.cursorType !== "prev") {
+    cursorData.cursorType = "next";
   }
 
   if (typeof cursorData.position.sortValue === "bigint") {
@@ -42,7 +42,7 @@ export const encodeCursor = (cursorData: CursorData): string => {
  */
 export type CursorData = {
   /** The direction of sorting (ascending or descending) */
-  sortDirection: "asc" | "desc";
+  cursorType: "next" | "prev";
   /** The field name used for sorting (e.g., 'pk_id', 'updated_at', 'durability') */
   sortField?: string;
   /** Position information for pagination. Stores the `pk_id` and `sortValue` of the boundary record used for next/prev navigation */

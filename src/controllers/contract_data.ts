@@ -7,6 +7,12 @@ enum SortDirection {
   DESC = "desc",
 }
 
+const invertSortDirection = (sortDirection?: SortDirection): SortDirection => {
+  return sortDirection === SortDirection.ASC
+    ? SortDirection.DESC
+    : SortDirection.ASC;
+};
+
 enum SortField {
   DURABILITY = "durability",
   PK_ID = "pk_id",
@@ -140,40 +146,45 @@ const addParamAndGetPlaceholder = (newParam: any, params: any[]) => {
 
 /**
  * Builds SQL pagination clause using cursor-based pagination.
- * @param params - Array to add parameters to
+ * @param sqlParams - Array to add SQP query parameters to
  * @param sortDbField - Database field name for sorting
  * @param cursorData - Cursor data for pagination position
  * @returns SQL WHERE clause for pagination or empty string
  */
 const preparePaginationClause = (
-  params: any[],
+  sqlParams: any[],
   sortDbField: string,
+  sortDirection: SortDirection,
   cursorData?: CursorData
 ): string => {
   if (!cursorData) {
     return "";
   }
 
-  const operator = cursorData.sortDirection === SortDirection.ASC ? ">" : "<";
+  // let isDesc = sortDirection === SortDirection.DESC;
+  if (cursorData.cursorType === "prev") {
+    sortDirection = invertSortDirection(sortDirection);
+  }
+  let operator = sortDirection === SortDirection.DESC ? "<" : ">";
 
   if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
     return `
     AND ${sortDbField} ${operator} ${addParamAndGetPlaceholder(
       cursorData.position.sortValue,
-      params
+      sqlParams
     )}
     OR (
-      ${sortDbField} = $${params.length}
+      ${sortDbField} = $${sqlParams.length}
       AND pk_id ${operator} ${addParamAndGetPlaceholder(
       BigInt(cursorData.position.pkId),
-      params
+      sqlParams
     )}
     )`;
   }
 
   return `AND pk_id ${operator} ${addParamAndGetPlaceholder(
     BigInt(cursorData.position.pkId),
-    params
+    sqlParams
   )}`;
 };
 
@@ -231,13 +242,35 @@ const getContractDataWithTTL = async (
         LIMIT 1
       ) ttl_latest ON true
     )
+    ${
+      cursorData
+        ? `,paginated_result AS (
+      SELECT *
+      FROM final_result
+      WHERE
+        1=1
+        ${preparePaginationClause(
+          params,
+          sortDbField,
+          sortDirection,
+          cursorData
+        )}
+      ${prepareOrderByClause(
+        sortField,
+        cursorData?.cursorType === "next"
+          ? sortDirection
+          : invertSortDirection(sortDirection)
+      )} -- ORDER BY (...)
+      LIMIT ${addParamAndGetPlaceholder(limit, params)}
+    )`
+        : ""
+    }
     SELECT *
-    FROM final_result
+    FROM ${cursorData ? "paginated_result" : "final_result"}
     WHERE
-      1=1
-      ${preparePaginationClause(params, sortDbField, cursorData)}
+        1=1
     ${prepareOrderByClause(sortField, sortDirection)} -- ORDER BY (...)
-    LIMIT ${addParamAndGetPlaceholder(limit + 1, params)};
+    LIMIT ${addParamAndGetPlaceholder(limit, params)};
   `;
 
   const results = await prisma.$queryRawUnsafe(query, ...params);
@@ -264,6 +297,7 @@ const buildPaginationLinkHref = (
  */
 const serializeContractDataResults = (results: any[]): any[] => {
   return results.map((row: any) => ({
+    // pk_id: row.pk_id.toString(),
     durability: row.durability,
     expired: row.live_until_ledger_sequence
       ? Date.now() > row.live_until_ledger_sequence * 1000
@@ -306,28 +340,19 @@ export const getContractDataByContractId = async (
 
   const contractData = await getContractDataWithTTL(requestParams);
 
-  // Check if there are more records and strip the excess record
-  const hasMore = contractData.length > limit;
-  const results = hasMore ? contractData.slice(0, limit) : contractData;
-
   // Params for links
   const links: PaginationLinks = buildPaginationLinks(
     requestParams,
-    hasMore,
-    results
+    contractData
   );
 
   return res.json({
     _links: links,
-    results: serializeContractDataResults(results),
+    results: serializeContractDataResults(contractData),
   });
 };
 
-function buildPaginationLinks(
-  requestParams: RequestParams,
-  hasMore: boolean,
-  results: any[]
-) {
+function buildPaginationLinks(requestParams: RequestParams, results: any[]) {
   const {
     contractId,
     cursor,
@@ -355,10 +380,10 @@ function buildPaginationLinks(
   };
 
   // (optional) links.next:
-  if (hasMore) {
+  if (results.length >= limit) {
     const lastRecord = results[results.length - 1];
     const nextCursor = encodeCursor({
-      sortDirection,
+      cursorType: "next",
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
         pkId: lastRecord.pk_id.toString(),
@@ -378,10 +403,7 @@ function buildPaginationLinks(
   if (cursor && results.length > 0) {
     const firstRecord = results[0];
     const prevCursor = encodeCursor({
-      sortDirection:
-        sortDirection === SortDirection.ASC
-          ? SortDirection.DESC
-          : SortDirection.ASC,
+      cursorType: "prev",
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
         pkId: firstRecord.pk_id.toString(),

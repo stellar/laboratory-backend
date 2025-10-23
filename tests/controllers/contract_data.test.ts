@@ -241,68 +241,115 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       });
     });
 
-    // test("🟢next_and_prev_links_work_as_expected", async () => {
-    //   // Step 1: request without cursor to get `nextCursor`
-    //   mockRequest.query = { limit: "1" };
+    test("🟢next_and_prev_links_work_as_expected", async () => {
+      // Page 1/3 (without cursor)
+      mockRequest.query = { limit: "1" };
 
-    //   await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
 
-    //   let responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
-    //   expect(responseData.results).toHaveLength(1);
-    //   expect(responseData).toHaveValidPaginationLinks({
-    //     contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-    //     network: "mainnet",
-    //     order: "desc",
-    //     limit: "1",
-    //     containsNext: true,
-    //   });
-    //   expect(responseData).toHaveValidCursor("next");
-    //   // Reset mocks for the second call
-    //   (mockResponse.json as jest.Mock).mockClear();
-    //   (mockResponse.status as jest.Mock).mockClear();
+      let responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData).toHaveValidPaginationLinks({
+        contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+        network: "mainnet",
+        order: "desc",
+        limit: "1",
+        containsNext: true,
+      });
+      expect(responseData).toHaveValidCursor("next");
+      // Reset mocks for the second call
+      (mockResponse.json as jest.Mock).mockClear();
+      (mockResponse.status as jest.Mock).mockClear();
 
-    //   // Step 2: request with `nextCursor` to get `prevCursor`
-    //   const nextUrl = new URL(responseData._links.next.href, "http://example.test");
-    //   const nextCursor = nextUrl.searchParams.get("cursor");
-    //   expect(nextCursor).toBeDefined();
-    //   mockRequest.query = { cursor: nextCursor! as string, limit: "2" };
+      // Page 2/3 (using page1.next)
+      let nextUrl = new URL(responseData._links.next.href, "http://example.test");
+      let nextCursor = nextUrl.searchParams.get("cursor");
+      expect(nextCursor).toBeDefined();
+      mockRequest.query = { cursor: nextCursor! as string, limit: "1" };
 
-    //   await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
 
-    //   responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
-    //   expect(responseData.results).toHaveLength(2);
-    //   expect(responseData).toHaveValidPaginationLinks({
-    //     contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-    //     network: "mainnet",
-    //     order: "desc",
-    //     limit: "2",
-    //     containsPrev: true,
-    //   });
-    //   expect(responseData).toHaveValidCursor("prev");
-    //   // Reset mocks for the third call
-    //   (mockResponse.json as jest.Mock).mockClear();
-    //   (mockResponse.status as jest.Mock).mockClear();
+      responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData).toHaveValidPaginationLinks({
+        contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+        network: "mainnet",
+        order: "desc",
+        limit: "1",
+        containsPrev: true,
+        containsNext: true,
+      });
+      expect(responseData).toHaveValidCursor("prev");
+      expect(responseData).toHaveValidCursor("next");
+      // Reset mocks for the third call
+      (mockResponse.json as jest.Mock).mockClear();
+      (mockResponse.status as jest.Mock).mockClear();
 
-    //   // Step 3: request with `prevCursor` and `limit=1` to get both `next` and `prev` cursors
-    //   const prevUrl = new URL(responseData._links.prev.href, "http://example.test");
-    //   const prevCursor = prevUrl.searchParams.get("cursor");
-    //   expect(prevCursor).toBeDefined();
-    //   mockRequest.query = { cursor: prevCursor! as string, limit: "1" };
+      // Page 3/3 (using page2.next)
+      nextUrl = new URL(responseData._links.next.href, "http://example.test");
+      nextCursor = nextUrl.searchParams.get("cursor");
+      expect(nextCursor).toBeDefined();
+      mockRequest.query = { cursor: nextCursor! as string, limit: "1" };
 
-    //   await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
 
-    //   responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
-    //   expect(responseData.results).toHaveLength(1);
-    //   expect(responseData).toHaveValidPaginationLinks({
-    //     contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-    //     network: "mainnet",
-    //     order: "desc",
-    //     limit: "1",
-    //     containsNext: true,
-    //     containsPrev: true,
-    //   });
-    //   expect(responseData).toHaveValidCursor("next");
-    //   expect(responseData).toHaveValidCursor("prev");
-    // });
+      responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData).toHaveValidPaginationLinks({
+        contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+        network: "mainnet",
+        order: "desc",
+        limit: "1",
+        containsPrev: true,
+        containsNext: true,
+      });
+      expect(responseData).toHaveValidCursor("prev");
+      expect(responseData).toHaveValidCursor("next");
+      // Reset mocks for the third call
+      (mockResponse.json as jest.Mock).mockClear();
+      (mockResponse.status as jest.Mock).mockClear();
+
+      // Page 2/3 (using page3.prev)
+      let prevUrl = new URL(responseData._links.prev.href, "http://example.test");
+      let prevCursor = prevUrl.searchParams.get("cursor");
+      expect(prevCursor).toBeDefined();
+      mockRequest.query = { cursor: prevCursor! as string, limit: "1" };
+
+      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+
+      responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData).toHaveValidPaginationLinks({
+        contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+        network: "mainnet",
+        order: "desc",
+        limit: "1",
+        containsNext: true,
+        containsPrev: true,
+      });
+      expect(responseData).toHaveValidCursor("next");
+      expect(responseData).toHaveValidCursor("prev");
+
+      // Page 1/3 (using page2.prev)
+      prevUrl = new URL(responseData._links.prev.href, "http://example.test");
+      prevCursor = prevUrl.searchParams.get("cursor");
+      expect(prevCursor).toBeDefined();
+      mockRequest.query = { cursor: prevCursor! as string, limit: "1" };
+
+      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+
+      responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData).toHaveValidPaginationLinks({
+        contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+        network: "mainnet",
+        order: "desc",
+        limit: "1",
+        containsNext: true,
+        containsPrev: true,
+      });
+      expect(responseData).toHaveValidCursor("next");
+      expect(responseData).toHaveValidCursor("prev");
+    });
   });
 });
