@@ -30,8 +30,7 @@ export const encodeCursor = (cursorData: CursorData): string => {
   }
 
   if (typeof cursorData.position.sortValue === "bigint") {
-    cursorData.position.sortValue =
-      cursorData.position.sortValue.toString() as any;
+    cursorData.position.sortValue = cursorData.position.sortValue.toString() as any;
   }
 
   return Buffer.from(JSON.stringify(cursorData)).toString("base64");

@@ -16,11 +16,7 @@ import fs from "fs";
 import net from "net";
 import path from "path";
 import { resolve } from "node:path";
-import {
-  AuthTypes,
-  Connector,
-  IpAddressTypes,
-} from "@google-cloud/cloud-sql-connector";
+import { AuthTypes, Connector, IpAddressTypes } from "@google-cloud/cloud-sql-connector";
 import { PrismaClient } from "../../generated/prisma";
 
 // Export a shared Prisma instance that will be set during initialization
