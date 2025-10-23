@@ -8,7 +8,7 @@ import {
   CursorParameterMismatchError,
 } from "../types/contract_data";
 import { decodeCursor } from "../helpers/cursor";
-import { buildContractDataQuery } from "../query-builders/contract_data";
+import { buildContractDataQuery, ContractDataQueryConfig } from "../query-builders/contract_data";
 import { buildPaginationLinks } from "../pagination/contract_data";
 import { serializeContractDataResults } from "../serializers/contract_data";
 
@@ -76,22 +76,45 @@ const parseRequestParams = (req: Request): RequestParams => {
 const getContractDataWithTTL = async (requestParams: RequestParams): Promise<any[]> => {
   const { contractId, cursorData, limit, sortDbField, sortDirection, sortField } = requestParams;
 
-  const params: any[] = [contractId];
+  const config: ContractDataQueryConfig = {
+    contractId,
+    cursorData,
+    limit,
+    sortDbField,
+    sortDirection,
+    sortField,
+  };
+  const { query, params } = buildContractDataQuery(config);
 
-  const query = buildContractDataQuery(contractId, params, cursorData, limit, sortDbField, sortDirection, sortField);
-
-  // Log query with parameters substituted for easy copy-paste to DB terminal
-  let executableQuery = query;
-  params.forEach((param, index) => {
-    const placeholder = `$${index + 1}`;
-    const value = typeof param === "string" ? `'${param.replace(/'/g, "''")}'` : param;
-    executableQuery = executableQuery.replace(new RegExp(placeholder.replace("$", "\\$"), "g"), value);
-  });
-  console.log("Executable query:", executableQuery);
   const results = await prisma.$queryRawUnsafe(query, ...params);
 
   return results as any[];
 };
+
+/**
+ * Controller for retrieving contract data by contract ID with pagination and TTL support.
+ *
+ * This endpoint fetches contract data entries for a specific contract, including their
+ * time-to-live (TTL) information. Results are paginated using cursor-based pagination
+ * and can be sorted by various fields.
+ *
+ * @example
+ * GET /contracts/CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAUHKENNYY/data
+ * GET /contracts/CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAUHKENNYY/data?limit=50&sort_by=key&order=desc
+ *
+ * Response format:
+ * {
+ *   "_links": {
+ *     "self": { "href": "..." },
+ *     "next": { "href": "..." },
+ *     "prev": { "href": "..." }
+ *   },
+ *   "results": [...]
+ * }
+ *
+ * @throws {400} When request parameters are invalid or network is not mainnet
+ * @throws {500} When database query fails
+ */
 
 export const getContractDataByContractId = async (req: Request, res: Response): Promise<void | Response> => {
   let requestParams: RequestParams;
@@ -101,7 +124,7 @@ export const getContractDataByContractId = async (req: Request, res: Response): 
     return res.status(400).json({ error: (e as Error).message });
   }
 
-  const { limit, network } = requestParams;
+  const { network } = requestParams;
   if (network !== "mainnet") {
     return res.status(400).json({ error: "Only mainnet is supported" });
   }
