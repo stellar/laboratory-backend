@@ -8,7 +8,10 @@ import {
   CursorParameterMismatchError,
 } from "../types/contract_data";
 import { decodeCursor } from "../helpers/cursor";
-import { buildContractDataQuery, ContractDataQueryConfig } from "../query-builders/contract_data";
+import {
+  buildContractDataQuery,
+  ContractDataQueryConfig,
+} from "../query-builders/contract_data";
 import { buildPaginationLinks } from "../pagination/contract_data";
 import { serializeContractDataResults } from "../serializers/contract_data";
 
@@ -23,23 +26,40 @@ import { serializeContractDataResults } from "../serializers/contract_data";
 const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id, network = "mainnet" } = req.params;
 
-  let { cursor, limit = "20", order = SortDirection.DESC, sort_by = SortField.PK_ID } = req.query;
+  let {
+    cursor,
+    limit = "20",
+    order = SortDirection.DESC,
+    sort_by = SortField.PK_ID,
+  } = req.query;
   sort_by = (sort_by as string).toLowerCase().trim() as SortField;
   order = (order as string).toLowerCase().trim() as SortDirection;
 
   // limit validation
   if (limit) {
-    if (isNaN(parseInt(limit as string)) || parseInt(limit as string) < 1 || parseInt(limit as string) > 200) {
-      throw new Error(`Invalid limit=${limit}, must be an integer between 1 and 200`);
+    if (
+      isNaN(parseInt(limit as string)) ||
+      parseInt(limit as string) < 1 ||
+      parseInt(limit as string) > 200
+    ) {
+      throw new Error(
+        `Invalid limit=${limit}, must be an integer between 1 and 200`
+      );
     }
   }
   const limitNum = Math.min(parseInt(limit as string) || 10, 200); // Max 200 records
 
   // sort direction
-  const sortDirection = order === SortDirection.ASC ? SortDirection.ASC : SortDirection.DESC;
+  const sortDirection =
+    order === SortDirection.ASC ? SortDirection.ASC : SortDirection.DESC;
 
   // sort field validation
-  const validSortFields = [SortField.DURABILITY, SortField.PK_ID, SortField.TTL, SortField.UPDATED_AT];
+  const validSortFields = [
+    SortField.DURABILITY,
+    SortField.PK_ID,
+    SortField.TTL,
+    SortField.UPDATED_AT,
+  ];
   if (sort_by && !validSortFields.includes(sort_by as SortField)) {
     throw new Error(`Invalid sort_by parameter: ${sort_by}`);
   }
@@ -52,7 +72,11 @@ const parseRequestParams = (req: Request): RequestParams => {
 
     // Validate cursor parameters match request parameters
     if ((cursorData.sortField ?? SortField.PK_ID) !== sortField) {
-      throw new CursorParameterMismatchError("sort_by", sortField, cursorData.sortField);
+      throw new CursorParameterMismatchError(
+        "sort_by",
+        sortField,
+        cursorData.sortField
+      );
     }
   }
 
@@ -73,8 +97,17 @@ const parseRequestParams = (req: Request): RequestParams => {
  * @param requestParams - Request parameters including contract ID, cursor, limit, and sorting
  * @returns Promise resolving to array of contract data
  */
-const getContractDataWithTTL = async (requestParams: RequestParams): Promise<any[]> => {
-  const { contractId, cursorData, limit, sortDbField, sortDirection, sortField } = requestParams;
+const getContractDataWithTTL = async (
+  requestParams: RequestParams
+): Promise<any[]> => {
+  const {
+    contractId,
+    cursorData,
+    limit,
+    sortDbField,
+    sortDirection,
+    sortField,
+  } = requestParams;
 
   const config: ContractDataQueryConfig = {
     contractId,
@@ -116,7 +149,10 @@ const getContractDataWithTTL = async (requestParams: RequestParams): Promise<any
  * @throws {500} When database query fails
  */
 
-export const getContractDataByContractId = async (req: Request, res: Response): Promise<void | Response> => {
+export const getContractDataByContractId = async (
+  req: Request,
+  res: Response
+): Promise<void | Response> => {
   let requestParams: RequestParams;
   try {
     requestParams = parseRequestParams(req);

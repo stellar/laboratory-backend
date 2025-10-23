@@ -37,7 +37,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       network: "testnet",
     };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
     expect(mockResponse.json).toHaveBeenCalledWith({
@@ -48,7 +51,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🔴invalid_limit_returns_400", async () => {
     mockRequest.query = { limit: "invalid" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
     expect(mockResponse.json).toHaveBeenCalledWith({
@@ -59,7 +65,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🔴invalid_sort_parameter_returns_400", async () => {
     mockRequest.query = { sort_by: "invalid_field", order: "invalid_order" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
     expect(mockResponse.json).toHaveBeenCalledWith({
@@ -70,7 +79,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🟡nonexistent_contract_id_returns_empty_results", async () => {
     mockRequest.params = { contract_id: "NONEXISTENT_CONTRACT_ID" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
     expect(mockResponse.status).not.toHaveBeenCalled();
@@ -86,7 +98,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   });
 
   test("🟢valid_contract_id_returns_contract_data", async () => {
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
     expect(mockResponse.status).not.toHaveBeenCalled();
@@ -120,7 +135,8 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(firstItem).toEqual({
       durability: "persistent",
       expired: expect.any(Boolean),
-      key_hash: "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+      key_hash:
+        "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
       key: expect.stringContaining("BillingCyclePlanName"),
       ttl: 61482909,
       updated: Math.floor(new Date("2025-10-16T15:00:36Z").getTime() / 1000),
@@ -131,7 +147,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🟢limit=1_returns_1_result", async () => {
     mockRequest.query = { limit: "1" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -149,7 +168,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🟢sorting_by_durability", async () => {
     mockRequest.query = { sort_by: "durability", order: "asc" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -173,7 +195,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🟢sorting_by_updated_at", async () => {
     mockRequest.query = { sort_by: "updated_at", order: "desc" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -188,14 +213,19 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     // Assert sorting order of updated timestamp
     for (let i = 1; i < responseData.results.length; i++) {
-      expect(responseData.results[i - 1].updated).toBeGreaterThanOrEqual(responseData.results[i].updated);
+      expect(responseData.results[i - 1].updated).toBeGreaterThanOrEqual(
+        responseData.results[i].updated
+      );
     }
   });
 
   test("🟢sorting_by_ttl", async () => {
     mockRequest.query = { sort_by: "ttl", order: "asc" };
 
-    await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response
+    );
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
@@ -210,7 +240,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     // Assert sorting order of ttl
     for (let i = 1; i < responseData.results.length; i++) {
-      expect(responseData.results[i - 1].ttl).toBeGreaterThanOrEqual(responseData.results[i].ttl);
+      expect(responseData.results[i - 1].ttl).toBeGreaterThanOrEqual(
+        responseData.results[i].ttl
+      );
     }
   });
 
@@ -219,7 +251,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     test("🔴invalid_cursor_returns_400", async () => {
       mockRequest.query = { cursor: "invalid_cursor" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
@@ -229,15 +264,21 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     test("🔴cursor_data_mismatch_with_query_options_returns_400", async () => {
       mockRequest.query = {
-        cursor: "eyJzb3J0RGlyZWN0aW9uIjoiZGVzYyIsInBvc2l0aW9uIjp7InBrSWQiOiIxMTQ1ODU1MDkifX0=",
+        cursor:
+          "eyJzb3J0RGlyZWN0aW9uIjoiZGVzYyIsInBvc2l0aW9uIjp7InBrSWQiOiIxMTQ1ODU1MDkifX0=",
         sort_by: "updated_at",
       };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       // expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: expect.stringContaining(`Cursor parameter mismatch for field "sort_by"`),
+        error: expect.stringContaining(
+          `Cursor parameter mismatch for field "sort_by"`
+        ),
       });
     });
 
@@ -245,7 +286,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       // Page 1/3 (without cursor)
       mockRequest.query = { limit: "1" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       let responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);
@@ -262,12 +306,18 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       (mockResponse.status as jest.Mock).mockClear();
 
       // Page 2/3 (using page1.next)
-      let nextUrl = new URL(responseData._links.next.href, "http://example.test");
+      let nextUrl = new URL(
+        responseData._links.next.href,
+        "http://example.test"
+      );
       let nextCursor = nextUrl.searchParams.get("cursor");
       expect(nextCursor).toBeDefined();
       mockRequest.query = { cursor: nextCursor! as string, limit: "1" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);
@@ -291,7 +341,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(nextCursor).toBeDefined();
       mockRequest.query = { cursor: nextCursor! as string, limit: "1" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);
@@ -310,12 +363,18 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       (mockResponse.status as jest.Mock).mockClear();
 
       // Page 2/3 (using page3.prev)
-      let prevUrl = new URL(responseData._links.prev.href, "http://example.test");
+      let prevUrl = new URL(
+        responseData._links.prev.href,
+        "http://example.test"
+      );
       let prevCursor = prevUrl.searchParams.get("cursor");
       expect(prevCursor).toBeDefined();
       mockRequest.query = { cursor: prevCursor! as string, limit: "1" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);
@@ -336,7 +395,10 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(prevCursor).toBeDefined();
       mockRequest.query = { cursor: prevCursor! as string, limit: "1" };
 
-      await getContractDataByContractId(mockRequest as Request, mockResponse as Response);
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response
+      );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
       expect(responseData.results).toHaveLength(1);

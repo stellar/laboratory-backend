@@ -65,7 +65,8 @@ export function setupCustomMatchers() {
 
         if (url.pathname !== expectedPath) {
           return {
-            message: () => `Expected _links.${linkType}.href's path to be ${expectedPath}, got ${url.pathname}`,
+            message: () =>
+              `Expected _links.${linkType}.href's path to be ${expectedPath}, got ${url.pathname}`,
             pass: false,
           };
         }
@@ -74,7 +75,8 @@ export function setupCustomMatchers() {
         const gotOrder = url.searchParams.get("order");
         if (order && gotOrder !== order) {
           return {
-            message: () => `Expected _links.${linkType}.href's order=${order}, got ${gotOrder}`,
+            message: () =>
+              `Expected _links.${linkType}.href's order=${order}, got ${gotOrder}`,
             pass: false,
           };
         }
@@ -82,7 +84,8 @@ export function setupCustomMatchers() {
         const gotLimit = url.searchParams.get("limit");
         if (limit && gotLimit !== limit) {
           return {
-            message: () => `Expected _links.${linkType}.href's limit=${limit}, got ${gotLimit}`,
+            message: () =>
+              `Expected _links.${linkType}.href's limit=${limit}, got ${gotLimit}`,
             pass: false,
           };
         }
@@ -90,7 +93,8 @@ export function setupCustomMatchers() {
         const gotSortBy = url.searchParams.get("sort_by");
         if (sortBy && gotSortBy !== sortBy) {
           return {
-            message: () => `Expected _links.${linkType}.href's sort_by=${sortBy}, got ${gotSortBy}`,
+            message: () =>
+              `Expected _links.${linkType}.href's sort_by=${sortBy}, got ${gotSortBy}`,
             pass: false,
           };
         }
@@ -98,15 +102,20 @@ export function setupCustomMatchers() {
         const gotCursor = url.searchParams.get("cursor");
         if (cursor && gotCursor !== cursor) {
           return {
-            message: () => `Expected _links.${linkType}.href's cursor=${cursor}, got ${gotCursor}`,
+            message: () =>
+              `Expected _links.${linkType}.href's cursor=${cursor}, got ${gotCursor}`,
             pass: false,
           };
         }
 
         // For next/prev links, ensure they have cursor parameter
-        if ((linkType === "next" || linkType === "prev") && !url.searchParams.get("cursor")) {
+        if (
+          (linkType === "next" || linkType === "prev") &&
+          !url.searchParams.get("cursor")
+        ) {
           return {
-            message: () => `Expected _links.${linkType}.href to have cursor parameter`,
+            message: () =>
+              `Expected _links.${linkType}.href to have cursor parameter`,
             pass: false,
           };
         }
@@ -172,13 +181,17 @@ export function setupCustomMatchers() {
 
         if (!parsed.position || !parsed.position.pkId) {
           return {
-            message: () => `Expected cursor to have position.pkId, got ${JSON.stringify(parsed)}`,
+            message: () =>
+              `Expected cursor to have position.pkId, got ${JSON.stringify(
+                parsed
+              )}`,
             pass: false,
           };
         }
       } catch (error) {
         return {
-          message: () => `Expected cursor to be valid base64 JSON, got error: ${error}`,
+          message: () =>
+            `Expected cursor to be valid base64 JSON, got error: ${error}`,
           pass: false,
         };
       }

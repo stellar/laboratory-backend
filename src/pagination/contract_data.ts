@@ -1,4 +1,9 @@
-import { SortField, SortDirection, PaginationLinks, RequestParams } from "../types/contract_data";
+import {
+  SortField,
+  SortDirection,
+  PaginationLinks,
+  RequestParams,
+} from "../types/contract_data";
 import { encodeCursor } from "../helpers/cursor";
 
 /**
@@ -7,7 +12,10 @@ import { encodeCursor } from "../helpers/cursor";
  * @param params - Query parameters to include
  * @returns Complete href string with query parameters
  */
-export const buildPaginationLinkHref = (baseUrl: string, params: Record<string, any>): string => {
+export const buildPaginationLinkHref = (
+  baseUrl: string,
+  params: Record<string, any>
+): string => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]: [string, any]) => {
     if (value !== undefined && value !== null) {
@@ -23,8 +31,19 @@ export const buildPaginationLinkHref = (baseUrl: string, params: Record<string, 
  * @param results - Array of results from the database query
  * @returns PaginationLinks object with href strings
  */
-export const buildPaginationLinks = (requestParams: RequestParams, results: any[]): PaginationLinks => {
-  const { contractId, cursor, limit, network, sortDbField, sortDirection, sortField } = requestParams;
+export const buildPaginationLinks = (
+  requestParams: RequestParams,
+  results: any[]
+): PaginationLinks => {
+  const {
+    contractId,
+    cursor,
+    limit,
+    network,
+    sortDbField,
+    sortDirection,
+    sortField,
+  } = requestParams;
 
   // Shared params for all links (self, next, prev)
   const queryParams = {
@@ -50,7 +69,8 @@ export const buildPaginationLinks = (requestParams: RequestParams, results: any[
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
         pkId: lastRecord.pk_id.toString(),
-        sortValue: sortField !== SortField.PK_ID ? lastRecord[sortDbField] : undefined,
+        sortValue:
+          sortField !== SortField.PK_ID ? lastRecord[sortDbField] : undefined,
       },
     });
     links.next = {
@@ -69,7 +89,8 @@ export const buildPaginationLinks = (requestParams: RequestParams, results: any[
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
         pkId: firstRecord.pk_id.toString(),
-        sortValue: sortField !== SortField.PK_ID ? firstRecord[sortDbField] : undefined,
+        sortValue:
+          sortField !== SortField.PK_ID ? firstRecord[sortDbField] : undefined,
       },
     });
     links.prev = {

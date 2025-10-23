@@ -1,5 +1,9 @@
 import { CursorData } from "../helpers/cursor";
-import { SortDirection, SortField, APIFieldToDBFieldMap } from "../types/contract_data";
+import {
+  SortDirection,
+  SortField,
+  APIFieldToDBFieldMap,
+} from "../types/contract_data";
 
 /**
  * Configuration object for contract data query building
@@ -17,7 +21,9 @@ export interface ContractDataQueryConfig {
  * Utility function to invert sort direction
  */
 const invertSortDirection = (sortDirection: SortDirection): SortDirection => {
-  return sortDirection === SortDirection.ASC ? SortDirection.DESC : SortDirection.ASC;
+  return sortDirection === SortDirection.ASC
+    ? SortDirection.DESC
+    : SortDirection.ASC;
 };
 
 /**
@@ -93,14 +99,20 @@ class ContractDataQueryBuilder {
 
     if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
       return `
-        AND ${sortDbField} ${operator} ${this.paramManager.add(cursorData.position.sortValue)}
+        AND ${sortDbField} ${operator} ${this.paramManager.add(
+        cursorData.position.sortValue
+      )}
         OR (
           ${sortDbField} = $${this.paramManager.getCount()}
-          AND pk_id ${operator} ${this.paramManager.add(BigInt(cursorData.position.pkId))}
+          AND pk_id ${operator} ${this.paramManager.add(
+        BigInt(cursorData.position.pkId)
+      )}
         )`;
     }
 
-    return `AND pk_id ${operator} ${this.paramManager.add(BigInt(cursorData.position.pkId))}`;
+    return `AND pk_id ${operator} ${this.paramManager.add(
+      BigInt(cursorData.position.pkId)
+    )}`;
   }
 
   private buildOrderByClause(sortDirection: SortDirection): string {
@@ -120,7 +132,9 @@ class ContractDataQueryBuilder {
     }
 
     const effectiveSortDirection =
-      cursorData.cursorType === "next" ? sortDirection : invertSortDirection(sortDirection);
+      cursorData.cursorType === "next"
+        ? sortDirection
+        : invertSortDirection(sortDirection);
 
     return `,paginated_result AS (
       SELECT *
@@ -160,7 +174,9 @@ class ContractDataQueryBuilder {
  * @param config - Configuration object containing all query parameters
  * @returns Object containing the SQL query string and parameters array
  */
-export const buildContractDataQuery = (config: ContractDataQueryConfig): { query: string; params: any[] } => {
+export const buildContractDataQuery = (
+  config: ContractDataQueryConfig
+): { query: string; params: any[] } => {
   const builder = new ContractDataQueryBuilder(config);
   return builder.build();
 };

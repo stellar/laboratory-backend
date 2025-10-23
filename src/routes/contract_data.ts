@@ -14,7 +14,11 @@ const storageQuery = z.object({
 
 // we don't sort by key
 // ?key={key}&cursor={cursor}&limit={limit}&sort_by={field}&order={asc|desc}
-function parseStorageQuery(req: Request, res: Response, next: () => void): void {
+function parseStorageQuery(
+  req: Request,
+  res: Response,
+  next: () => void
+): void {
   try {
     storageQuery.parse(req.query);
     next();
