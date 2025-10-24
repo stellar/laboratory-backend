@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma";
 import { getContractDataByContractId } from "../../src/controllers/contract_data";
 import { seedTestData } from "../test-data-seeder";
-import { decodeCursor } from "../../src/helpers/cursor";
 import "../setup-matchers"; // Import custom matchers
 
 describe("GET /api/:network/contract/:contract_id/storage", () => {
