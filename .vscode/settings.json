@@ -16,6 +16,23 @@
     "source.organizeImports": "explicit"
   },
 
+  // Prettier settings
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "editor.formatOnPaste": true,
+  "editor.formatOnType": false,
+
+  // File-specific formatters
+  "[typescript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+
   // TypeScript settings
   "typescript.preferences.importModuleSpecifier": "relative",
   "typescript.suggest.autoImports": true,
