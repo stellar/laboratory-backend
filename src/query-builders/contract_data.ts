@@ -176,19 +176,6 @@ class ContractDataQueryBuilder {
       query += `\nLIMIT ${this.paramManager.add(limit)}`;
     }
 
-    // Debug: Print the query with parameters substituted
-    let debugQuery = query;
-    const params = this.paramManager.getParams();
-    params.forEach((param, index) => {
-      const placeholder = `$${index + 1}`;
-      const value = typeof param === "string" ? `'${param}'` : param;
-      debugQuery = debugQuery.replace(
-        new RegExp(`\\${placeholder}\\b`, "g"),
-        String(value)
-      );
-    });
-    console.log("Final SQL Query with parameters:", debugQuery);
-
     return {
       query: query.trim(),
       params: this.paramManager.getParams(),
