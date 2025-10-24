@@ -1,3 +1,5 @@
+import { CursorData } from "../helpers/cursor";
+
 export enum SortDirection {
   ASC = "asc",
   DESC = "desc",
@@ -32,7 +34,7 @@ export type PaginationLinks = {
 export type RequestParams = {
   contractId: string;
   cursor?: string;
-  cursorData: any; // Will be properly typed when we extract cursor logic
+  cursorData?: CursorData;
   limit: number;
   network: string;
   sortDirection: SortDirection;
@@ -56,3 +58,24 @@ export class CursorParameterMismatchError extends Error {
     this.name = "CursorParameterMismatchError";
   }
 }
+
+export type ContractData = {
+  pk_id: bigint;
+  durability: string;
+  key_hash: string;
+  key: Buffer;
+  val: Buffer;
+  closed_at: Date;
+  live_until_ledger_sequence: number;
+  expired: boolean;
+};
+
+export type ContractDataDTO = {
+  durability: string;
+  key_hash: string;
+  key: string;
+  value: string;
+  updated: number;
+  ttl: number;
+  expired: boolean;
+};

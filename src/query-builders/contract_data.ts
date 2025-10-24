@@ -1,8 +1,8 @@
 import { CursorData } from "../helpers/cursor";
 import {
+  APIFieldToDBFieldMap,
   SortDirection,
   SortField,
-  APIFieldToDBFieldMap,
 } from "../types/contract_data";
 
 /**

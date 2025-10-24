@@ -21,12 +21,12 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
   try {
     await prisma.ttl.deleteMany();
   } catch (error) {
-    // Table might not exist, that's ok
+    console.error("Error deleting TTL data:", error);
   }
   try {
     await prisma.contract_data.deleteMany();
   } catch (error) {
-    // Table might not exist, that's ok
+    console.error("Error deleting contract data:", error);
   }
 
   // Simple test data - just a few records for basic functionality

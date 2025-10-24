@@ -1,19 +1,20 @@
 import { Request, Response } from "express";
-import { prisma } from "../utils/connect";
-import {
-  RequestParams,
-  SortDirection,
-  SortField,
-  APIFieldToDBFieldMap,
-  CursorParameterMismatchError,
-} from "../types/contract_data";
-import { decodeCursor } from "../helpers/cursor";
+import { CursorData, decodeCursor } from "../helpers/cursor";
+import { buildPaginationLinks } from "../pagination/contract_data";
 import {
   buildContractDataQuery,
   ContractDataQueryConfig,
 } from "../query-builders/contract_data";
-import { buildPaginationLinks } from "../pagination/contract_data";
 import { serializeContractDataResults } from "../serializers/contract_data";
+import {
+  APIFieldToDBFieldMap,
+  ContractData,
+  CursorParameterMismatchError,
+  RequestParams,
+  SortDirection,
+  SortField,
+} from "../types/contract_data";
+import { prisma } from "../utils/connect";
 
 /**
  * Parses and validates request parameters for contract data queries.
@@ -26,12 +27,8 @@ import { serializeContractDataResults } from "../serializers/contract_data";
 const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id, network = "mainnet" } = req.params;
 
-  let {
-    cursor,
-    limit = "20",
-    order = SortDirection.DESC,
-    sort_by = SortField.PK_ID,
-  } = req.query;
+  const { cursor, limit = "20" } = req.query;
+  let { order = SortDirection.DESC, sort_by = SortField.PK_ID } = req.query;
   sort_by = (sort_by as string).toLowerCase().trim() as SortField;
   order = (order as string).toLowerCase().trim() as SortDirection;
 
@@ -70,7 +67,7 @@ const parseRequestParams = (req: Request): RequestParams => {
   const sortField = sort_by ? (sort_by as SortField) : SortField.PK_ID;
 
   // cursor data
-  let cursorData: any = undefined;
+  let cursorData: CursorData | undefined = undefined;
   if (cursor) {
     cursorData = decodeCursor(cursor as string);
 
@@ -99,11 +96,11 @@ const parseRequestParams = (req: Request): RequestParams => {
 /**
  * Fetches contract data with cursor-based pagination and TTL caching.
  * @param requestParams - Request parameters including contract ID, cursor, limit, and sorting
- * @returns Promise resolving to array of contract data
+ * @returns Promise resolving to array of `ContractData` objects
  */
 const getContractDataWithTTL = async (
   requestParams: RequestParams
-): Promise<any[]> => {
+): Promise<ContractData[]> => {
   const {
     contractId,
     cursorData,
@@ -123,9 +120,12 @@ const getContractDataWithTTL = async (
   };
   const { query, params } = buildContractDataQuery(config);
 
-  const results = await prisma.$queryRawUnsafe(query, ...params);
+  const results = await prisma.$queryRawUnsafe<ContractData[]>(
+    query,
+    ...params
+  );
 
-  return results as any[];
+  return results;
 };
 
 /**
