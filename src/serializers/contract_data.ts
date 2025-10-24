@@ -7,7 +7,7 @@ import { ContractData, ContractDataDTO } from "../types/contract_data";
  * @returns Array of serialized contract data objects
  */
 export const serializeContractDataResults = (
-  results: ContractData[]
+  results: ContractData[],
 ): ContractDataDTO[] => {
   return results.map((row: ContractData) => ({
     durability: row.durability,

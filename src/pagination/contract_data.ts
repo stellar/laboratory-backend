@@ -14,7 +14,7 @@ import {
  */
 export const buildPaginationLinkHref = (
   baseUrl: string,
-  params: Record<string, any>
+  params: Record<string, any>,
 ): string => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]: [string, any]) => {
@@ -33,7 +33,7 @@ export const buildPaginationLinkHref = (
  */
 export const buildPaginationLinks = (
   requestParams: RequestParams,
-  results: ContractData[]
+  results: ContractData[],
 ): PaginationLinks => {
   const {
     contractId,

@@ -107,19 +107,19 @@ class ContractDataQueryBuilder {
       return `
         AND (
           ${sortDbField} ${operator} ${this.paramManager.add(
-        cursorData.position.sortValue
-      )}
+            cursorData.position.sortValue,
+          )}
           OR (
             ${sortDbField} = $${this.paramManager.getCount()}
             AND pk_id ${operator} ${this.paramManager.add(
-        BigInt(cursorData.position.pkId)
-      )}
+              BigInt(cursorData.position.pkId),
+            )}
           )
         )`;
     }
 
     return `AND pk_id ${operator} ${this.paramManager.add(
-      BigInt(cursorData.position.pkId)
+      BigInt(cursorData.position.pkId),
     )}`;
   }
 
@@ -189,7 +189,7 @@ class ContractDataQueryBuilder {
  * @returns Object containing the SQL query string and parameters array
  */
 export const buildContractDataQuery = (
-  config: ContractDataQueryConfig
+  config: ContractDataQueryConfig,
 ): { query: string; params: any[] } => {
   const builder = new ContractDataQueryBuilder(config);
   return builder.build();

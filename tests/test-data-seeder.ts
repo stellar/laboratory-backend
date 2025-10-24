@@ -40,7 +40,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       key_decoded: "BillingCyclePlanName",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
-        "base64"
+        "base64",
       ),
       val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
@@ -56,7 +56,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       key_decoded: "BillingCycleTimestamp",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
-        "base64"
+        "base64",
       ),
       val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
       closed_at: new Date("2025-10-02T15:00:36Z"),
@@ -72,7 +72,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       key_decoded: "BillingCyclePrice",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
-        "base64"
+        "base64",
       ),
       val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
       closed_at: new Date("2025-10-01T15:00:36Z"),
@@ -83,7 +83,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
 
   // Insert contract data using batch operation
   await prisma.contract_data.createMany({
-    data: testContractData.map((data) => ({
+    data: testContractData.map(data => ({
       key_hash: data.key_hash,
       id: data.id,
       ledger_sequence: data.ledger_sequence,
@@ -99,8 +99,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
   // Insert TTL data using batch operation (only if table exists)
   await prisma.ttl.createMany({
     data: testContractData
-      .filter((data) => data.live_until_ledger_sequence)
-      .map((data) => ({
+      .filter(data => data.live_until_ledger_sequence)
+      .map(data => ({
         key_hash: data.key_hash,
         ledger_sequence: data.ledger_sequence,
         live_until_ledger_sequence: data.live_until_ledger_sequence!,

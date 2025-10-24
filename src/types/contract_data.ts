@@ -50,10 +50,10 @@ export class CursorParameterMismatchError extends Error {
   constructor(
     public field: string,
     public queryValue: any,
-    public cursorValue: any
+    public cursorValue: any,
   ) {
     super(
-      `Cursor parameter mismatch for field "${field}": query value="${queryValue}" but cursor value="${cursorValue}". Pagination parameters must be consistent across requests.`
+      `Cursor parameter mismatch for field "${field}": query value="${queryValue}" but cursor value="${cursorValue}". Pagination parameters must be consistent across requests.`,
     );
     this.name = "CursorParameterMismatchError";
   }

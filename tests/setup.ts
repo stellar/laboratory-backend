@@ -40,7 +40,7 @@ beforeAll(async () => {
     {
       stdio: "inherit",
       shell: "/bin/bash",
-    }
+    },
   );
 
   console.log("Creating test PrismaClient, and enforcing it globally...");

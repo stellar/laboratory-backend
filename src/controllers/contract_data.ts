@@ -40,7 +40,7 @@ const parseRequestParams = (req: Request): RequestParams => {
       parseInt(limit as string) > 200
     ) {
       throw new Error(
-        `Invalid limit=${limit}, must be an integer between 1 and 200`
+        `Invalid limit=${limit}, must be an integer between 1 and 200`,
       );
     }
   }
@@ -60,8 +60,8 @@ const parseRequestParams = (req: Request): RequestParams => {
   if (sort_by && !validSortFields.includes(sort_by as SortField)) {
     throw new Error(
       `Invalid sort_by parameter ${sort_by} must be one of ${validSortFields.join(
-        ", "
-      )}`
+        ", ",
+      )}`,
     );
   }
   const sortField = sort_by ? (sort_by as SortField) : SortField.PK_ID;
@@ -76,7 +76,7 @@ const parseRequestParams = (req: Request): RequestParams => {
       throw new CursorParameterMismatchError(
         "sort_by",
         sortField,
-        cursorData.sortField
+        cursorData.sortField,
       );
     }
   }
@@ -99,7 +99,7 @@ const parseRequestParams = (req: Request): RequestParams => {
  * @returns Promise resolving to array of `ContractData` objects
  */
 const getContractDataWithTTL = async (
-  requestParams: RequestParams
+  requestParams: RequestParams,
 ): Promise<ContractData[]> => {
   const {
     contractId,
@@ -122,7 +122,7 @@ const getContractDataWithTTL = async (
 
   const results = await prisma.$queryRawUnsafe<ContractData[]>(
     query,
-    ...params
+    ...params,
   );
 
   return results;
@@ -155,7 +155,7 @@ const getContractDataWithTTL = async (
 
 export const getContractDataByContractId = async (
   req: Request,
-  res: Response
+  res: Response,
 ): Promise<void | Response> => {
   let requestParams: RequestParams;
   try {
