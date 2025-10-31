@@ -7,12 +7,10 @@
     "typescript",
     "typescriptreact"
   ],
-  "eslint.format.enable": true,
-  "eslint.codeActionsOnSave.mode": "all",
-  "eslint.codeActionsOnSave.rules": null,
 
   // Auto-fix on save
   "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit",
     "source.organizeImports": "explicit"
   },
 
