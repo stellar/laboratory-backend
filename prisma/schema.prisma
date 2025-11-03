@@ -54,4 +54,6 @@ model ttl {
   live_until_ledger_sequence Int
   closed_at                  DateTime @db.Timestamptz(6)
   pk_id                      BigInt   @id @default(autoincrement())
+
+  @@index([key_hash, ledger_sequence(sort: Desc)], map: "idx_ttl_keyhash_ledger_sequence_desc")
 }

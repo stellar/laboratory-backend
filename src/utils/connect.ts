@@ -90,6 +90,7 @@ async function connect({
     async close() {
       await prisma.$disconnect();
       connector.close();
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     },
   };
 }

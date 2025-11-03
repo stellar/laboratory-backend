@@ -2,6 +2,7 @@ import express from "express";
 
 import { connect } from "./utils/connect";
 import contractRoutes from "./routes/contract_data";
+import packageJson from "../package.json";
 
 const app = express();
 
@@ -11,8 +12,19 @@ app.use(express.json());
 
 app.use("/api", contractRoutes);
 
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+    service: "Stellar Lab API",
+    version: packageJson.version,
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || "development",
+  });
+});
+
 app.get("/", (_req, res) => {
-  res.json({ message: "Stellar Lab API is running!" });
+  res.redirect("/health");
 });
 
 let server: any = null;
