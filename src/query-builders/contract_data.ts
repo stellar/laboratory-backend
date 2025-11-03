@@ -161,17 +161,20 @@ class ContractDataQueryBuilder {
     const paginatedCTE = this.buildPaginatedCTE();
     const fromClause = cursorData ? "paginated_result" : "final_result";
     const finalOrderBy = this.buildOrderByClause(sortDirection);
-    const finalLimit = this.paramManager.add(limit);
 
-    const query = `${baseQuery}${paginatedCTE}
+    let query = `${baseQuery}${paginatedCTE}
       SELECT
         *,
         (live_until_ledger_sequence < latest_ledger.ledger_sequence) AS expired
       FROM ${fromClause}
       CROSS JOIN latest_ledger
       WHERE 1=1
-      ${finalOrderBy}
-      LIMIT ${finalLimit};`;
+      ${finalOrderBy}`;
+
+    if (!cursorData) {
+      // LIMIT is only needed here for the non-paginated (no cursor) scenario. Paginated queries already have LIMIT in the CTE.
+      query += `\nLIMIT ${this.paramManager.add(limit)}`;
+    }
 
     // Debug: Print the query with parameters substituted
     let debugQuery = query;
