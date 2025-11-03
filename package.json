@@ -5,6 +5,9 @@
   "repository": "https://github.com/stellar/laboratory-backend",
   "author": "<3912060+jeesunikim@users.noreply.github.com>",
   "license": "MIT",
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
