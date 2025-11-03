@@ -1,8 +1,8 @@
-import { execSync } from "child_process";
 import {
   PostgreSqlContainer,
   StartedPostgreSqlContainer,
 } from "@testcontainers/postgresql";
+import { execSync } from "child_process";
 
 import { PrismaClient } from "../generated/prisma";
 import { prisma } from "../src/utils/connect";
@@ -40,7 +40,7 @@ beforeAll(async () => {
     {
       stdio: "inherit",
       shell: "/bin/bash",
-    }
+    },
   );
 
   console.log("Creating test PrismaClient, and enforcing it globally...");

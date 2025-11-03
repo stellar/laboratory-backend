@@ -1,8 +1,8 @@
 import express from "express";
 
-import { connect } from "./utils/connect";
-import contractRoutes from "./routes/contract_data";
 import packageJson from "../package.json";
+import contractRoutes from "./routes/contract_data";
+import { connect } from "./utils/connect";
 
 const app = express();
 
@@ -27,10 +27,9 @@ app.get("/", (_req, res) => {
   res.redirect("/health");
 });
 
-let server: any = null;
 let closeDbConnection: (() => Promise<void>) | null = null;
 
-server = app.listen(PORT, async () => {
+const server = app.listen(PORT, async () => {
   console.log(`Server is running on port ${PORT}`);
 
   try {

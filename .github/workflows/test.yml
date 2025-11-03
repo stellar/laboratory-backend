@@ -29,5 +29,11 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      - name: Run eslint
+        run: pnpm lint
+
+      - name: Run prettier:check
+        run: pnpm format:check
+
       - name: Run tests
         run: pnpm test

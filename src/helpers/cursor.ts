@@ -64,7 +64,7 @@ export const decodeCursor = (cursor: string): CursorData => {
   try {
     const parsed = JSON.parse(decoded);
     return parsed as CursorData;
-  } catch (error) {
+  } catch {
     throw new InvalidCursorError(cursor);
   }
 };

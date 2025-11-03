@@ -12,15 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-import fs from "fs";
-import net from "net";
-import path from "path";
-import { resolve } from "node:path";
 import {
   AuthTypes,
   Connector,
   IpAddressTypes,
 } from "@google-cloud/cloud-sql-connector";
+import fs from "fs";
+import net from "net";
+import { resolve } from "node:path";
+import path from "path";
 import { PrismaClient } from "../../generated/prisma";
 
 // Export a shared Prisma instance that will be set during initialization
@@ -34,7 +34,7 @@ async function cleanupSocketIfNeeded() {
       // Check if socket is actually in use
       const client = new net.Socket();
 
-      const isInUse = await new Promise<boolean>((resolve) => {
+      const isInUse = await new Promise<boolean>(resolve => {
         client.connect(socketPath, () => {
           client.destroy();
           resolve(true); // Socket is in use
@@ -54,7 +54,10 @@ async function cleanupSocketIfNeeded() {
       }
     }
   } catch (error: any) {
-    console.warn("Warning: Could not clean up socket file:", error.message);
+    console.warn(
+      "Warning: Could not clean up socket file:",
+      error.message || error,
+    );
   }
 }
 
@@ -90,7 +93,7 @@ async function connect({
     async close() {
       await prisma.$disconnect();
       connector.close();
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 1000));
     },
   };
 }

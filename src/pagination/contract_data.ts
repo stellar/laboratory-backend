@@ -1,10 +1,10 @@
+import { encodeCursor } from "../helpers/cursor";
 import {
-  SortField,
-  SortDirection,
+  ContractData,
   PaginationLinks,
   RequestParams,
+  SortField,
 } from "../types/contract_data";
-import { encodeCursor } from "../helpers/cursor";
 
 /**
  * Builds pagination link href with query parameters.
@@ -14,7 +14,7 @@ import { encodeCursor } from "../helpers/cursor";
  */
 export const buildPaginationLinkHref = (
   baseUrl: string,
-  params: Record<string, any>
+  params: Record<string, any>,
 ): string => {
   const searchParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]: [string, any]) => {
@@ -28,12 +28,12 @@ export const buildPaginationLinkHref = (
 /**
  * Builds pagination links (self, next, prev) for the API response.
  * @param requestParams - Request parameters including contract ID, cursor, limit, and sorting
- * @param results - Array of results from the database query
+ * @param results - Array of `ContractData` objects from the database query
  * @returns PaginationLinks object with href strings
  */
 export const buildPaginationLinks = (
   requestParams: RequestParams,
-  results: any[]
+  results: ContractData[],
 ): PaginationLinks => {
   const {
     contractId,
@@ -70,7 +70,9 @@ export const buildPaginationLinks = (
       position: {
         pkId: lastRecord.pk_id.toString(),
         sortValue:
-          sortField !== SortField.PK_ID ? lastRecord[sortDbField] : undefined,
+          sortField !== SortField.PK_ID
+            ? (lastRecord as any)[sortDbField]
+            : undefined,
       },
     });
     links.next = {
@@ -90,7 +92,9 @@ export const buildPaginationLinks = (
       position: {
         pkId: firstRecord.pk_id.toString(),
         sortValue:
-          sortField !== SortField.PK_ID ? firstRecord[sortDbField] : undefined,
+          sortField !== SortField.PK_ID
+            ? (firstRecord as any)[sortDbField]
+            : undefined,
       },
     });
     links.prev = {

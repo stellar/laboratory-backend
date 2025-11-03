@@ -38,7 +38,7 @@ const requestQuerySchema = z.object({
 const parseValidationError = (err: z.ZodError, paramType: "query" | "path") => {
   return {
     message: `Invalid ${paramType} parameters`,
-    issues: err.issues.map((i) => ({
+    issues: err.issues.map(i => ({
       path: i.path.join("."),
       message: i.message,
       code: i.code,
@@ -55,7 +55,7 @@ const parseValidationError = (err: z.ZodError, paramType: "query" | "path") => {
  */
 const validateParamsMiddleware = (
   schema: z.ZodTypeAny,
-  paramType: "query" | "path"
+  paramType: "query" | "path",
 ) => {
   return (req: Request, res: Response, next: NextFunction) => {
     const target = paramType === "path" ? req.params : req.query;
@@ -74,7 +74,7 @@ router.get(
   "/:network/contract/:contract_id/storage",
   validateParamsMiddleware(requestParamsSchema, "path"),
   validateParamsMiddleware(requestQuerySchema, "query"),
-  getContractDataByContractId
+  getContractDataByContractId,
 );
 
 export default router;

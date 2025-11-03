@@ -52,7 +52,7 @@ export function setupCustomMatchers() {
       const validateLink = (
         link: { href: string } | undefined,
         linkType: "self" | "next" | "prev",
-        expectedPath: string
+        expectedPath: string,
       ) => {
         if (!link?.href) {
           return {
@@ -183,7 +183,7 @@ export function setupCustomMatchers() {
           return {
             message: () =>
               `Expected cursor to have position.pkId, got ${JSON.stringify(
-                parsed
+                parsed,
               )}`,
             pass: false,
           };

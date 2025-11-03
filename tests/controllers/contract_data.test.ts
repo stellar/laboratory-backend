@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma";
 import { getContractDataByContractId } from "../../src/controllers/contract_data";
-import { seedTestData } from "../test-data-seeder";
 import "../setup-matchers"; // Import custom matchers
+import { seedTestData } from "../test-data-seeder";
 
 describe("GET /api/:network/contract/:contract_id/storage", () => {
   let testPrismaClient: PrismaClient;
@@ -38,7 +38,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -52,7 +52,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -66,7 +66,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -81,7 +81,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -100,7 +100,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
   test("🟢valid_contract_id_returns_contract_data", async () => {
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -149,7 +149,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -173,7 +173,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -203,7 +203,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -223,7 +223,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     // Assert sorting order of updated timestamp
     for (let i = 1; i < responseData.results.length; i++) {
       expect(responseData.results[i - 1].updated).toBeGreaterThanOrEqual(
-        responseData.results[i].updated
+        responseData.results[i].updated,
       );
     }
   });
@@ -233,7 +233,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
     await getContractDataByContractId(
       mockRequest as Request,
-      mockResponse as Response
+      mockResponse as Response,
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -253,7 +253,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     // Assert sorting order of ttl
     for (let i = 1; i < responseData.results.length; i++) {
       expect(responseData.results[i - 1].ttl).toBeLessThanOrEqual(
-        responseData.results[i].ttl
+        responseData.results[i].ttl,
       );
     }
   });
@@ -265,7 +265,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
@@ -283,13 +283,13 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         error: expect.stringContaining(
-          `Cursor parameter mismatch for field "sort_by"`
+          `Cursor parameter mismatch for field "sort_by"`,
         ),
       });
     });
@@ -300,7 +300,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
@@ -323,7 +323,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       // Page 2/3 (using page1.next)
       let nextUrl = new URL(
         responseData._links.next.href,
-        "http://example.test"
+        "http://example.test",
       );
       let nextCursor = nextUrl.searchParams.get("cursor");
       expect(nextCursor).toBeDefined();
@@ -331,7 +331,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
@@ -358,7 +358,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
@@ -380,7 +380,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       // Page 2/3 (using page3.prev)
       let prevUrl = new URL(
         responseData._links.prev.href,
-        "http://example.test"
+        "http://example.test",
       );
       let prevCursor = prevUrl.searchParams.get("cursor");
       expect(prevCursor).toBeDefined();
@@ -388,7 +388,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
@@ -412,7 +412,7 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
       await getContractDataByContractId(
         mockRequest as Request,
-        mockResponse as Response
+        mockResponse as Response,
       );
 
       responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
