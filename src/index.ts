@@ -2,6 +2,7 @@ import express from "express";
 
 import packageJson from "../package.json";
 import contractRoutes from "./routes/contract_data";
+import keysRoutes from "./routes/keys";
 import { connect } from "./utils/connect";
 
 const app = express();
@@ -11,6 +12,7 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 
 app.use("/api", contractRoutes);
+app.use("/api", keysRoutes);
 
 app.get("/health", (_req, res) => {
   res.json({
