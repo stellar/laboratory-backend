@@ -10,7 +10,7 @@ const router: Router = express.Router();
  *
  * Validates network selection and contract identifier.
  */
-const requestParamsSchema = z.object({
+export const requestParamsSchema = z.object({
   network: z.enum(["mainnet", "testnet"]),
   contract_id: z.string().trim().min(1),
 });
@@ -53,7 +53,7 @@ const parseValidationError = (err: z.ZodError, paramType: "query" | "path") => {
  * @param paramType - The type of parameter to validate ("path" or "query")
  * @returns Express middleware function that validates and returns 400 on validation errors
  */
-const validateParamsMiddleware = (
+export const validateParamsMiddleware = (
   schema: z.ZodTypeAny,
   paramType: "query" | "path",
 ) => {
