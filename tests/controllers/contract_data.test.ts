@@ -11,6 +11,9 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
 
   beforeAll(async () => {
     testPrismaClient = global.testPrismaClient;
+    if (!testPrismaClient) {
+      throw new Error("global.testPrismaClient is not initialized. Check tests/setup.ts");
+    }
     await seedTestData(testPrismaClient);
   });
 

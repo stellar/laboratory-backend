@@ -17,14 +17,23 @@ export interface TestContractData {
  * Seeds the test database with basic contract data for testing
  */
 export async function seedTestData(prisma: PrismaClient): Promise<void> {
+  // Ensure prisma client is initialized
+  if (!prisma) {
+    throw new Error("PrismaClient is not initialized. Make sure tests/setup.ts has completed.");
+  }
+
   // Clear existing data (handle missing tables gracefully)
   try {
-    await prisma.ttl.deleteMany();
+    if (prisma.ttl) {
+      await prisma.ttl.deleteMany();
+    }
   } catch (error) {
     console.error("Error deleting TTL data:", error);
   }
   try {
-    await prisma.contract_data.deleteMany();
+    if (prisma.contract_data) {
+      await prisma.contract_data.deleteMany();
+    }
   } catch (error) {
     console.error("Error deleting contract data:", error);
   }
