@@ -19,7 +19,9 @@ export interface TestContractData {
 export async function seedTestData(prisma: PrismaClient): Promise<void> {
   // Ensure prisma client is initialized
   if (!prisma) {
-    throw new Error("PrismaClient is not initialized. Make sure tests/setup.ts has completed.");
+    throw new Error(
+      "PrismaClient is not initialized. Make sure tests/setup.ts has completed.",
+    );
   }
 
   // Clear existing data (handle missing tables gracefully)
