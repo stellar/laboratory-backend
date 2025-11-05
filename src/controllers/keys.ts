@@ -14,13 +14,13 @@ export const getAllKeysForContract = async (
 
     // Use Prisma ORM to get distinct key_decoded values
     const result = await prisma.contract_data.findMany({
-      where: {
-        id: contract_id,
-      },
+      distinct: ["key_decoded"],
       select: {
         key_decoded: true,
       },
-      distinct: ["key_decoded"],
+      where: {
+        id: contract_id,
+      },
     });
 
     // Filter out null values and extract just the non empty key_decoded strings
