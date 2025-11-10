@@ -1,183 +1,138 @@
-# Engineering Design Review Document Template
+# Engineering Design Review
 
-Author: Amisha Singla (amisha.singla@stellar.org) \
-Date: 07/31/2025
+Author: Amisha Singla (<amisha.singla@stellar.org>)  
+Date: 2025-07-31
+
+## Table of contents
+
+- [Problem Statement](#problem-statement)
+- [Design](#design)
+  - [Architecture](#architecture)
+  - [Data model](#data-model)
+  - [API design](#api-design)
+- [Alternatives considered](#alternatives-considered)
+- [Estimated work](#estimated-work)
+- [Active work](#active-work)
 
 
 ## Problem Statement
 
-<!--
-Describe the core problem this proposal is addressing. A successful
-problem statement develops a strong justification for why addressing
-the problem is important and timely.
+Stellar Labs needs to surface contract, transaction, and ledger data for users (explore transaction details, contract details, ledger details, etc.). Internally, the Labs frontend relies on a mix of external APIs and RPC endpoints to fetch that data.
 
-Consider the following:
-* How do you quantify/qualify the value of solving this problem? 
-    Consider both business and technical reasons.
-* Have you run any simple experiments (or spikes) to validate the above claims?
-* Why is now the appropriate time to solve this problem?
-* What are the high-level goals or outcomes you want to achieve?
-* What is our understanding of the product requirements?
-* What is our understanding of the technical constraints?
+Current data sources used:
 
-If available, link directly to any product specs or documents.
--->
+- Contract data is fetched from the Stellar Expert API: https://stellar.expert/openapi.html (example request shown below).
 
-Stellar-dev labs helps users in understanding various data points about stellar network i.e. exploring transaction details,  contract details, ledger details, etc. Internally, labs uses various APIs to extract this data.
+Example Stellar Expert contract-data request:
 
-1. For contract data, it uses [stellar-expert API](https://stellar.expert/openapi.html)'s contract data endpoint. [Example request](https://api.stellar.expert/explorer/public/contract-data/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=desc&limit=10)
-2. For transaction data, it uses RPC `getTransaction` endpoint. Example request payload:
-
-```
-{"id":1,"jsonrpc":"2.0","method":"getTransaction","params":{"hash":"727791e2a403a8eb6fa55ddcb58a550db45f47a29ec3159340aaf0218cc00fb0","xdrFormat":"json"}}
-```
-
-Now, there are following problems associated with above.
-
-1. Stellar expert API provides very limited query filtering capabilities. Therefore, while extracting data for custom contracts such as KALE, it takes forever to load. Also, stellar-expert rate limit the requests. To be precise, we need following additional capabilities:
-- Query by key/value i.e. key=foo,value=bar,keyContains=fo,valueContains=bar,updatedAtFrom=2025-01-01,updatedAtUntil=2025-01-02
-- Build a sub-end point to get all possible keys and values. This will be used to allow users to filter on key/val. Currently, lab queries all the data and then curate it on frontend.
-- Pagination and sorting support
-
-2. RPC endpoint does not provide support for historical data - There is a [spike](https://github.com/stellar/stellar-rpc/issues/492) to explore possibility of providing historical data access in getTransaction endpoint. This problem is out-of-scope of this design.
+https://api.stellar.expert/explorer/public/contract-data/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=desc&limit=10
 
 
 ## Design
 
-<!--
-Detail the specifics of your implementation approach for this project.
-The template here is intentionally unopinionated. Content that may make
-sense to include for one project, may not make sense for another. Use your
-best judgement to provide the appropriate level of detail, erring on the
-side of fleshing out any issues before entering the implementation stage.
+High level: split the solution into two components:
 
-Consider addressing any or all (or beyond) the following:
-* Architecture Diagram
-* Data Model
-* User-facing changes (ex. API design, configuration changes, etc)
-* Scalability or performance 
-* Dependencies on other teams or products (internal and external)
-* Migration plan
-* Testing plan
-* Infrastructure requirements
-* Security concerns
-* Observability (ex. metrics, logging, alerting, etc)
--->
-
-The solution will be split into two parts:
-1. Indexer - Fetch data from ledger data lake and store in postgres DB.
-2. API - Defines routes and endpoints. It serves data stored in postrges DB.
-
-### **Architecture Diagram for Indexer**
-![Contract-API (1)](https://github.com/user-attachments/assets/6eb88602-4a3b-470d-8223-af79fcb1b060)
+1. Indexer — consumes ledger data (from a ledger data lake / GCS), parses/indexes contract-related metadata, and stores index records in Postgres.
+2. API — a JS/Express service that exposes endpoints to query the indexed data (reads Postgres, optionally reads GCS for blobs, and parses XDR with js-stellar-xdr-json).
 
 
-### **Data Model**
+### Architecture
 
- From above design, the postgres DB will essentially store index information. For the current use case, we will need atleast `contract_id` as db index.
-  - **Contract Data Schema**
+The indexer will periodically read ledger close meta from the data lake, extract contract entries, and write compact indexed rows to Postgres so the API can serve fast, filtered queries.
 
-| Column Name      | Data Type                | Constraints               |
-| ---------------- | ------------------------ | ------------------------- |
-| id               | TEXT                     |                           |
-| ledger\_sequence | INTEGER                  | NOT NULL                  |
-| durability       | TEXT                     |                           |
-| keys_index       | TEXT[]                   |                           |
-| key              | BYTEA                    |                           |
-| val              | BYTEA                    |                           |
-| closed\_at       | TIMESTAMP WITH TIME ZONE | NOT NULL                  |
-| live_until_ledger_sequence | INTEGER        | NOT NULL                  |
-| **Indexes**      |                          | `idx_contract_id` on (id), `idx_keys_index` on (keys_index) |
+![Contract API architecture](https://github.com/user-attachments/assets/6eb88602-4a3b-470d-8223-af79fcb1b060)
 
 
+### Data model
 
-### **API design**
+The Postgres store contains index information for contracts. The minimal indexed columns for the current use case are shown below.
 
-We will be building following endpoints in JS API:
+**Contract data schema (example)**
 
-- **GET /contract/{contract_id}?key={key}&cursor={cursor}&limit={limit}&sort_by={field}&order={asc|desc}**
+| Column name                      | Data type                     | Constraints |
+|----------------------------------|-------------------------------|-------------|
+| id                               | TEXT                          | PRIMARY KEY |
+| ledger_sequence                  | INTEGER                       | NOT NULL    |
+| durability                       | TEXT                          |             |
+| keys_index                       | TEXT[]                        |             |
+| key                              | BYTEA                         |             |
+| val                              | BYTEA                         |             |
+| closed_at                        | TIMESTAMP WITH TIME ZONE      | NOT NULL    |
+| live_until_ledger_sequence       | INTEGER                       | NOT NULL    |
 
-Example Response:
+Indexes:
+
+- `idx_contract_id` on (id)
+- `idx_keys_index` on (keys_index)
+
+
+Notes:
+
+- Store compact indexed values to optimize query throughput (avoid storing full blobs in frequently queried columns).
+- Use appropriate column types (BYTEA for binary values) and provide helper views that project parsed JSON for consumer-facing APIs.
+
+
+### API design
+
+The API provides endpoints for contract data and keys. Examples below use a REST style; implementation will be JS/Express.
+
+- GET `/contract/{contract_id}?key={key}&cursor={cursor}&limit={limit}&sort_by={field}&order={asc|desc}`
+
+Example response (paged):
+
 <details>
+<summary>Example contract response (expand)</summary>
 
-```
-    {
-    "_links": {
-      "self": {
-        "href": "/contract/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=desc&limit=10"
-      },
-      "prev": {
-        "href": "/contract/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=asc&limit=10&cursor=QAACRv7TSJdJuTDl3NzoOMqPd3NV1D4nMrUl1WCZbBVyzhmw"
-      },
-      "next": {
-        "href": "/contract/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=desc&limit=10&cursor=QAACRvqzm9GPEHQEvjjeWPPCWkj8gAWF3kCMb8BTtXyzyZtI"
-      }
-    },
-    "results": [
-        {
-          "id": "CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM",
-          "durability": "persistent",
-          "key": "AAAAEAAAAAEAAAACAAAADwAAAAdCYWxhbmNlAAAAABIAAAAAAAAAANkZYFbIclNVIsk19ya5m3Fn3VO11uhJO835GKCvV8dA",
-          "ttl": 59020106,
-          "updated": 1746538521,
-          "value": "AAAACgAAAAAAAAAAAAAAAAAAAAA=",
-          "paging_token": "QAACRv7TSJdJuTDl3NzoOMqPd3NV1D4nMrUl1WCZbBVyzhmw"
-        }
-    ]
-}
-```
-    
-</details>
- 
-- **GET/contract/{contract_id}/keys**
-
-Example Response:
-<details>
-
-```
+```json
 {
-    "results": [
-        {
-          "id": "CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM",
-          "keys": ["AAAAEAAAAAA..."]
-        }
-    ]
+  "_links": {
+    "self": { "href": "/contract/CAS3...AM?order=desc&limit=10" },
+    "prev": { "href": "/contract/CAS3...AM?order=asc&limit=10&cursor=..." },
+    "next": { "href": "/contract/CAS3...AM?order=desc&limit=10&cursor=..." }
+  },
+  "results": [
+    {
+      "id": "CAS3FL6T...VEAM",
+      "durability": "persistent",
+      "key": "AAAAEAAAAAE...",
+      "ttl": 59020106,
+      "updated": 1746538521,
+      "value": "AAAACg...",
+      "paging_token": "QAACRv7T..."
+    }
+  ]
+}
+```
+
+</details>
+
+- GET `/contract/{contract_id}/keys` — returns the set of keys for the contract.
+
+<details>
+<summary>Example keys response (expand)</summary>
+
+```json
+{
+  "results": [
+    {
+      "id": "CAS3FL6T...VEAM",
+      "keys": ["AAAAEAAAAAA..."]
+    }
+  ]
 }
 ```
 
 </details>
 
 
-## Alternatives Considered
+API behaviour / considerations:
 
-<!--
-Summarize any potential approaches that you considered when drafting 
-this design, making it clear why you decided against them.
-
-Note that this section is intentionally after the primary design
-section. This section should evolve as you refine the proposal and
-alternatives are ruled out.
--->
-
-We explored couple of internal and external indexers, however they did not turn out to be feasible
-1. Wallet indexer - This is too specific for account indexing
-2. Observr - The lack of support for local postgres limited us to test this option
-3. Working on the top of stellar-expert - This requires setting up a MongoDB and elastic search based indexer, which would be complex than writing custom indexer.
-
-## Estimated work
-
-There will be two main parts of the work
-1. Building an indexer to fetch ledger close meta and index respective dataset.
-2. Building a JS based API to serve data required by user. This queries the database and GCS datalake, parses XDR using [js-stellar-xdr-json](https://github.com/stellar/js-stellar-xdr-json) and serves JSON to back to the user. (9 week)
-   1. Getting familiar with JS/express API and setup Boilerplate API. 1 week
-   2. Setup an endpoint for contract data with appropriate query filters, read the needed data from GCS and DB. 2 week
-   3. Add function to parse contract data from XDR, probably use ORM. 1 week
-   4. Unit test and Integration test coverage. 1.5 week
-   5. Load testing on dev and API deployment on testnet. 1.5 week
-   6. API deployment on mainnet. 1 week
-   7. Address any issues - 1 week
+- Cursor-based pagination for stable paging tokens.
+- Filtering by key/value with indexed search for performant queries.
+- Support `keyContains`/`valueContains` partial filters, with limits to avoid expensive full table scans.
+- Provide an endpoint that returns available keys/values for a contract to drive the frontend filter UI.
 
 ## Active work
 
-- Indexer is being built in https://github.com/stellar/stellar-ledger-data-indexer/pull/1
-- API is being built in https://github.com/stellar/laboratory-backend
+- Indexer work: https://github.com/stellar/stellar-ledger-data-indexer/pull/1
+- API work: https://github.com/stellar/laboratory-backend
