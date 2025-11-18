@@ -35,6 +35,6 @@ export const getAllKeysForContract = async (
       keys,
     });
   } catch (e) {
-    return res.status(400).json({ error: (e as Error).message });
+    return res.status(500).json({ error: (e as Error).message });
   }
 };
