@@ -14,7 +14,6 @@ Date: 2025-07-31
 - [Estimated work](#estimated-work)
 - [Active work](#active-work)
 
-
 ## Problem Statement
 
 Stellar Labs needs to surface contract, transaction, and ledger data for users (explore transaction details, contract details, ledger details, etc.). Internally, the Labs frontend relies on a mix of external APIs and RPC endpoints to fetch that data.
@@ -27,7 +26,6 @@ Example Stellar Expert contract-data request:
 
 https://api.stellar.expert/explorer/public/contract-data/CAS3FL6TLZKDGGSISDBWGGPXT3NRR4DYTZD7YOD3HMYO6LTJUVGRVEAM?order=desc&limit=10
 
-
 ## Design
 
 High level: split the solution into two components:
@@ -35,13 +33,11 @@ High level: split the solution into two components:
 1. Indexer — consumes ledger data (from a ledger data lake / GCS), parses/indexes contract-related metadata, and stores index records in Postgres.
 2. API — a JS/Express service that exposes endpoints to query the indexed data (reads Postgres, optionally reads GCS for blobs, and parses XDR with js-stellar-xdr-json).
 
-
 ### Architecture
 
 The indexer will periodically read ledger close meta from the data lake, extract contract entries, and write compact indexed rows to Postgres so the API can serve fast, filtered queries.
 
 ![Contract API architecture](https://github.com/user-attachments/assets/6eb88602-4a3b-470d-8223-af79fcb1b060)
-
 
 ### Data model
 
@@ -49,28 +45,26 @@ The Postgres store contains index information for contracts. The minimal indexed
 
 **Contract data schema (example)**
 
-| Column name                      | Data type                     | Constraints |
-|----------------------------------|-------------------------------|-------------|
-| id                               | TEXT                          | PRIMARY KEY |
-| ledger_sequence                  | INTEGER                       | NOT NULL    |
-| durability                       | TEXT                          |             |
-| keys_index                       | TEXT[]                        |             |
-| key                              | BYTEA                         |             |
-| val                              | BYTEA                         |             |
-| closed_at                        | TIMESTAMP WITH TIME ZONE      | NOT NULL    |
-| live_until_ledger_sequence       | INTEGER                       | NOT NULL    |
+| Column name                | Data type                | Constraints |
+| -------------------------- | ------------------------ | ----------- |
+| id                         | TEXT                     | PRIMARY KEY |
+| ledger_sequence            | INTEGER                  | NOT NULL    |
+| durability                 | TEXT                     |             |
+| keys_index                 | TEXT[]                   |             |
+| key                        | BYTEA                    |             |
+| val                        | BYTEA                    |             |
+| closed_at                  | TIMESTAMP WITH TIME ZONE | NOT NULL    |
+| live_until_ledger_sequence | INTEGER                  | NOT NULL    |
 
 Indexes:
 
 - `idx_contract_id` on (id)
 - `idx_keys_index` on (keys_index)
 
-
 Notes:
 
 - Store compact indexed values to optimize query throughput (avoid storing full blobs in frequently queried columns).
 - Use appropriate column types (BYTEA for binary values) and provide helper views that project parsed JSON for consumer-facing APIs.
-
 
 ### API design
 
@@ -123,7 +117,6 @@ Example response (paged):
 ```
 
 </details>
-
 
 API behaviour / considerations:
 

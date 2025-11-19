@@ -4,6 +4,11 @@ import { getContractDataByContractId } from "../../src/controllers/contract_data
 import "../setup-matchers"; // Import custom matchers
 import { seedTestData } from "../test-data-seeder";
 
+// Global type declaration
+declare global {
+  var testPrismaClient: PrismaClient;
+}
+
 describe("GET /api/:network/contract/:contract_id/storage", () => {
   let testPrismaClient: PrismaClient;
   let mockRequest: Partial<Request>;
