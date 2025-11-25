@@ -4,7 +4,9 @@ import { TestContractData } from "./test-data-seeder";
 /**
  * Seeds the test database with contract data for keys endpoint testing
  */
-export async function seedTestData(prisma: PrismaClient): Promise<void> {
+export async function seedKeysEndpointData(
+  prisma: PrismaClient,
+): Promise<void> {
   // Clear existing data (handle missing tables gracefully)
   try {
     await prisma.contract_data.deleteMany();

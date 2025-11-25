@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma";
 import { getAllKeysForContract } from "../../src/controllers/keys";
+import { seedKeysEndpointData } from "../keys-endpoint-seeder";
 import "../setup-matchers"; // Import custom matchers
-import { seedTestData } from "../test-data-keys";
 
 // Global type declaration
 declare global {
@@ -16,7 +16,7 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
 
   beforeAll(async () => {
     testPrismaClient = global.testPrismaClient;
-    await seedTestData(testPrismaClient);
+    await seedKeysEndpointData(testPrismaClient);
   });
 
   beforeEach(() => {
