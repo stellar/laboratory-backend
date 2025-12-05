@@ -19,15 +19,28 @@ import {
 } from "@google-cloud/cloud-sql-connector";
 import fs from "fs";
 import net from "net";
-import { resolve } from "node:path";
+import os from "os";
 import path from "path";
 import { PrismaClient } from "../../generated/prisma";
 
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
 
+/**
+ * Returns the directory for the Unix socket file created by Google Cloud SQL Connector.
+ * Uses /tmp in production (writable by non-root users in containers).
+ * Uses current directory in development for easier debugging.
+ */
+const getGoogleCloudSocketDir = () => {
+  return process.env.NODE_ENV === "production" ? os.tmpdir() : process.cwd();
+};
+
+/**
+ * Cleans up stale Unix socket file from previous runs.
+ * Socket format: `.s.PGSQL.5432` (5432 = PostgreSQL port).
+ */
 async function cleanupSocketIfNeeded() {
-  const socketPath = path.join(process.cwd(), ".s.PGSQL.5432");
+  const socketPath = path.join(getGoogleCloudSocketDir(), ".s.PGSQL.5432");
 
   try {
     if (fs.existsSync(socketPath)) {
@@ -61,6 +74,13 @@ async function cleanupSocketIfNeeded() {
   }
 }
 
+/**
+ * Connects to the Google Cloud SQL database using the Google Cloud SQL Connector.
+ * @param instanceConnectionName - The connection name of the Google Cloud SQL instance.
+ * @param user - The username to use for the database connection.
+ * @param database - The name of the database to use for the connection.
+ * @returns A PrismaClient instance and a close function.
+ */
 async function connect({
   instanceConnectionName,
   user,
@@ -70,20 +90,21 @@ async function connect({
   user: string;
   database: string;
 }) {
-  const connector = new Connector();
-  const socketPath = resolve(`.s.PGSQL.5432`);
+  const gCloudSqlConnector = new Connector();
+  const gCloudSqlSocketDir = getGoogleCloudSocketDir();
+  const gCloudSqlSocketPath = path.join(gCloudSqlSocketDir, ".s.PGSQL.5432");
 
   // Cleanup before starting
   await cleanupSocketIfNeeded();
 
-  await connector.startLocalProxy({
+  await gCloudSqlConnector.startLocalProxy({
     instanceConnectionName,
     ipType: IpAddressTypes.PUBLIC,
     authType: AuthTypes.IAM,
-    listenOptions: { path: socketPath },
+    listenOptions: { path: gCloudSqlSocketPath },
   });
 
-  const datasourceUrl = `postgresql://${user}@localhost/${database}?host=${process.cwd()}`;
+  const datasourceUrl = `postgresql://${user}@localhost/${database}?host=${gCloudSqlSocketDir}`;
 
   prisma = new PrismaClient({ datasourceUrl });
 
@@ -92,7 +113,7 @@ async function connect({
     prisma,
     async close() {
       await prisma.$disconnect();
-      connector.close();
+      gCloudSqlConnector.close();
       await new Promise(resolve => setTimeout(resolve, 1000));
     },
   };
