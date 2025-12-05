@@ -1,10 +1,26 @@
-.PHONY: help install build test test-watch lint lint-fix format typecheck clean docker-build docker-run docker-up docker-down docker-logs docker-stop prisma-generate migrate
+# Check if we need to prepend docker commands with sudo
+SUDO := $(shell docker version >/dev/null 2>&1 || echo "sudo")
+
+# If LABEL is not provided set default value
+LABEL ?= $(shell git rev-parse --short HEAD)$(and $(shell git status -s),-dirty-$(shell id -u -n))
+# If TAG is not provided set default value
+TAG ?= stellar/laboratory-backend:$(LABEL)
+# https://github.com/opencontainers/image-spec/blob/master/annotations.md
+BUILD_DATE := $(shell date -u +%FT%TZ)
+
+.PHONY: help docker-build docker-push clean install prisma-generate test lint format typecheck build
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
 	@echo ''
 	@echo 'Available targets:'
 	@awk 'BEGIN {FS = ":.*?## "} /^[a-zA-Z_-]+:.*?## / {printf "  %-15s %s\n", $$1, $$2}' $(MAKEFILE_LIST)
+
+docker-build: ## Build Docker image
+	$(SUDO) docker build --pull --label org.opencontainers.image.created="$(BUILD_DATE)" -t $(TAG) --build-arg GIT_COMMIT=$(LABEL) .
+
+docker-push:
+	$(SUDO) docker push $(TAG)
 
 clean: ## Clean build artifacts
 	rm -rf dist
@@ -19,14 +35,8 @@ prisma-generate: ## Generate Prisma client
 test: ## Run tests
 	pnpm test
 
-test-watch: ## Run tests in watch mode
-	pnpm test:watch
-
 lint: ## Run linter
 	pnpm lint
-
-lint-fix: ## Fix linting issues
-	pnpm lint:fix
 
 format: ## Format code
 	pnpm format
@@ -36,23 +46,3 @@ typecheck: ## Type check the project
 
 build: ## Build the project
 	pnpm build
-
-docker-build: ## Build Docker image
-	docker build -t stellar-lab-api:latest .
-
-docker-run: ## Run Docker container (requires .env file and creds.json) - uses docker-compose
-	docker-compose up
-
-docker-up: ## Start services with docker-compose
-	docker-compose up -d
-
-docker-down: ## Stop services with docker-compose
-	docker-compose down
-
-docker-logs: ## View docker-compose logs
-	docker-compose logs -f
-
-docker-stop: ## Stop docker-compose services
-	docker-compose stop
-
-docker-build-up: docker-build docker-up ## Build and start with docker-compose
