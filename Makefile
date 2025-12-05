@@ -8,7 +8,7 @@ TAG ?= stellar/laboratory-backend:$(LABEL)
 # https://github.com/opencontainers/image-spec/blob/master/annotations.md
 BUILD_DATE := $(shell date -u +%FT%TZ)
 
-.PHONY: help docker-build docker-push clean install prisma-generate test lint format typecheck build
+.PHONY: help docker-build docker-push clean install audit prisma-generate test lint format format-check typecheck check build
 
 help: ## Show this help message
 	@echo 'Usage: make [target]'
@@ -29,6 +29,9 @@ clean: ## Clean build artifacts
 install: ## Install dependencies
 	pnpm install
 
+audit: ## Check for security vulnerabilities in dependencies
+	pnpm audit
+
 prisma-generate: ## Generate Prisma client
 	pnpm prisma:generate
 
@@ -43,6 +46,8 @@ format: ## Format code
 
 typecheck: ## Type check the project
 	pnpm typecheck
+
+check: format lint typecheck test audit ## Run all checks (format, lint, typecheck, audit, test)
 
 build: ## Build the project
 	pnpm build
