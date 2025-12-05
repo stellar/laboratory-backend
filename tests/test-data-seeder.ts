@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+import { Prisma, PrismaClient } from "../generated/prisma";
 
 export interface TestContractData {
   key_hash: string;
@@ -93,7 +93,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       val: data.val,
       closed_at: data.closed_at,
       pk_id: data.pk_id,
-    })),
+    })) as Prisma.contract_dataCreateManyInput[],
   });
 
   // Insert TTL data using batch operation (only if table exists)
