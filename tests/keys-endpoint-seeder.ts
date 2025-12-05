@@ -1,4 +1,4 @@
-import { PrismaClient } from "../generated/prisma";
+import { PrismaClient, Prisma } from "../generated/prisma";
 import { TestContractData } from "./test-data-seeder";
 
 /**
@@ -135,6 +135,6 @@ export async function seedKeysEndpointData(
       val: data.val,
       closed_at: data.closed_at,
       pk_id: data.pk_id,
-    })),
+    })) as Prisma.contract_dataCreateManyInput[],
   });
 }
