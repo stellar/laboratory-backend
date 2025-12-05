@@ -1,0 +1,28 @@
+services:
+  api:
+    image: stellar-lab-api:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      # Override GOOGLE_APPLICATION_CREDENTIALS for container path
+      GOOGLE_APPLICATION_CREDENTIALS: /app/creds.json
+      # Set NODE_ENV to production to use /tmp for socket (writable directory)
+      NODE_ENV: production
+      # Load other env vars from .env file
+      # The values will be read from .env and passed without quotes
+      PORT: ${PORT:-3000}
+      POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME}
+      POSTGRES_IAM_USER: ${POSTGRES_IAM_USER}
+      DB_NAME: ${DB_NAME}
+    volumes:
+      - ./creds.json:/app/creds.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
