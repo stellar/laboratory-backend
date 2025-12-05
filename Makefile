@@ -28,17 +28,14 @@ lint: ## Run linter
 lint-fix: ## Fix linting issues
 	pnpm lint:fix
 
-build: ## Build the project
-	pnpm build
-
 format: ## Format code
 	pnpm format
 
 typecheck: ## Type check the project
 	pnpm typecheck
 
-migrate: ## Run database migrations
-	pnpm migrate
+build: ## Build the project
+	pnpm build
 
 docker-build: ## Build Docker image
 	docker build -t stellar-lab-api:latest .

@@ -7,22 +7,28 @@ services:
     ports:
       - "3000:3000"
     environment:
-      # Override GOOGLE_APPLICATION_CREDENTIALS for container path
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds.json
-      # Set NODE_ENV to production to use /tmp for socket (writable directory)
+      # ⚠️ MUST set NODE_ENV to production to use /tmp for socket (writable directory)
       NODE_ENV: production
-      # Load other env vars from .env file
-      # The values will be read from .env and passed without quotes
       PORT: ${PORT:-3000}
       POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME}
       POSTGRES_IAM_USER: ${POSTGRES_IAM_USER}
       DB_NAME: ${DB_NAME}
     volumes:
+      # `creds.json` must exist in the directory where you run docker-compose up (the project root):
       - ./creds.json:/app/creds.json:ro
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/health"]
-      interval: 30s
-      timeout: 10s
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3000/health",
+        ]
+      interval: 10s
+      timeout: 5s
       retries: 3
-      start_period: 40s
+      start_period: 5s
