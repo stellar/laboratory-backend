@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnpm-store/
+
+# Build outputs
+dist/
+generated/
+
+# Environment and credentials
+.env
+.env.*
+creds.json
+
+# Git
+.git/
+.gitignore
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# IDE
+.vscode/
+.claude/
+
+# Testing
+coverage/
+.nyc_output/
+tests/
+jest.config.ts
+
+# Documentation and config
+docs/
+README.md
+Makefile
+eslint.config.mts
+
+# Kubernetes
+k8s/
+
+# Logs
+*.log
+pnpm-debug.log*
+
+# OS
+.DS_Store

@@ -30,38 +30,53 @@ app.get("/", (_req, res) => {
 });
 
 let closeDbConnection: (() => Promise<void>) | null = null;
+let server: ReturnType<typeof app.listen> | null = null;
 
-const server = app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
+/**
+ * Initializes the database connection and checks if the tables exist.
+ */
+async function initializeDatabase() {
+  console.log("Connecting to database...");
+  const { prisma, close } = await connect({
+    instanceConnectionName: process.env.POSTGRES_CONNECTION_NAME!,
+    user: process.env.POSTGRES_IAM_USER!,
+    database: process.env.DB_NAME!,
+  });
 
+  closeDbConnection = close;
+
+  await prisma.$connect();
+  console.log("✅ Database connected successfully!");
+
+  const tables = await prisma.$queryRaw`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+  `;
+  console.log("Available tables:", tables);
+}
+
+/**
+ * Starts the server and initializes the database connection.
+ */
+async function startServer() {
   try {
-    const { prisma, close } = await connect({
-      instanceConnectionName: process.env.POSTGRES_CONNECTION_NAME!,
-      user: process.env.POSTGRES_IAM_USER!,
-      database: process.env.DB_NAME!,
+    await initializeDatabase();
+
+    server = app.listen(PORT, () => {
+      console.log(`Server is running on port ${PORT}`);
     });
-
-    closeDbConnection = close;
-
-    // Test the connection
-    await prisma.$connect();
-    console.log("✅ Database connected successfully!");
-
-    // First, let's check what tables exist
-    const tables = await prisma.$queryRaw`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-    `;
-    console.log("Available tables:", tables);
-
-    console.log("Connected to PostgreSQL database");
   } catch (error) {
     console.error("Failed to connect to database:", error);
+    process.exit(1);
   }
-});
+}
 
-// Cleanup on exit
+startServer();
+
+/**
+ * Gracefully shuts down the server and closes the database connection.
+ */
 const gracefulShutdown = async () => {
   console.log("Shutting down gracefully...");
 
