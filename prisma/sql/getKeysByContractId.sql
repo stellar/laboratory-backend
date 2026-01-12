@@ -1,3 +1,3 @@
-SELECT key_decoded
+SELECT key_symbol
 FROM contract_data
-WHERE id = $1
+WHERE contract_id = $1

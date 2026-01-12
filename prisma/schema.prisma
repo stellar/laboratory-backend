@@ -10,19 +10,19 @@ datasource db {
 }
 
 model contract_data {
-  id              String?
+  contract_id     String?
   ledger_sequence Int
   key_hash        String?
   durability      String?
-  key_decoded     String?
+  key_symbol      String?
   key             Bytes?
   val             Bytes?
   closed_at       DateTime @db.Timestamptz(6)
   pk_id           BigInt   @id @default(autoincrement())
 
-  @@index([id, closed_at(sort: Desc)], map: "idx_contract_data_id_closedat")
-  @@index([id], map: "idx_contract_id")
-  @@index([key_decoded], map: "idx_key_decoded")
+  @@index([contract_id, closed_at(sort: Desc)], map: "idx_contract_data_id_closedat")
+  @@index([contract_id], map: "idx_contract_id")
+  @@index([key_symbol], map: "idx_key_decoded")
   @@index([key_hash], map: "idx_key_hash")
 }
 

@@ -2,10 +2,10 @@ import { Prisma, PrismaClient } from "../generated/prisma";
 
 export interface TestContractData {
   key_hash: string;
-  id: string;
+  contract_id: string;
   ledger_sequence: number;
   durability: string;
-  key_decoded: string;
+  key_symbol: string;
   key: Buffer;
   val: Buffer;
   closed_at: Date;
@@ -34,10 +34,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
     {
       key_hash:
         "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "persistent",
-      key_decoded: "BillingCyclePlanName",
+      key_symbol: "BillingCyclePlanName",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
         "base64",
@@ -50,10 +50,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
     {
       key_hash:
         "0617ea10a459976834fa9ce5a189133586ad546528a1407f026d4d27810a4af8",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "instance",
-      key_decoded: "BillingCycleTimestamp",
+      key_symbol: "BillingCycleTimestamp",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
         "base64",
@@ -66,10 +66,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
     {
       key_hash:
         "0c62c69563827a93daa2a3dc9247eeb71c07a504e9d9d41694bcb98e9183f525",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "temporary",
-      key_decoded: "BillingCyclePrice",
+      key_symbol: "BillingCyclePrice",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
         "base64",
@@ -85,10 +85,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
   await prisma.contract_data.createMany({
     data: testContractData.map(data => ({
       key_hash: data.key_hash,
-      id: data.id,
+      contract_id: data.contract_id,
       ledger_sequence: data.ledger_sequence,
       durability: data.durability,
-      key_decoded: data.key_decoded,
+      key_symbol: data.key_symbol,
       key: data.key,
       val: data.val,
       closed_at: data.closed_at,
