@@ -33,6 +33,7 @@ audit: ## Check for security vulnerabilities in dependencies
 	pnpm audit
 
 prisma-generate: ## Generate Prisma client
+	pnpm prisma db pull
 	pnpm prisma:generate
 
 test: ## Run tests

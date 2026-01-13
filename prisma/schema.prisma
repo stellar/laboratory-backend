@@ -20,32 +20,14 @@ model contract_data {
   closed_at       DateTime @db.Timestamptz(6)
   pk_id           BigInt   @id @default(autoincrement())
 
-  @@index([contract_id, closed_at(sort: Desc)], map: "idx_contract_data_id_closedat")
   @@index([contract_id], map: "idx_contract_id")
-  @@index([key_symbol], map: "idx_key_decoded")
   @@index([key_hash], map: "idx_key_hash")
+  @@index([key_symbol], map: "idx_key_symbol")
 }
 
 model gorp_migrations {
   id         String    @id
   applied_at DateTime? @db.Timestamptz(6)
-}
-
-model transaction {
-  id                 String?
-  ledger_sequence    Int
-  transaction_hash   String   @id
-  closed_at          DateTime @db.Timestamptz(6)
-  tx_envelope        String
-  tx_result          String
-  tx_meta            String
-  tx_fee_meta        String
-  successful         Boolean
-  diagnostic_events  String
-  transaction_events String
-  contract_events    String
-
-  @@index([transaction_hash], map: "idx_transaction_hash")
 }
 
 model ttl {
@@ -54,6 +36,4 @@ model ttl {
   live_until_ledger_sequence Int
   closed_at                  DateTime @db.Timestamptz(6)
   pk_id                      BigInt   @id @default(autoincrement())
-
-  @@index([key_hash, ledger_sequence(sort: Desc)], map: "idx_ttl_keyhash_ledger_sequence_desc")
 }
