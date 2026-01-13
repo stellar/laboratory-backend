@@ -8,10 +8,9 @@ const router: Router = express.Router();
 /**
  * Validation schema for route parameters.
  *
- * Validates network selection and contract identifier.
+ * Validates contract identifier.
  */
 export const requestParamsSchema = z.object({
-  network: z.enum(["mainnet", "testnet"]),
   contract_id: z.string().trim().min(1),
 });
 
@@ -71,7 +70,7 @@ export const validateParamsMiddleware = (
 
 // Route supports query parameters: ?cursor=xxx&limit=10&order=desc&sort_by=xxx
 router.get(
-  "/:network/contract/:contract_id/storage",
+  "/contract/:contract_id/storage",
   validateParamsMiddleware(requestParamsSchema, "path"),
   validateParamsMiddleware(requestQuerySchema, "query"),
   getContractDataByContractId,

@@ -6,31 +6,26 @@ export const getAllKeysForContract = async (
   res: Response,
 ): Promise<void | Response> => {
   try {
-    const { contract_id, network = "mainnet" } = req.params;
+    const { contract_id } = req.params;
 
-    if (network !== "mainnet") {
-      return res.status(400).json({ error: "Only mainnet is supported" });
-    }
-
-    // Use Prisma ORM to get distinct key_decoded values
+    // Use Prisma ORM to get distinct key_symbol values
     const result = await prisma.contract_data.findMany({
-      distinct: ["key_decoded"],
+      distinct: ["key_symbol"],
       select: {
-        key_decoded: true,
+        key_symbol: true,
       },
       where: {
-        id: contract_id,
+        contract_id: contract_id,
       },
     });
 
-    // Filter out null values and extract just the non empty key_decoded strings
+    // Filter out null values and extract just the non empty key_symbol strings
     const keys = result
-      .map(row => row.key_decoded)
+      .map(row => row.key_symbol)
       .filter(h => Boolean(h?.trim())) as string[];
 
     return res.status(200).json({
       contract_id,
-      network,
       total_keys: keys.length,
       keys,
     });

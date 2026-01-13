@@ -9,7 +9,7 @@ declare global {
   var testPrismaClient: PrismaClient;
 }
 
-describe("GET /api/:network/contract/:contract_id/keys", () => {
+describe("GET /api/contract/:contract_id/keys", () => {
   let testPrismaClient: PrismaClient;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
@@ -23,7 +23,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
     mockRequest = {
       params: {
         contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
       },
     };
 
@@ -32,23 +31,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
       status: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
     };
-  });
-
-  test("🔴unsupported_network_returns_400", async () => {
-    mockRequest.params = {
-      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "testnet",
-    };
-
-    await getAllKeysForContract(
-      mockRequest as Request,
-      mockResponse as Response,
-    );
-
-    expect(mockResponse.status).toHaveBeenCalledWith(400);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      error: "Only mainnet is supported",
-    });
   });
 
   test("🟡nonexistent_contract_id_returns_empty_results", async () => {
@@ -65,7 +47,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
     expect(responseData).toEqual({
       contract_id: "NONEXISTENT_CONTRACT_ID",
-      network: "mainnet",
       total_keys: 0,
       keys: [],
     });
@@ -85,7 +66,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
     // Verify basic structure
     expect(responseData).toEqual({
       contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       total_keys: 4,
       keys: [
         "BillingCyclePlanName",
@@ -99,7 +79,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
   test("🟢keys_with_empty_string_will_be_omitted", async () => {
     mockRequest.params = {
       contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
-      network: "mainnet",
     };
 
     await getAllKeysForContract(
@@ -115,7 +94,6 @@ describe("GET /api/:network/contract/:contract_id/keys", () => {
     // Verify basic structure
     expect(responseData).toEqual({
       contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
-      network: "mainnet",
       total_keys: 2,
       keys: ["Block", "Pail"],
     });

@@ -9,7 +9,7 @@ declare global {
   var testPrismaClient: PrismaClient;
 }
 
-describe("GET /api/:network/contract/:contract_id/storage", () => {
+describe("GET /api/contract/:contract_id/storage", () => {
   let testPrismaClient: PrismaClient;
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
@@ -23,7 +23,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     mockRequest = {
       params: {
         contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
       },
       query: {},
     };
@@ -33,23 +32,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       status: jest.fn().mockReturnThis(),
       send: jest.fn().mockReturnThis(),
     };
-  });
-
-  test("🔴unsupported_network_returns_400", async () => {
-    mockRequest.params = {
-      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "testnet",
-    };
-
-    await getContractDataByContractId(
-      mockRequest as Request,
-      mockResponse as Response,
-    );
-
-    expect(mockResponse.status).toHaveBeenCalledWith(400);
-    expect(mockResponse.json).toHaveBeenCalledWith({
-      error: "Only mainnet is supported",
-    });
   });
 
   test("🔴invalid_limit_returns_400", async () => {
@@ -96,7 +78,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results).toEqual([]);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "NONEXISTENT_CONTRACT_ID",
-      network: "mainnet",
       order: "desc",
       limit: "20",
     });
@@ -117,7 +98,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results).toHaveLength(3);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       order: "desc",
       limit: "20",
     });
@@ -165,7 +145,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results).toHaveLength(1);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       order: "desc",
       limit: "1",
       containsNext: true,
@@ -189,7 +168,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results.length).toEqual(3);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       sortBy: "durability",
       order: "asc",
       limit: "20",
@@ -219,7 +197,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results.length).toBeGreaterThan(0);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       sortBy: "updated_at",
       order: "desc",
       limit: "20",
@@ -249,7 +226,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
     expect(responseData.results.length).toBeGreaterThan(0);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-      network: "mainnet",
       sortBy: "ttl",
       order: "asc",
       limit: "20",
@@ -315,7 +291,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(responseData.results).toHaveLength(1);
       expect(responseData).toHaveValidPaginationLinks({
         contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
         order: "desc",
         limit: "1",
         containsNext: true,
@@ -343,7 +318,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(responseData.results).toHaveLength(1);
       expect(responseData).toHaveValidPaginationLinks({
         contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
         order: "desc",
         limit: "1",
         containsPrev: true,
@@ -370,7 +344,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(responseData.results).toHaveLength(1);
       expect(responseData).toHaveValidPaginationLinks({
         contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
         order: "desc",
         limit: "1",
         containsPrev: true,
@@ -400,7 +373,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(responseData.results).toHaveLength(1);
       expect(responseData).toHaveValidPaginationLinks({
         contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
         order: "desc",
         limit: "1",
         containsNext: true,
@@ -424,7 +396,6 @@ describe("GET /api/:network/contract/:contract_id/storage", () => {
       expect(responseData.results).toHaveLength(1);
       expect(responseData).toHaveValidPaginationLinks({
         contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
-        network: "mainnet",
         order: "desc",
         limit: "1",
         containsNext: true,

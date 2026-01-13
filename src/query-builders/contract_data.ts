@@ -67,7 +67,7 @@ class ContractDataQueryBuilder {
       WITH cd_latest AS (
         SELECT DISTINCT ON (key_hash) *
         FROM contract_data
-        WHERE id = $1
+        WHERE contract_id = $1
         ORDER BY key_hash, ledger_sequence DESC
       ),
       latest_ledger AS (

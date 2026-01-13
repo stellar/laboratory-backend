@@ -20,10 +20,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "persistent",
-      key_decoded: "BillingCyclePlanName",
+      key_symbol: "BillingCyclePlanName",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
         "base64",
@@ -35,10 +35,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "0617ea10a459976834fa9ce5a189133586ad546528a1407f026d4d27810a4af8",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "instance",
-      key_decoded: "BillingCycleTimestamp",
+      key_symbol: "BillingCycleTimestamp",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
         "base64",
@@ -50,10 +50,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "0c62c69563827a93daa2a3dc9247eeb71c07a504e9d9d41694bcb98e9183f525",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "temporary",
-      key_decoded: "BillingCyclePrice",
+      key_symbol: "BillingCyclePrice",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
         "base64",
@@ -65,10 +65,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b",
-      id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       ledger_sequence: 59409310,
       durability: "persistent",
-      key_decoded: "BillingPayment",
+      key_symbol: "BillingPayment",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAAA5CaWxsaW5nUGF5bWVudAAAAAADAAAAAw==",
         "base64",
@@ -82,10 +82,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c",
-      id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
+      contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
       ledger_sequence: 59409311,
       durability: "persistent",
-      key_decoded: "Block",
+      key_symbol: "Block",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAAAVCbG9jawAAAAAAAAMAAAAD",
         "base64",
@@ -97,10 +97,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d",
-      id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
+      contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
       ledger_sequence: 59409311,
       durability: "persistent",
-      key_decoded: "Pail",
+      key_symbol: "Pail",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAAARQYWlsAAAAAwAAAAM=",
         "base64",
@@ -112,10 +112,10 @@ export async function seedKeysEndpointData(
     {
       key_hash:
         "4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e",
-      id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
+      contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
       ledger_sequence: 59409311,
       durability: "persistent",
-      key_decoded: "", // Empty string - should be filtered out
+      key_symbol: "", // Empty string - should be filtered out
       key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAAA=", "base64"),
       val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
@@ -127,10 +127,10 @@ export async function seedKeysEndpointData(
   await prisma.contract_data.createMany({
     data: testContractData.map(data => ({
       key_hash: data.key_hash,
-      id: data.id,
+      contract_id: data.contract_id,
       ledger_sequence: data.ledger_sequence,
       durability: data.durability,
-      key_decoded: data.key_decoded,
+      key_symbol: data.key_symbol,
       key: data.key,
       val: data.val,
       closed_at: data.closed_at,

@@ -5,7 +5,6 @@ declare global {
     interface Matchers<R> {
       toHaveValidPaginationLinks(expectedParams: {
         contractId: string;
-        network: string;
         sortBy?: string;
         order?: string;
         limit?: string;
@@ -32,7 +31,6 @@ export function setupCustomMatchers() {
 
       const {
         contractId,
-        network,
         sortBy,
         order,
         limit,
@@ -40,7 +38,7 @@ export function setupCustomMatchers() {
         containsNext = false,
         containsPrev = false,
       } = expectedParams;
-      const basePath = `/api/${network}/contract/${contractId}/storage`;
+      const basePath = `/api/contract/${contractId}/storage`;
 
       /**
        * Validates a link object against expected parameters.

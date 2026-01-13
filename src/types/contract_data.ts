@@ -36,7 +36,6 @@ export type RequestParams = {
   cursor?: string;
   cursorData?: CursorData;
   limit: number;
-  network: string;
   sortDirection: SortDirection;
   sortField: SortField;
   sortDbField: string;

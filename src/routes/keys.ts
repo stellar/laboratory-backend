@@ -7,7 +7,7 @@ import { getAllKeysForContract } from "../controllers/keys";
 const router: Router = express.Router();
 
 router.get(
-  "/:network/contract/:contract_id/keys",
+  "/contract/:contract_id/keys",
   validateParamsMiddleware(requestParamsSchema, "path"),
   getAllKeysForContract,
 );

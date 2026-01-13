@@ -140,18 +140,18 @@ pnpm dev
 
 #### API Endpoints
 
-| Method | Endpoint                               | Description                         |
-| ------ | -------------------------------------- | ----------------------------------- |
-| GET    | `/api/${network}/contract/:id/storage` | Get contract data by ID             |
-| GET    | `/api/${network}/contract/:id/keys`    | Get keys associated with data by ID |
+| Method | Endpoint                    | Description                         |
+| ------ | --------------------------- | ----------------------------------- |
+| GET    | `/api/contract/:id/storage` | Get contract data by ID             |
+| GET    | `/api/contract/:id/keys`    | Get keys associated with data by ID |
 
-`curl http://localhost:3000/api/{network}/contract/{contract_id}/storage`
+`curl http://localhost:3000/api/contract/{contract_id}/storage`
 
 - ?sort_by=durability&order=desc - Sort by durability descending
 - ?sort_by=ttl&order=asc - Sort by TTL ascending
 - ?sort_by=updated_at&order=desc - Sort by updated timestamp descending
 
-`curl http://localhost:3000/api/{network}/contract/{contract_id}/keys`
+`curl http://localhost:3000/api/contract/{contract_id}/keys`
 
 #### Project Structure
 
