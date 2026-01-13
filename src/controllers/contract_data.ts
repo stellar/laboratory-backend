@@ -18,14 +18,14 @@ import { prisma } from "../utils/connect";
 
 /**
  * Parses and validates request parameters for contract data queries.
- * Extracts contract ID, network, pagination limit, sort field, and sort direction
+ * Extracts contract ID, pagination limit, sort field, and sort direction
  * from the request, applying defaults and validation constraints.
  *
  * @param req - Express request object containing params and query parameters
  * @returns RequestParams - Parsed and validated request parameters with type safety
  */
 const parseRequestParams = (req: Request): RequestParams => {
-  const { contract_id, network = "mainnet" } = req.params;
+  const { contract_id } = req.params;
 
   const { cursor, limit = "20" } = req.query;
   let { order = SortDirection.DESC, sort_by = SortField.PK_ID } = req.query;
@@ -86,7 +86,6 @@ const parseRequestParams = (req: Request): RequestParams => {
     cursor: cursor as string | undefined,
     cursorData,
     limit: limitNum,
-    network,
     sortDirection,
     sortField,
     sortDbField: APIFieldToDBFieldMap[sortField],
@@ -149,7 +148,7 @@ const getContractDataWithTTL = async (
  *   "results": [...]
  * }
  *
- * @throws {400} When request parameters are invalid or network is not mainnet
+ * @throws {400} When request parameters are invalid
  * @throws {500} When database query fails
  */
 
@@ -162,11 +161,6 @@ export const getContractDataByContractId = async (
     requestParams = parseRequestParams(req);
   } catch (e) {
     return res.status(400).json({ error: (e as Error).message });
-  }
-
-  const { network } = requestParams;
-  if (network !== "mainnet") {
-    return res.status(400).json({ error: "Only mainnet is supported" });
   }
 
   const contractData = await getContractDataWithTTL(requestParams);

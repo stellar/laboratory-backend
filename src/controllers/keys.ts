@@ -6,11 +6,7 @@ export const getAllKeysForContract = async (
   res: Response,
 ): Promise<void | Response> => {
   try {
-    const { contract_id, network = "mainnet" } = req.params;
-
-    if (network !== "mainnet") {
-      return res.status(400).json({ error: "Only mainnet is supported" });
-    }
+    const { contract_id } = req.params;
 
     // Use Prisma ORM to get distinct key_symbol values
     const result = await prisma.contract_data.findMany({
@@ -30,7 +26,6 @@ export const getAllKeysForContract = async (
 
     return res.status(200).json({
       contract_id,
-      network,
       total_keys: keys.length,
       keys,
     });

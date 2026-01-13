@@ -35,15 +35,8 @@ export const buildPaginationLinks = (
   requestParams: RequestParams,
   results: ContractData[],
 ): PaginationLinks => {
-  const {
-    contractId,
-    cursor,
-    limit,
-    network,
-    sortDbField,
-    sortDirection,
-    sortField,
-  } = requestParams;
+  const { contractId, cursor, limit, sortDbField, sortDirection, sortField } =
+    requestParams;
 
   // Shared params for all links (self, next, prev)
   const queryParams = {
@@ -52,7 +45,7 @@ export const buildPaginationLinks = (
     ...(sortField !== SortField.PK_ID ? { sort_by: sortField as string } : {}),
     ...(cursor ? { cursor: cursor } : {}),
   };
-  const baseUrl = `/api/${network}/contract/${contractId}/storage`;
+  const baseUrl = `/api/contract/${contractId}/storage`;
 
   // links.self:
   const links: PaginationLinks = {
