@@ -61,7 +61,7 @@ export const buildPaginationLinks = (
       cursorType: "next",
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
-        pkId: lastRecord.pk_id.toString(),
+        pkId: lastRecord.key_hash,
         sortValue:
           sortField !== SortField.PK_ID
             ? (lastRecord as any)[sortDbField]
@@ -83,7 +83,7 @@ export const buildPaginationLinks = (
       cursorType: "prev",
       sortField: sortField !== SortField.PK_ID ? sortField : undefined,
       position: {
-        pkId: firstRecord.pk_id.toString(),
+        pkId: firstRecord.key_hash,
         sortValue:
           sortField !== SortField.PK_ID
             ? (firstRecord as any)[sortDbField]

@@ -115,13 +115,17 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
-    // Verify first item specific values
-    const firstItem = responseData.results[0];
-    expect(firstItem).toEqual({
+    // Verify a known item exists (ordering may vary based on key_hash)
+    const expectedKeyHash =
+      "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6";
+    const matchingItem = responseData.results.find(
+      (item: any) => item.key_hash === expectedKeyHash,
+    );
+    expect(matchingItem).toBeDefined();
+    expect(matchingItem).toEqual({
       durability: "persistent",
       expired: expect.any(Boolean),
-      key_hash:
-        "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+      key_hash: expectedKeyHash,
       key: expect.stringContaining("BillingCyclePlanName"),
       ttl: 61482901,
       updated: Math.floor(new Date("2025-10-03T15:00:36Z").getTime() / 1000),

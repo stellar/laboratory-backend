@@ -14,7 +14,7 @@ export enum SortField {
 
 export const APIFieldToDBFieldMap: Record<SortField, string> = {
   [SortField.DURABILITY]: "durability",
-  [SortField.PK_ID]: "pk_id",
+  [SortField.PK_ID]: "key_hash",
   [SortField.TTL]: "live_until_ledger_sequence",
   [SortField.UPDATED_AT]: "closed_at",
 };
@@ -59,7 +59,6 @@ export class CursorParameterMismatchError extends Error {
 }
 
 export type ContractData = {
-  pk_id: bigint;
   durability: string;
   key_hash: string;
   key: Buffer;

@@ -64,28 +64,11 @@ class ContractDataQueryBuilder {
 
   private buildBaseQuery(): string {
     return `
-      WITH cd_latest AS (
-        SELECT DISTINCT ON (key_hash) *
+      WITH final_result AS (
+        SELECT contract_data.*, ttl.live_until_ledger_sequence
         FROM contract_data
-        WHERE contract_id = $1
-        ORDER BY key_hash, ledger_sequence DESC
-      ),
-      latest_ledger AS (
-        SELECT ledger_sequence
-        FROM ttl
-        ORDER BY pk_id DESC
-        LIMIT 1
-      ),
-      final_result AS (
-        SELECT cd_latest.*, ttl_latest.live_until_ledger_sequence
-        FROM cd_latest
-        LEFT JOIN LATERAL (
-          SELECT live_until_ledger_sequence
-          FROM ttl
-          WHERE ttl.key_hash = cd_latest.key_hash
-          ORDER BY ledger_sequence DESC
-          LIMIT 1
-        ) ttl_latest ON true
+        LEFT JOIN ttl ON ttl.key_hash = contract_data.key_hash
+        WHERE contract_data.contract_id = $1
       )`;
   }
 
@@ -111,15 +94,15 @@ class ContractDataQueryBuilder {
           )}
           OR (
             ${sortDbField} = $${this.paramManager.getCount()}
-            AND pk_id ${operator} ${this.paramManager.add(
-              BigInt(cursorData.position.pkId),
+            AND key_hash ${operator} ${this.paramManager.add(
+              cursorData.position.pkId,
             )}
           )
         )`;
     }
 
-    return `AND pk_id ${operator} ${this.paramManager.add(
-      BigInt(cursorData.position.pkId),
+    return `AND key_hash ${operator} ${this.paramManager.add(
+      cursorData.position.pkId,
     )}`;
   }
 
@@ -127,9 +110,9 @@ class ContractDataQueryBuilder {
     const { sortField } = this.config;
 
     if (sortField === SortField.PK_ID) {
-      return `ORDER BY pk_id ${sortDirection}`;
+      return `ORDER BY key_hash ${sortDirection}`;
     }
-    return `ORDER BY ${APIFieldToDBFieldMap[sortField]} ${sortDirection}, pk_id ${sortDirection}`;
+    return `ORDER BY ${APIFieldToDBFieldMap[sortField]} ${sortDirection}, key_hash ${sortDirection}`;
   }
 
   private buildPaginatedCTE(): string {
@@ -165,9 +148,15 @@ class ContractDataQueryBuilder {
     let query = `${baseQuery}${paginatedCTE}
       SELECT
         *,
-        (live_until_ledger_sequence < latest_ledger.ledger_sequence) AS expired
+        (
+          live_until_ledger_sequence < (
+            SELECT ledger_sequence
+            FROM ttl
+            ORDER BY ledger_sequence DESC
+            LIMIT 1
+          )
+        ) AS expired
       FROM ${fromClause}
-      CROSS JOIN latest_ledger
       WHERE 1=1
       ${finalOrderBy}`;
 
