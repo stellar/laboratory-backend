@@ -22,6 +22,7 @@ import net from "net";
 import os from "os";
 import path from "path";
 import { PrismaClient } from "../../generated/prisma";
+import { CloudSqlEnv, Env, type ConnectionMode } from "../config/env";
 
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
@@ -32,14 +33,20 @@ export let prisma: PrismaClient;
  * Uses current directory in development for easier debugging.
  */
 const getGoogleCloudSocketDir = () => {
-  return process.env.NODE_ENV === "production" ? os.tmpdir() : process.cwd();
+  return Env.isProduction ? os.tmpdir() : process.cwd();
 };
 
 /**
  * Cleans up stale Unix socket file from previous runs.
+ * Only runs when the connection mode is Cloud SQL Connector (IAM).
  * Socket format: `.s.PGSQL.5432` (5432 = PostgreSQL port).
  */
-async function cleanupSocketIfNeeded() {
+async function cleanupSocketIfNeeded(mode: ConnectionMode) {
+  if (mode !== "cloud_sql_connector_iam") {
+    // Socket cleanup not needed
+    return;
+  }
+
   const socketPath = path.join(getGoogleCloudSocketDir(), ".s.PGSQL.5432");
 
   try {
@@ -74,39 +81,47 @@ async function cleanupSocketIfNeeded() {
   }
 }
 
+export type ConnectionResult = {
+  prisma: PrismaClient;
+  close: () => Promise<void>;
+};
+
 /**
- * Connects to the Google Cloud SQL database using the Google Cloud SQL Connector.
- * @param instanceConnectionName - The connection name of the Google Cloud SQL instance.
- * @param user - The username to use for the database connection.
- * @param database - The name of the database to use for the connection.
+ * Creates a Prisma connection using a direct DATABASE_URL string.
+ * @param databaseUrl - Fully qualified Prisma database URL.
  * @returns A PrismaClient instance and a close function.
  */
-async function connect({
+const connectWithDatabaseUrl = async (
+  databaseUrl: string,
+): Promise<ConnectionResult> => {
+  prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+
+  return {
+    prisma,
+    async close() {
+      await prisma.$disconnect();
+    },
+  };
+};
+
+/**
+ * Creates a Prisma connection using the Cloud SQL Connector with IAM auth.
+ * @param instanceConnectionName - The connection name of the Cloud SQL instance.
+ * @param user - IAM database user email.
+ * @param database - Database name.
+ * @returns A PrismaClient instance and a close function.
+ */
+const connectWithCloudSqlConnector = async ({
   instanceConnectionName,
   user,
   database,
-}: {
-  instanceConnectionName: string;
-  user: string;
-  database: string;
-}) {
-  if (process.env.DATABASE_URL) {
-    prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
-
-    return {
-      prisma,
-      async close() {
-        await prisma.$disconnect();
-      },
-    };
-  }
-
+}: CloudSqlEnv): Promise<ConnectionResult> => {
   const gCloudSqlConnector = new Connector();
   const gCloudSqlSocketDir = getGoogleCloudSocketDir();
   const gCloudSqlSocketPath = path.join(gCloudSqlSocketDir, ".s.PGSQL.5432");
 
   // Cleanup before starting
-  await cleanupSocketIfNeeded();
+  await cleanupSocketIfNeeded(Env.connectionMode);
 
   await gCloudSqlConnector.startLocalProxy({
     instanceConnectionName,
@@ -119,7 +134,6 @@ async function connect({
 
   prisma = new PrismaClient({ datasourceUrl });
 
-  // Return PrismaClient and close() function
   return {
     prisma,
     async close() {
@@ -128,6 +142,33 @@ async function connect({
       await new Promise(resolve => setTimeout(resolve, 1000));
     },
   };
+};
+
+/**
+ * Connects to the Google Cloud SQL database using either a direct DATABASE_URL
+ * or the Google Cloud SQL Connector with IAM authentication.
+ * @returns A PrismaClient instance and a close function.
+ */
+async function connect(): Promise<ConnectionResult> {
+  const dbConnectionMode = Env.connectionMode;
+  console.log(`🔌 Database connection mode: ${dbConnectionMode}`);
+
+  if (dbConnectionMode === "direct_database_url") {
+    const databaseUrl = Env.databaseUrl;
+    if (!databaseUrl) {
+      throw new Error("DATABASE_URL is required for direct connection mode");
+    }
+
+    const dbConnection = await connectWithDatabaseUrl(databaseUrl);
+    await dbConnection.prisma.$connect();
+    return dbConnection;
+  }
+
+  const connectionParams = Env.cloudSql;
+
+  const dbConnection = await connectWithCloudSqlConnector(connectionParams);
+  await dbConnection.prisma.$connect();
+  return dbConnection;
 }
 
 export { connect };
