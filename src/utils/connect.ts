@@ -90,6 +90,17 @@ async function connect({
   user: string;
   database: string;
 }) {
+  if (process.env.DATABASE_URL) {
+    prisma = new PrismaClient({ datasourceUrl: process.env.DATABASE_URL });
+
+    return {
+      prisma,
+      async close() {
+        await prisma.$disconnect();
+      },
+    };
+  }
+
   const gCloudSqlConnector = new Connector();
   const gCloudSqlSocketDir = getGoogleCloudSocketDir();
   const gCloudSqlSocketPath = path.join(gCloudSqlSocketDir, ".s.PGSQL.5432");
