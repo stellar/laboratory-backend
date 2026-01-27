@@ -46,5 +46,8 @@
 
   // Problems panel
   "problems.decorations.enabled": true,
-  "problems.showCurrentInStatus": true
+  "problems.showCurrentInStatus": true,
+
+  // Markdown All in One
+  "markdown.extension.toc.levels": "1..3"
 }
