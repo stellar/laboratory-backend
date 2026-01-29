@@ -99,7 +99,7 @@ async function connect({
 
   await gCloudSqlConnector.startLocalProxy({
     instanceConnectionName,
-    ipType: IpAddressTypes.PUBLIC,
+    ipType: IpAddressTypes.PRIVATE,
     authType: AuthTypes.IAM,
     listenOptions: { path: gCloudSqlSocketPath },
   });
