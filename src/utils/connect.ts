@@ -22,7 +22,7 @@ import net from "net";
 import os from "os";
 import path from "path";
 import { PrismaClient } from "../../generated/prisma";
-import { CloudSqlEnv, Env, type ConnectionMode } from "../config/env";
+import { CloudSqlEnv, Env } from "../config/env";
 
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
@@ -38,15 +38,9 @@ const getGoogleCloudSocketDir = () => {
 
 /**
  * Cleans up stale Unix socket file from previous runs.
- * Only runs when the connection mode is Cloud SQL Connector (IAM).
  * Socket format: `.s.PGSQL.5432` (5432 = PostgreSQL port).
  */
-async function cleanupSocketIfNeeded(mode: ConnectionMode) {
-  if (mode !== "cloud_sql_connector_iam") {
-    // Socket cleanup not needed
-    return;
-  }
-
+async function cleanupSocketIfNeeded() {
   const socketPath = path.join(getGoogleCloudSocketDir(), ".s.PGSQL.5432");
 
   try {
@@ -121,7 +115,7 @@ const connectWithCloudSqlConnector = async ({
   const gCloudSqlSocketPath = path.join(gCloudSqlSocketDir, ".s.PGSQL.5432");
 
   // Cleanup before starting
-  await cleanupSocketIfNeeded(Env.connectionMode);
+  await cleanupSocketIfNeeded();
 
   await gCloudSqlConnector.startLocalProxy({
     instanceConnectionName,
@@ -154,10 +148,7 @@ async function connect(): Promise<ConnectionResult> {
   console.log(`🔌 Database connection mode: ${dbConnectionMode}`);
 
   if (dbConnectionMode === "direct_database_url") {
-    const databaseUrl = Env.databaseUrl;
-    if (!databaseUrl) {
-      throw new Error("DATABASE_URL is required for direct connection mode");
-    }
+    const databaseUrl = Env.databaseUrl!;
 
     const dbConnection = await connectWithDatabaseUrl(databaseUrl);
     await dbConnection.prisma.$connect();

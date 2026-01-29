@@ -17,7 +17,25 @@ class Env {
 
   static get port() {
     const portRaw = this.optionalString("PORT");
-    return portRaw ? Number(portRaw) : 3000;
+
+    if (!portRaw) {
+      return 3000;
+    }
+
+    const port = parseInt(portRaw, 10);
+
+    if (
+      Number.isNaN(port) ||
+      !Number.isInteger(port) ||
+      port <= 0 ||
+      port > 65535
+    ) {
+      throw new Error(
+        `Invalid PORT environment variable: "${portRaw}". Expected an integer between 1 and 65535.`,
+      );
+    }
+
+    return port;
   }
 
   static get databaseUrl() {
@@ -37,7 +55,15 @@ class Env {
   }
 
   static get googleApplicationCredentials() {
-    return this.optionalString("GOOGLE_APPLICATION_CREDENTIALS");
+    const value = this.optionalString("GOOGLE_APPLICATION_CREDENTIALS");
+
+    if (this.connectionMode === "cloud_sql_connector_iam" && !value) {
+      throw new Error(
+        "Missing required environment variable: GOOGLE_APPLICATION_CREDENTIALS (required when using cloud_sql_connector_iam connection mode)",
+      );
+    }
+
+    return value;
   }
 
   private static optionalString(name: string) {

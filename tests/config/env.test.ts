@@ -1,0 +1,91 @@
+import { Env } from "../../src/config/env";
+
+describe("Env", () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    jest.resetModules();
+    process.env = { ...originalEnv };
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  describe("port", () => {
+    test("🟢returns_default_3000_when_not_set", () => {
+      delete process.env.PORT;
+      expect(Env.port).toBe(3000);
+    });
+
+    test("🟢parses_valid_port", () => {
+      process.env.PORT = "8080";
+      expect(Env.port).toBe(8080);
+    });
+
+    test("🔴throws_on_invalid_port_non_numeric", () => {
+      process.env.PORT = "abc";
+      expect(() => Env.port).toThrow(
+        'Invalid PORT environment variable: "abc". Expected an integer between 1 and 65535.',
+      );
+    });
+
+    test("🔴throws_on_invalid_port_out_of_range", () => {
+      process.env.PORT = "70000";
+      expect(() => Env.port).toThrow();
+    });
+  });
+
+  describe("connectionMode", () => {
+    test("🟢returns_direct_database_url_when_DATABASE_URL_set", () => {
+      process.env.DATABASE_URL = "postgresql://localhost";
+      expect(Env.connectionMode).toBe("direct_database_url");
+    });
+
+    test("🟢returns_cloud_sql_connector_iam_when_DATABASE_URL_not_set", () => {
+      delete process.env.DATABASE_URL;
+      expect(Env.connectionMode).toBe("cloud_sql_connector_iam");
+    });
+  });
+
+  describe("optionalString", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.DATABASE_URL;
+      expect(Env.databaseUrl).toBeUndefined();
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.DATABASE_URL = "  postgresql://localhost  ";
+      expect(Env.databaseUrl).toBe("postgresql://localhost");
+    });
+
+    test("🟡returns_undefined_for_empty_string", () => {
+      process.env.DATABASE_URL = "";
+      expect(Env.databaseUrl).toBeUndefined();
+    });
+  });
+
+  describe("requiredString", () => {
+    test("🔴throws_when_missing", () => {
+      delete process.env.POSTGRES_CONNECTION_NAME;
+      expect(() => Env.cloudSql).toThrow(
+        "Missing required environment variable: POSTGRES_CONNECTION_NAME",
+      );
+    });
+  });
+
+  describe("googleApplicationCredentials", () => {
+    test("🔴throws_when_missing_in_cloud_sql_mode", () => {
+      delete process.env.DATABASE_URL;
+      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
+      expect(() => Env.googleApplicationCredentials).toThrow(
+        "Missing required environment variable: GOOGLE_APPLICATION_CREDENTIALS (required when using cloud_sql_connector_iam connection mode)",
+      );
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.GOOGLE_APPLICATION_CREDENTIALS = "./creds.json";
+      expect(Env.googleApplicationCredentials).toBe("./creds.json");
+    });
+  });
+});
