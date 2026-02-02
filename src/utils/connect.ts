@@ -109,6 +109,7 @@ const connectWithCloudSqlConnector = async ({
   instanceConnectionName,
   user,
   database,
+  ipAddressType,
 }: CloudSqlEnv): Promise<ConnectionResult> => {
   const gCloudSqlConnector = new Connector();
   const gCloudSqlSocketDir = getGoogleCloudSocketDir();
@@ -119,7 +120,7 @@ const connectWithCloudSqlConnector = async ({
 
   await gCloudSqlConnector.startLocalProxy({
     instanceConnectionName,
-    ipType: IpAddressTypes.PRIVATE,
+    ipType: ipAddressType ?? IpAddressTypes.PRIVATE,
     authType: AuthTypes.IAM,
     listenOptions: { path: gCloudSqlSocketPath },
   });

@@ -88,6 +88,7 @@ credentials and a local Unix socket.
    - `POSTGRES_CONNECTION_NAME` - Cloud SQL instance connection name
    - `POSTGRES_IAM_USER` - IAM database user email
    - `GOOGLE_APPLICATION_CREDENTIALS` - Path to `creds.json` (e.g., `./creds.json`)
+   - `GOOGLE_CLOUD_SQL_IP_TYPE` - (optional) IP type for the connector: `PUBLIC`, `PRIVATE`, or `PSC`. Default: `PRIVATE`.
 3. Ensure `DATABASE_URL` is NOT set.
 
 Result: the app uses IAM auth and opens a local Unix socket to Cloud SQL.

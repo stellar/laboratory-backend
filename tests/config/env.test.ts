@@ -74,6 +74,34 @@ describe("Env", () => {
     });
   });
 
+  describe("googleCloudSqlIpType", () => {
+    test("🟢defaults_to_PRIVATE_when_not_set", () => {
+      delete process.env.GOOGLE_CLOUD_SQL_IP_TYPE;
+      expect(Env.googleCloudSqlIpType).toBe("PRIVATE");
+    });
+
+    test("🟢accepts_PUBLIC_PRIVATE_PSC", () => {
+      process.env.GOOGLE_CLOUD_SQL_IP_TYPE = "PUBLIC";
+      expect(Env.googleCloudSqlIpType).toBe("PUBLIC");
+      process.env.GOOGLE_CLOUD_SQL_IP_TYPE = "PRIVATE";
+      expect(Env.googleCloudSqlIpType).toBe("PRIVATE");
+      process.env.GOOGLE_CLOUD_SQL_IP_TYPE = "PSC";
+      expect(Env.googleCloudSqlIpType).toBe("PSC");
+    });
+
+    test("🟢normalizes_case", () => {
+      process.env.GOOGLE_CLOUD_SQL_IP_TYPE = "private";
+      expect(Env.googleCloudSqlIpType).toBe("PRIVATE");
+    });
+
+    test("🔴throws_on_invalid_value", () => {
+      process.env.GOOGLE_CLOUD_SQL_IP_TYPE = "INVALID";
+      expect(() => Env.googleCloudSqlIpType).toThrow(
+        'Invalid GOOGLE_CLOUD_SQL_IP_TYPE: "INVALID". Expected one of: PUBLIC, PRIVATE, PSC.',
+      );
+    });
+  });
+
   describe("googleApplicationCredentials", () => {
     test("🔴throws_when_missing_in_cloud_sql_mode", () => {
       delete process.env.DATABASE_URL;

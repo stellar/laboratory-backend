@@ -1,7 +1,10 @@
+import { IpAddressTypes } from "@google-cloud/cloud-sql-connector";
+
 type CloudSqlEnv = {
   instanceConnectionName: string;
   user: string;
   database: string;
+  ipAddressType?: IpAddressTypes;
 };
 
 type ConnectionMode = "direct_database_url" | "cloud_sql_connector_iam";
@@ -51,7 +54,23 @@ class Env {
       instanceConnectionName: this.requiredString("POSTGRES_CONNECTION_NAME"),
       user: this.requiredString("POSTGRES_IAM_USER"),
       database: this.requiredString("DB_NAME"),
+      ipAddressType: this.googleCloudSqlIpType,
     };
+  }
+
+  static get googleCloudSqlIpType(): IpAddressTypes {
+    const raw = this.optionalString("GOOGLE_CLOUD_SQL_IP_TYPE");
+    if (!raw) {
+      return IpAddressTypes.PRIVATE;
+    }
+    const upper = raw.trim().toUpperCase();
+    const validIpTypes = Object.values(IpAddressTypes);
+    if (!validIpTypes.includes(upper as IpAddressTypes)) {
+      throw new Error(
+        `Invalid GOOGLE_CLOUD_SQL_IP_TYPE: "${raw}". Expected one of: ${validIpTypes.join(", ")}.`,
+      );
+    }
+    return upper as IpAddressTypes;
   }
 
   static get googleApplicationCredentials() {
@@ -89,4 +108,4 @@ class Env {
   }
 }
 
-export { Env, type CloudSqlEnv, type ConnectionMode };
+export { Env, type CloudSqlEnv, type ConnectionMode, type IpAddressTypes };
