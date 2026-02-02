@@ -69,8 +69,8 @@ describe("GET /api/contract/:contract_id/keys", () => {
       total_keys: 4,
       keys: [
         "BillingCyclePlanName",
-        "BillingCycleTimestamp",
         "BillingCyclePrice",
+        "BillingCycleTimestamp",
         "BillingPayment",
       ],
     });
