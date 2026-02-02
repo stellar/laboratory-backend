@@ -2,8 +2,8 @@
  * Cursor-based pagination helpers for efficient API pagination
  *
  * Formats:
- * - Simple: Base64 encoded pk_id (legacy)
- * - Compound: Base64 encoded JSON with pkId, sortValue, sortBy
+ * - Simple: Base64 encoded key_hash (legacy)
+ * - Compound: Base64 encoded JSON with keyHash, sortValue, sortBy
  */
 
 /**
@@ -19,7 +19,7 @@ export class InvalidCursorError extends Error {
 /**
  * Creates a pagination cursor from record data
  *
- * @param pkId - Primary key ID of the last record
+ * @param keyHash - Key hash of the last record, used as the primary key
  * @param sortValue - Sort value for multi-field sorting
  * @param sortBy - Field name used for sorting
  * @returns Base64 encoded cursor string
@@ -42,12 +42,12 @@ export const encodeCursor = (cursorData: CursorData): string => {
 export type CursorData = {
   /** The direction of sorting (ascending or descending) */
   cursorType: "next" | "prev";
-  /** The field name used for sorting (e.g., 'pk_id', 'updated_at', 'durability') */
+  /** The field name used for sorting (e.g., 'key_hash', 'updated_at', 'durability', 'ttl') */
   sortField?: string;
-  /** Position information for pagination. Stores the `pk_id` and `sortValue` of the boundary record used for next/prev navigation */
+  /** Position information for pagination. Stores the `key_hash` and `sortValue` of the boundary record used for next/prev navigation */
   position: {
-    /** Primary key ID of the boundary record for pagination */
-    pkId: string;
+    /** Key hash of the boundary record for pagination, used as the primary key */
+    keyHash: string;
     /** The value of the sort field. Example: `"2025-01-01T00:00:00Z"` when `sortField: "updated_at"` */
     sortValue?: number | string | bigint;
   };
@@ -57,7 +57,7 @@ export type CursorData = {
  * Parses a pagination cursor from API requests
  *
  * @param cursor - Base64 encoded cursor string
- * @returns Object with pkId (BigInt) and optionally sortValue, sortBy
+ * @returns Object with keyHash (BigInt) and optionally sortValue, sortBy
  */
 export const decodeCursor = (cursor: string): CursorData => {
   const decoded = Buffer.from(cursor, "base64").toString();

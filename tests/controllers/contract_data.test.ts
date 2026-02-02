@@ -59,7 +59,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(400);
     expect(mockResponse.json).toHaveBeenCalledWith({
       error:
-        "Invalid sort_by parameter invalid_field must be one of durability, pk_id, ttl, updated_at",
+        "Invalid sort_by parameter invalid_field must be one of durability, key_hash, ttl, updated_at",
     });
   });
 
@@ -262,7 +262,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     test("🔴cursor_data_mismatch_with_query_options_returns_400", async () => {
       mockRequest.query = {
         cursor:
-          "eyJzb3J0RGlyZWN0aW9uIjoiZGVzYyIsInBvc2l0aW9uIjp7InBrSWQiOiIxMTQ1ODU1MDkifX0=",
+          "eyJzb3J0RGlyZWN0aW9uIjoiZGVzYyIsInBvc2l0aW9uIjp7ImtleUhhc2giOiIxMTQ1ODU1MDkifX0=",
         sort_by: "updated_at",
       };
 

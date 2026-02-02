@@ -7,14 +7,14 @@ export enum SortDirection {
 
 export enum SortField {
   DURABILITY = "durability",
-  PK_ID = "pk_id",
+  KEY_HASH = "key_hash",
   TTL = "ttl",
   UPDATED_AT = "updated_at",
 }
 
 export const APIFieldToDBFieldMap: Record<SortField, string> = {
   [SortField.DURABILITY]: "durability",
-  [SortField.PK_ID]: "key_hash",
+  [SortField.KEY_HASH]: "key_hash",
   [SortField.TTL]: "live_until_ledger_sequence",
   [SortField.UPDATED_AT]: "closed_at",
 };

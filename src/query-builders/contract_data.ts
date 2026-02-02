@@ -104,7 +104,7 @@ class ContractDataQueryBuilder {
     const sortFieldPrefix =
       sortDbField === "live_until_ledger_sequence" ? "ttl." : "cd.";
 
-    if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
+    if (cursorData.sortField && cursorData.sortField !== SortField.KEY_HASH) {
       return `
         AND (
           ${sortFieldPrefix}${sortDbField} ${operator} ${this.paramManager.add(
@@ -113,14 +113,14 @@ class ContractDataQueryBuilder {
           OR (
             ${sortFieldPrefix}${sortDbField} = $${this.paramManager.getCount()}
             AND cd.key_hash ${operator} ${this.paramManager.add(
-              cursorData.position.pkId,
+              cursorData.position.keyHash,
             )}
           )
         )`;
     }
 
     return `AND cd.key_hash ${operator} ${this.paramManager.add(
-      cursorData.position.pkId,
+      cursorData.position.keyHash,
     )}`;
   }
 
@@ -131,7 +131,7 @@ class ContractDataQueryBuilder {
     const { sortField } = this.config;
     const sortDbField = APIFieldToDBFieldMap[sortField];
 
-    if (sortField === SortField.PK_ID) {
+    if (sortField === SortField.KEY_HASH) {
       const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
       return `ORDER BY ${keyHashColumn} ${sortDirection}`;
     }
