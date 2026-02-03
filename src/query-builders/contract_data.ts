@@ -177,10 +177,10 @@ class ContractDataQueryBuilder {
     if (cursorData) {
       query = `${baseQuery}${paginatedCTE}
       SELECT
-        *,
-        (live_until_ledger_sequence < (SELECT ledger_sequence FROM current_ledger)) AS expired
-      FROM paginated_result
-      CROSS JOIN current_ledger
+        pr.*,
+        (pr.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+      FROM paginated_result pr
+      CROSS JOIN current_ledger cl
       ${this.buildOrderByClause(sortDirection)}`;
     } else {
       query = `${baseQuery}
