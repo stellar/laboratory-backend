@@ -28,7 +28,7 @@ const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id } = req.params;
 
   const { cursor, limit = "20" } = req.query;
-  let { order = SortDirection.DESC, sort_by = SortField.PK_ID } = req.query;
+  let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
   sort_by = (sort_by as string).toLowerCase().trim() as SortField;
   order = (order as string).toLowerCase().trim() as SortDirection;
 
@@ -53,7 +53,7 @@ const parseRequestParams = (req: Request): RequestParams => {
   // sort field validation
   const validSortFields = [
     SortField.DURABILITY,
-    SortField.PK_ID,
+    SortField.KEY_HASH,
     SortField.TTL,
     SortField.UPDATED_AT,
   ];
@@ -64,7 +64,7 @@ const parseRequestParams = (req: Request): RequestParams => {
       )}`,
     );
   }
-  const sortField = sort_by ? (sort_by as SortField) : SortField.PK_ID;
+  const sortField = sort_by ? (sort_by as SortField) : SortField.KEY_HASH;
 
   // cursor data
   let cursorData: CursorData | undefined = undefined;
@@ -72,7 +72,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     cursorData = decodeCursor(cursor as string);
 
     // Validate cursor parameters match request parameters
-    if ((cursorData.sortField ?? SortField.PK_ID) !== sortField) {
+    if ((cursorData.sortField ?? SortField.KEY_HASH) !== sortField) {
       throw new CursorParameterMismatchError(
         "sort_by",
         sortField,

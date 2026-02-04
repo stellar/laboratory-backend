@@ -62,30 +62,29 @@ class ContractDataQueryBuilder {
     this.paramManager = new QueryParameterManager([config.contractId]);
   }
 
-  private buildBaseQuery(): string {
+  private buildSelectColumns(): string {
     return `
-      WITH cd_latest AS (
-        SELECT DISTINCT ON (key_hash) *
-        FROM contract_data
-        WHERE contract_id = $1
-        ORDER BY key_hash, ledger_sequence DESC
-      ),
-      latest_ledger AS (
-        SELECT ledger_sequence
-        FROM ttl
-        ORDER BY pk_id DESC
-        LIMIT 1
-      ),
-      final_result AS (
-        SELECT cd_latest.*, ttl_latest.live_until_ledger_sequence
-        FROM cd_latest
-        LEFT JOIN LATERAL (
-          SELECT live_until_ledger_sequence
-          FROM ttl
-          WHERE ttl.key_hash = cd_latest.key_hash
-          ORDER BY ledger_sequence DESC
-          LIMIT 1
-        ) ttl_latest ON true
+        cd.contract_id,
+        cd.ledger_sequence,
+        cd.key_hash,
+        cd.durability,
+        cd.key_symbol,
+        cd.key,
+        cd.val,
+        cd.closed_at,
+        ttl.live_until_ledger_sequence`;
+  }
+
+  private buildFromClause(): string {
+    return `
+      FROM contract_data cd
+      LEFT JOIN ttl ON ttl.key_hash = cd.key_hash`;
+  }
+
+  private buildCurrentLedgerCte(): string {
+    return `
+      WITH current_ledger AS (
+        SELECT ledger_sequence FROM ttl ORDER BY ledger_sequence DESC LIMIT 1
       )`;
   }
 
@@ -102,34 +101,47 @@ class ContractDataQueryBuilder {
     }
 
     const operator = effectiveSortDirection === SortDirection.DESC ? "<" : ">";
+    const sortFieldPrefix =
+      sortDbField === "live_until_ledger_sequence" ? "ttl." : "cd.";
 
-    if (cursorData.sortField && cursorData.sortField !== SortField.PK_ID) {
+    if (cursorData.sortField && cursorData.sortField !== SortField.KEY_HASH) {
       return `
         AND (
-          ${sortDbField} ${operator} ${this.paramManager.add(
+          ${sortFieldPrefix}${sortDbField} ${operator} ${this.paramManager.add(
             cursorData.position.sortValue,
           )}
           OR (
-            ${sortDbField} = $${this.paramManager.getCount()}
-            AND pk_id ${operator} ${this.paramManager.add(
-              BigInt(cursorData.position.pkId),
+            ${sortFieldPrefix}${sortDbField} = $${this.paramManager.getCount()}
+            AND cd.key_hash ${operator} ${this.paramManager.add(
+              cursorData.position.keyHash,
             )}
           )
         )`;
     }
 
-    return `AND pk_id ${operator} ${this.paramManager.add(
-      BigInt(cursorData.position.pkId),
+    return `AND cd.key_hash ${operator} ${this.paramManager.add(
+      cursorData.position.keyHash,
     )}`;
   }
 
-  private buildOrderByClause(sortDirection: SortDirection): string {
+  private buildOrderByClause(
+    sortDirection: SortDirection,
+    useTablePrefixes = false,
+  ): string {
     const { sortField } = this.config;
+    const sortDbField = APIFieldToDBFieldMap[sortField];
 
-    if (sortField === SortField.PK_ID) {
-      return `ORDER BY pk_id ${sortDirection}`;
+    if (sortField === SortField.KEY_HASH) {
+      const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
+      return `ORDER BY ${keyHashColumn} ${sortDirection}`;
     }
-    return `ORDER BY ${APIFieldToDBFieldMap[sortField]} ${sortDirection}, pk_id ${sortDirection}`;
+
+    const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
+    const sortColumn = useTablePrefixes
+      ? `${sortDbField === "live_until_ledger_sequence" ? "ttl" : "cd"}.${sortDbField}`
+      : sortDbField;
+
+    return `ORDER BY ${sortColumn} ${sortDirection}, ${keyHashColumn} ${sortDirection}`;
   }
 
   private buildPaginatedCTE(): string {
@@ -145,11 +157,11 @@ class ContractDataQueryBuilder {
         : invertSortDirection(sortDirection);
 
     return `,paginated_result AS (
-      SELECT *
-      FROM final_result
-      WHERE 1=1
+      SELECT ${this.buildSelectColumns()}
+      ${this.buildFromClause()}
+      WHERE cd.contract_id = $1
       ${this.buildPaginationClause()}
-      ${this.buildOrderByClause(effectiveSortDirection)}
+      ${this.buildOrderByClause(effectiveSortDirection, true)} -- Use table prefixes (cd. and ttl.)
       LIMIT ${this.paramManager.add(limit)}
     )`;
   }
@@ -157,23 +169,29 @@ class ContractDataQueryBuilder {
   build(): { query: string; params: any[] } {
     const { cursorData, sortDirection, limit } = this.config;
 
-    const baseQuery = this.buildBaseQuery();
+    const baseQuery = this.buildCurrentLedgerCte();
     const paginatedCTE = this.buildPaginatedCTE();
-    const fromClause = cursorData ? "paginated_result" : "final_result";
-    const finalOrderBy = this.buildOrderByClause(sortDirection);
 
-    let query = `${baseQuery}${paginatedCTE}
+    let query: string;
+
+    if (cursorData) {
+      query = `${baseQuery}${paginatedCTE}
       SELECT
-        *,
-        (live_until_ledger_sequence < latest_ledger.ledger_sequence) AS expired
-      FROM ${fromClause}
-      CROSS JOIN latest_ledger
-      WHERE 1=1
-      ${finalOrderBy}`;
-
-    if (!cursorData) {
-      // LIMIT is only needed here for the non-paginated (no cursor) scenario. Paginated queries already have LIMIT in the CTE.
-      query += `\nLIMIT ${this.paramManager.add(limit)}`;
+        pr.*,
+        (pr.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+      FROM paginated_result pr
+      CROSS JOIN current_ledger cl
+      ${this.buildOrderByClause(sortDirection)}`;
+    } else {
+      query = `${baseQuery}
+      SELECT
+        ${this.buildSelectColumns().trim()},
+        (ttl.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+      ${this.buildFromClause()}
+      CROSS JOIN current_ledger cl
+      WHERE cd.contract_id = $1
+      ${this.buildOrderByClause(sortDirection, true)} -- Use table prefixes (cd. and ttl.)
+      LIMIT ${this.paramManager.add(limit)}`;
     }
 
     return {

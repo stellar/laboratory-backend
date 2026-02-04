@@ -30,7 +30,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
-      pk_id: BigInt("114585509"),
     },
     {
       key_hash:
@@ -45,7 +44,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
       closed_at: new Date("2025-10-02T15:00:36Z"),
-      pk_id: BigInt("114585471"),
     },
     {
       key_hash:
@@ -60,7 +58,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
       closed_at: new Date("2025-10-01T15:00:36Z"),
-      pk_id: BigInt("114585490"),
     },
     {
       key_hash:
@@ -75,7 +72,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
       closed_at: new Date("2025-10-04T15:00:36Z"),
-      pk_id: BigInt("114585510"),
     },
     // Test data for second contract (CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA)
     // Should have 2 keys (with one empty string that gets filtered)
@@ -92,7 +88,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
-      pk_id: BigInt("114585511"),
     },
     {
       key_hash:
@@ -107,7 +102,6 @@ export async function seedKeysEndpointData(
       ),
       val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
-      pk_id: BigInt("114585512"),
     },
     {
       key_hash:
@@ -119,7 +113,6 @@ export async function seedKeysEndpointData(
       key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAAA=", "base64"),
       val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
-      pk_id: BigInt("114585513"),
     },
   ];
 
@@ -134,7 +127,6 @@ export async function seedKeysEndpointData(
       key: data.key,
       val: data.val,
       closed_at: data.closed_at,
-      pk_id: data.pk_id,
     })) as Prisma.contract_dataCreateManyInput[],
   });
 }

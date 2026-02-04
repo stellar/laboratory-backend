@@ -42,7 +42,9 @@ export const buildPaginationLinks = (
   const queryParams = {
     order: sortDirection as string,
     limit: limit.toString(),
-    ...(sortField !== SortField.PK_ID ? { sort_by: sortField as string } : {}),
+    ...(sortField !== SortField.KEY_HASH
+      ? { sort_by: sortField as string }
+      : {}),
     ...(cursor ? { cursor: cursor } : {}),
   };
   const baseUrl = `/api/contract/${contractId}/storage`;
@@ -59,11 +61,11 @@ export const buildPaginationLinks = (
     const lastRecord = results[results.length - 1];
     const nextCursor = encodeCursor({
       cursorType: "next",
-      sortField: sortField !== SortField.PK_ID ? sortField : undefined,
+      sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
       position: {
-        pkId: lastRecord.pk_id.toString(),
+        keyHash: lastRecord.key_hash,
         sortValue:
-          sortField !== SortField.PK_ID
+          sortField !== SortField.KEY_HASH
             ? (lastRecord as any)[sortDbField]
             : undefined,
       },
@@ -81,11 +83,11 @@ export const buildPaginationLinks = (
     const firstRecord = results[0];
     const prevCursor = encodeCursor({
       cursorType: "prev",
-      sortField: sortField !== SortField.PK_ID ? sortField : undefined,
+      sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
       position: {
-        pkId: firstRecord.pk_id.toString(),
+        keyHash: firstRecord.key_hash,
         sortValue:
-          sortField !== SortField.PK_ID
+          sortField !== SortField.KEY_HASH
             ? (firstRecord as any)[sortDbField]
             : undefined,
       },

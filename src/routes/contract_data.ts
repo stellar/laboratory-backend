@@ -24,7 +24,7 @@ const requestQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(10),
   order: z.enum(["asc", "desc"]).default("desc"),
   cursor: z.string().trim().optional(),
-  sort_by: z.enum(["durability", "pk_id", "ttl", "updated_at"]).optional(),
+  sort_by: z.enum(["durability", "key_hash", "ttl", "updated_at"]).optional(),
 });
 
 /**

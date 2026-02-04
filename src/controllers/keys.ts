@@ -8,18 +8,15 @@ export const getAllKeysForContract = async (
   try {
     const { contract_id } = req.params;
 
-    // Use Prisma ORM to get distinct key_symbol values
-    const result = await prisma.contract_data.findMany({
-      distinct: ["key_symbol"],
-      select: {
-        key_symbol: true,
-      },
-      where: {
-        contract_id: contract_id,
-      },
-    });
+    // Use raw SQL with DISTINCT to get unique key_symbol values efficiently
+    const result = await prisma.$queryRaw<Array<{ key_symbol: string }>>`
+      SELECT DISTINCT key_symbol
+      FROM contract_data
+      WHERE contract_id = ${contract_id}
+        AND key_symbol IS NOT NULL
+      ORDER BY key_symbol
+    `;
 
-    // Filter out null values and extract just the non empty key_symbol strings
     const keys = result
       .map(row => row.key_symbol)
       .filter(h => Boolean(h?.trim())) as string[];

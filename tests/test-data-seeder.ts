@@ -9,7 +9,6 @@ export interface TestContractData {
   key: Buffer;
   val: Buffer;
   closed_at: Date;
-  pk_id: bigint;
   live_until_ledger_sequence?: number;
 }
 
@@ -44,7 +43,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ),
       val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
       closed_at: new Date("2025-10-03T15:00:36Z"),
-      pk_id: BigInt("114585509"),
       live_until_ledger_sequence: 61482901,
     },
     {
@@ -60,7 +58,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ),
       val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
       closed_at: new Date("2025-10-02T15:00:36Z"),
-      pk_id: BigInt("114585471"),
       live_until_ledger_sequence: 61482902,
     },
     {
@@ -76,7 +73,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ),
       val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
       closed_at: new Date("2025-10-01T15:00:36Z"),
-      pk_id: BigInt("114585490"),
       live_until_ledger_sequence: 61482903,
     },
   ];
@@ -92,7 +88,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       key: data.key,
       val: data.val,
       closed_at: data.closed_at,
-      pk_id: data.pk_id,
     })) as Prisma.contract_dataCreateManyInput[],
   });
 
@@ -105,7 +100,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
         ledger_sequence: data.ledger_sequence,
         live_until_ledger_sequence: data.live_until_ledger_sequence!,
         closed_at: data.closed_at,
-        pk_id: data.pk_id,
       })),
   });
 }

@@ -177,10 +177,10 @@ export function setupCustomMatchers() {
         const decoded = Buffer.from(cursor, "base64").toString("utf-8");
         const parsed = JSON.parse(decoded);
 
-        if (!parsed.position || !parsed.position.pkId) {
+        if (!parsed.position || !parsed.position.keyHash) {
           return {
             message: () =>
-              `Expected cursor to have position.pkId, got ${JSON.stringify(
+              `Expected cursor to have position.keyHash, got ${JSON.stringify(
                 parsed,
               )}`,
             pass: false,

@@ -26,7 +26,7 @@ beforeAll(async () => {
 
   console.log("Starting postgres using testcontainers...");
 
-  testContainer = await new PostgreSqlContainer("postgres:15")
+  testContainer = await new PostgreSqlContainer("postgres:17-alpine")
     .withDatabase("testdb")
     .withUsername("testuser")
     .withPassword("testpass")
