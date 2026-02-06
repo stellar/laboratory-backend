@@ -54,7 +54,7 @@ class QueryParameterManager {
 }
 
 /**
- * Query builder for contract data with TTL caching
+ * Query builder for contract data with pagination
  */
 class ContractDataQueryBuilder {
   private paramManager: QueryParameterManager;
@@ -75,19 +75,18 @@ class ContractDataQueryBuilder {
         cd.key,
         cd.val,
         cd.closed_at,
-        ttl.live_until_ledger_sequence`;
+        cd.live_until_ledger_sequence`;
   }
 
   private buildFromClause(): string {
     return `
-      FROM contract_data cd
-      LEFT JOIN ttl ON ttl.key_hash = cd.key_hash`;
+      FROM contract_data cd`;
   }
 
   private buildCurrentLedgerCte(): string {
     return `
       WITH current_ledger AS (
-        SELECT ledger_sequence FROM ttl ORDER BY ledger_sequence DESC LIMIT 1
+        SELECT ledger_sequence FROM contract_data ORDER BY ledger_sequence DESC LIMIT 1
       )`;
   }
 
@@ -104,17 +103,15 @@ class ContractDataQueryBuilder {
     }
 
     const operator = effectiveSortDirection === SortDirection.DESC ? "<" : ">";
-    const sortFieldPrefix =
-      sortDbField === "live_until_ledger_sequence" ? "ttl." : "cd.";
 
     if (cursorData.sortField && cursorData.sortField !== SortField.KEY_HASH) {
       return `
         AND (
-          ${sortFieldPrefix}${sortDbField} ${operator} ${this.paramManager.add(
+          cd.${sortDbField} ${operator} ${this.paramManager.add(
             cursorData.position.sortValue,
           )}
           OR (
-            ${sortFieldPrefix}${sortDbField} = $${this.paramManager.getCount()}
+            cd.${sortDbField} = $${this.paramManager.getCount()}
             AND cd.key_hash ${operator} ${this.paramManager.add(
               cursorData.position.keyHash,
             )}
@@ -140,9 +137,7 @@ class ContractDataQueryBuilder {
     }
 
     const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
-    const sortColumn = useTablePrefixes
-      ? `${sortDbField === "live_until_ledger_sequence" ? "ttl" : "cd"}.${sortDbField}`
-      : sortDbField;
+    const sortColumn = useTablePrefixes ? `cd.${sortDbField}` : sortDbField;
 
     return `ORDER BY ${sortColumn} ${sortDirection}, ${keyHashColumn} ${sortDirection}`;
   }
@@ -164,7 +159,7 @@ class ContractDataQueryBuilder {
       ${this.buildFromClause()}
       WHERE cd.contract_id = $1
       ${this.buildPaginationClause()}
-      ${this.buildOrderByClause(effectiveSortDirection, true)} -- Use table prefixes (cd. and ttl.)
+      ${this.buildOrderByClause(effectiveSortDirection, true)}
       LIMIT ${this.paramManager.add(limit)}
     )`;
   }
@@ -189,11 +184,11 @@ class ContractDataQueryBuilder {
       query = `${baseQuery}
       SELECT
         ${this.buildSelectColumns().trim()},
-        (ttl.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+        (cd.live_until_ledger_sequence < cl.ledger_sequence) AS expired
       ${this.buildFromClause()}
       CROSS JOIN current_ledger cl
       WHERE cd.contract_id = $1
-      ${this.buildOrderByClause(sortDirection, true)} -- Use table prefixes (cd. and ttl.)
+      ${this.buildOrderByClause(sortDirection, true)}
       LIMIT ${this.paramManager.add(limit)}`;
     }
 
@@ -205,7 +200,7 @@ class ContractDataQueryBuilder {
 }
 
 /**
- * Builds the complete SQL query for contract data with TTL caching and pagination.
+ * Builds the complete SQL query for contract data with pagination.
  * @param config - Configuration object containing all query parameters
  * @returns Object containing the SQL query string and parameters array
  */

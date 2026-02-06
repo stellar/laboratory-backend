@@ -10,14 +10,15 @@ datasource db {
 }
 
 model contract_data {
-  contract_id     String?
-  ledger_sequence Int
-  key_hash        String   @id(map: "contract_data_loadtest_pkey")
-  durability      String?
-  key_symbol      String?
-  key             Bytes?
-  val             Bytes?
-  closed_at       DateTime @db.Timestamptz(6)
+  contract_id                String?
+  ledger_sequence            Int
+  key_hash                   String   @id(map: "contract_data_loadtest_pkey")
+  durability                 String?
+  key_symbol                 String?
+  key                        Bytes?
+  val                        Bytes?
+  closed_at                  DateTime @db.Timestamptz(6)
+  live_until_ledger_sequence Int?
 
   @@index([contract_id, key_hash, ledger_sequence(sort: Desc)], map: "idx_contract_data_contract_id_key_hash_ledger_sequence_desc_loa")
   @@index([contract_id], map: "idx_contract_data_contract_id_loadtest")
