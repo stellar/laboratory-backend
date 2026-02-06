@@ -4,6 +4,9 @@ import {
   SortDirection,
   SortField,
 } from "../types/contract_data";
+import { QueryResult, SqlParam } from "./shared";
+
+export type { QueryResult as ContractDataQueryResult, SqlParam } from "./shared";
 
 /**
  * Configuration object for contract data query building
@@ -30,18 +33,18 @@ const invertSortDirection = (sortDirection: SortDirection): SortDirection => {
  * Parameter manager for SQL query building
  */
 class QueryParameterManager {
-  private params: any[] = [];
+  private params: SqlParam[] = [];
 
-  constructor(initialParams: any[] = []) {
+  constructor(initialParams: SqlParam[] = []) {
     this.params = [...initialParams];
   }
 
-  add(param: any): string {
+  add(param: SqlParam): string {
     this.params.push(param);
     return `$${this.params.length}`;
   }
 
-  getParams(): any[] {
+  getParams(): SqlParam[] {
     return [...this.params];
   }
 
@@ -126,7 +129,7 @@ class ContractDataQueryBuilder {
 
   private buildOrderByClause(
     sortDirection: SortDirection,
-    useTablePrefixes = false,
+    useTablePrefixes: boolean = false,
   ): string {
     const { sortField } = this.config;
     const sortDbField = APIFieldToDBFieldMap[sortField];
@@ -166,7 +169,7 @@ class ContractDataQueryBuilder {
     )`;
   }
 
-  build(): { query: string; params: any[] } {
+  build(): QueryResult {
     const { cursorData, sortDirection, limit } = this.config;
 
     const baseQuery = this.buildCurrentLedgerCte();
@@ -208,7 +211,7 @@ class ContractDataQueryBuilder {
  */
 export const buildContractDataQuery = (
   config: ContractDataQueryConfig,
-): { query: string; params: any[] } => {
+): QueryResult => {
   const builder = new ContractDataQueryBuilder(config);
   return builder.build();
 };
