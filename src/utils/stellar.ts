@@ -19,15 +19,25 @@ class StellarService {
     const isTestnet = networkPassphrase === Networks.TESTNET;
 
     if (isTestnet) {
-      const testnetRpcClient = new rpc.Server(rpcUrl ?? DEFAULT_TESTNET_RPC_URL);
-      this.fetchLatestLedger = async () => (await testnetRpcClient.getLatestLedger()).sequence;
+      const testnetRpcClient = new rpc.Server(
+        rpcUrl ?? DEFAULT_TESTNET_RPC_URL,
+      );
+      this.fetchLatestLedger = async () =>
+        (await testnetRpcClient.getLatestLedger()).sequence;
     } else if (rpcUrl) {
       const pubnetRpcClient = new rpc.Server(rpcUrl);
-      this.fetchLatestLedger = async () => (await pubnetRpcClient.getLatestLedger()).sequence;
+      this.fetchLatestLedger = async () =>
+        (await pubnetRpcClient.getLatestLedger()).sequence;
     } else {
-      console.warn("RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.");
-      const pubnetHorizonClient = new Horizon.Server(horizonUrl ?? DEFAULT_PUBNET_HORIZON_URL, {});
-      this.fetchLatestLedger = async () => (await pubnetHorizonClient.root()).core_latest_ledger;
+      console.warn(
+        "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
+      );
+      const pubnetHorizonClient = new Horizon.Server(
+        horizonUrl ?? DEFAULT_PUBNET_HORIZON_URL,
+        {},
+      );
+      this.fetchLatestLedger = async () =>
+        (await pubnetHorizonClient.root()).core_latest_ledger;
     }
 
     this.cachedLatestLedgerSequence = undefined;
