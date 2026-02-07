@@ -4,6 +4,12 @@ import {
   SortDirection,
   SortField,
 } from "../types/contract_data";
+import { QueryResult, SqlParam } from "./shared";
+
+export type {
+  QueryResult as ContractDataQueryResult,
+  SqlParam,
+} from "./shared";
 
 /**
  * Configuration object for contract data query building
@@ -11,6 +17,7 @@ import {
 export interface ContractDataQueryConfig {
   contractId: string;
   cursorData?: CursorData;
+  latestLedgerSequence: number;
   limit: number;
   sortDbField: string;
   sortDirection: SortDirection;
@@ -30,18 +37,18 @@ const invertSortDirection = (sortDirection: SortDirection): SortDirection => {
  * Parameter manager for SQL query building
  */
 class QueryParameterManager {
-  private params: any[] = [];
+  private params: SqlParam[] = [];
 
-  constructor(initialParams: any[] = []) {
+  constructor(initialParams: SqlParam[] = []) {
     this.params = [...initialParams];
   }
 
-  add(param: any): string {
+  add(param: SqlParam): string {
     this.params.push(param);
     return `$${this.params.length}`;
   }
 
-  getParams(): any[] {
+  getParams(): SqlParam[] {
     return [...this.params];
   }
 
@@ -51,7 +58,7 @@ class QueryParameterManager {
 }
 
 /**
- * Query builder for contract data with TTL caching
+ * Query builder for contract data with pagination
  */
 class ContractDataQueryBuilder {
   private paramManager: QueryParameterManager;
@@ -59,7 +66,10 @@ class ContractDataQueryBuilder {
 
   constructor(config: ContractDataQueryConfig) {
     this.config = config;
-    this.paramManager = new QueryParameterManager([config.contractId]);
+    this.paramManager = new QueryParameterManager([
+      config.contractId,
+      config.latestLedgerSequence,
+    ]);
   }
 
   private buildSelectColumns(): string {
@@ -72,20 +82,12 @@ class ContractDataQueryBuilder {
         cd.key,
         cd.val,
         cd.closed_at,
-        ttl.live_until_ledger_sequence`;
+        cd.live_until_ledger_sequence`;
   }
 
   private buildFromClause(): string {
     return `
-      FROM contract_data cd
-      LEFT JOIN ttl ON ttl.key_hash = cd.key_hash`;
-  }
-
-  private buildCurrentLedgerCte(): string {
-    return `
-      WITH current_ledger AS (
-        SELECT ledger_sequence FROM ttl ORDER BY ledger_sequence DESC LIMIT 1
-      )`;
+      FROM contract_data cd`;
   }
 
   private buildPaginationClause(): string {
@@ -101,17 +103,15 @@ class ContractDataQueryBuilder {
     }
 
     const operator = effectiveSortDirection === SortDirection.DESC ? "<" : ">";
-    const sortFieldPrefix =
-      sortDbField === "live_until_ledger_sequence" ? "ttl." : "cd.";
 
     if (cursorData.sortField && cursorData.sortField !== SortField.KEY_HASH) {
       return `
         AND (
-          ${sortFieldPrefix}${sortDbField} ${operator} ${this.paramManager.add(
+          cd.${sortDbField} ${operator} ${this.paramManager.add(
             cursorData.position.sortValue,
           )}
           OR (
-            ${sortFieldPrefix}${sortDbField} = $${this.paramManager.getCount()}
+            cd.${sortDbField} = $${this.paramManager.getCount()}
             AND cd.key_hash ${operator} ${this.paramManager.add(
               cursorData.position.keyHash,
             )}
@@ -126,7 +126,7 @@ class ContractDataQueryBuilder {
 
   private buildOrderByClause(
     sortDirection: SortDirection,
-    useTablePrefixes = false,
+    useTablePrefixes: boolean = false,
   ): string {
     const { sortField } = this.config;
     const sortDbField = APIFieldToDBFieldMap[sortField];
@@ -137,9 +137,7 @@ class ContractDataQueryBuilder {
     }
 
     const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
-    const sortColumn = useTablePrefixes
-      ? `${sortDbField === "live_until_ledger_sequence" ? "ttl" : "cd"}.${sortDbField}`
-      : sortDbField;
+    const sortColumn = useTablePrefixes ? `cd.${sortDbField}` : sortDbField;
 
     return `ORDER BY ${sortColumn} ${sortDirection}, ${keyHashColumn} ${sortDirection}`;
   }
@@ -156,41 +154,38 @@ class ContractDataQueryBuilder {
         ? sortDirection
         : invertSortDirection(sortDirection);
 
-    return `,paginated_result AS (
+    return `WITH paginated_result AS (
       SELECT ${this.buildSelectColumns()}
       ${this.buildFromClause()}
       WHERE cd.contract_id = $1
       ${this.buildPaginationClause()}
-      ${this.buildOrderByClause(effectiveSortDirection, true)} -- Use table prefixes (cd. and ttl.)
+      ${this.buildOrderByClause(effectiveSortDirection, true)}
       LIMIT ${this.paramManager.add(limit)}
     )`;
   }
 
-  build(): { query: string; params: any[] } {
+  build(): QueryResult {
     const { cursorData, sortDirection, limit } = this.config;
 
-    const baseQuery = this.buildCurrentLedgerCte();
-    const paginatedCTE = this.buildPaginatedCTE();
+    const latestLedgerParam = "$2";
 
     let query: string;
 
     if (cursorData) {
-      query = `${baseQuery}${paginatedCTE}
+      const paginatedCTE = this.buildPaginatedCTE();
+      query = `${paginatedCTE}
       SELECT
         pr.*,
-        (pr.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+        (pr.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
       FROM paginated_result pr
-      CROSS JOIN current_ledger cl
       ${this.buildOrderByClause(sortDirection)}`;
     } else {
-      query = `${baseQuery}
-      SELECT
+      query = `SELECT
         ${this.buildSelectColumns().trim()},
-        (ttl.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+        (cd.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
       ${this.buildFromClause()}
-      CROSS JOIN current_ledger cl
       WHERE cd.contract_id = $1
-      ${this.buildOrderByClause(sortDirection, true)} -- Use table prefixes (cd. and ttl.)
+      ${this.buildOrderByClause(sortDirection, true)}
       LIMIT ${this.paramManager.add(limit)}`;
     }
 
@@ -202,13 +197,13 @@ class ContractDataQueryBuilder {
 }
 
 /**
- * Builds the complete SQL query for contract data with TTL caching and pagination.
+ * Builds the complete SQL query for contract data with pagination.
  * @param config - Configuration object containing all query parameters
  * @returns Object containing the SQL query string and parameters array
  */
 export const buildContractDataQuery = (
   config: ContractDataQueryConfig,
-): { query: string; params: any[] } => {
+): QueryResult => {
   const builder = new ContractDataQueryBuilder(config);
   return builder.build();
 };

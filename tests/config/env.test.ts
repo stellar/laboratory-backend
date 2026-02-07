@@ -1,3 +1,4 @@
+import { Networks } from "@stellar/stellar-sdk";
 import { Env } from "../../src/config/env";
 
 describe("Env", () => {
@@ -62,6 +63,42 @@ describe("Env", () => {
     test("🟡returns_undefined_for_empty_string", () => {
       process.env.DATABASE_URL = "";
       expect(Env.databaseUrl).toBeUndefined();
+    });
+  });
+
+  describe("networkPassphrase", () => {
+    test("🟢defaults_to_testnet_when_missing", () => {
+      delete process.env.NETWORK_PASSPHRASE;
+      expect(Env.networkPassphrase).toBe(Networks.TESTNET);
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.NETWORK_PASSPHRASE = Networks.PUBLIC;
+      expect(Env.networkPassphrase).toBe(Networks.PUBLIC);
+    });
+  });
+
+  describe("horizonUrl", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.HORIZON_URL;
+      expect(Env.horizonUrl).toBeUndefined();
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.HORIZON_URL = "  https://horizon.example.org  ";
+      expect(Env.horizonUrl).toBe("https://horizon.example.org");
+    });
+  });
+
+  describe("rpcUrl", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.RPC_URL;
+      expect(Env.rpcUrl).toBeUndefined();
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.RPC_URL = "  https://rpc.example.org  ";
+      expect(Env.rpcUrl).toBe("https://rpc.example.org");
     });
   });
 

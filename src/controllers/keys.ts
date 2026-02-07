@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { prisma } from "../utils/connect";
+import { buildKeysQuery } from "../query-builders/keys";
 
 export const getAllKeysForContract = async (
   req: Request,
@@ -8,14 +9,11 @@ export const getAllKeysForContract = async (
   try {
     const { contract_id } = req.params;
 
-    // Use raw SQL with DISTINCT to get unique key_symbol values efficiently
-    const result = await prisma.$queryRaw<Array<{ key_symbol: string }>>`
-      SELECT DISTINCT key_symbol
-      FROM contract_data
-      WHERE contract_id = ${contract_id}
-        AND key_symbol IS NOT NULL
-      ORDER BY key_symbol
-    `;
+    const { query, params } = buildKeysQuery(contract_id);
+    const result = await prisma.$queryRawUnsafe<Array<{ key_symbol: string }>>(
+      query,
+      ...params,
+    );
 
     const keys = result
       .map(row => row.key_symbol)
