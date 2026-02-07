@@ -14,6 +14,7 @@ export type { QueryResult as ContractDataQueryResult, SqlParam } from "./shared"
 export interface ContractDataQueryConfig {
   contractId: string;
   cursorData?: CursorData;
+  latestLedgerSequence: number;
   limit: number;
   sortDbField: string;
   sortDirection: SortDirection;
@@ -62,7 +63,10 @@ class ContractDataQueryBuilder {
 
   constructor(config: ContractDataQueryConfig) {
     this.config = config;
-    this.paramManager = new QueryParameterManager([config.contractId]);
+    this.paramManager = new QueryParameterManager([
+      config.contractId,
+      config.latestLedgerSequence,
+    ]);
   }
 
   private buildSelectColumns(): string {
@@ -81,13 +85,6 @@ class ContractDataQueryBuilder {
   private buildFromClause(): string {
     return `
       FROM contract_data cd`;
-  }
-
-  private buildCurrentLedgerCte(): string {
-    return `
-      WITH current_ledger AS (
-        SELECT ledger_sequence FROM contract_data ORDER BY ledger_sequence DESC LIMIT 1
-      )`;
   }
 
   private buildPaginationClause(): string {
@@ -154,7 +151,7 @@ class ContractDataQueryBuilder {
         ? sortDirection
         : invertSortDirection(sortDirection);
 
-    return `,paginated_result AS (
+    return `WITH paginated_result AS (
       SELECT ${this.buildSelectColumns()}
       ${this.buildFromClause()}
       WHERE cd.contract_id = $1
@@ -167,26 +164,23 @@ class ContractDataQueryBuilder {
   build(): QueryResult {
     const { cursorData, sortDirection, limit } = this.config;
 
-    const baseQuery = this.buildCurrentLedgerCte();
-    const paginatedCTE = this.buildPaginatedCTE();
+    const latestLedgerParam = "$2";
 
     let query: string;
 
     if (cursorData) {
-      query = `${baseQuery}${paginatedCTE}
+      const paginatedCTE = this.buildPaginatedCTE();
+      query = `${paginatedCTE}
       SELECT
         pr.*,
-        (pr.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+        (pr.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
       FROM paginated_result pr
-      CROSS JOIN current_ledger cl
       ${this.buildOrderByClause(sortDirection)}`;
     } else {
-      query = `${baseQuery}
-      SELECT
+      query = `SELECT
         ${this.buildSelectColumns().trim()},
-        (cd.live_until_ledger_sequence < cl.ledger_sequence) AS expired
+        (cd.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
       ${this.buildFromClause()}
-      CROSS JOIN current_ledger cl
       WHERE cd.contract_id = $1
       ${this.buildOrderByClause(sortDirection, true)}
       LIMIT ${this.paramManager.add(limit)}`;
