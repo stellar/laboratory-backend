@@ -98,7 +98,7 @@ function queryWithCursorSortField(
       FROM contract_data cd
       WHERE cd.contract_id = ${contractId}
         AND (
-          ${Prisma.raw(`${sortCol} ${op}`)} ${cursorSortValue}}
+          ${Prisma.raw(`${sortCol} ${op}`)} ${cursorSortValue}
           OR (
             ${Prisma.raw(sortCol)} = ${cursorSortValue}
             AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
