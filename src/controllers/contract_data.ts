@@ -129,11 +129,8 @@ const getContractDataWithTTL = async (
     sortDirection,
     sortField,
   };
-  const { query, params } = buildContractDataQuery(config);
-
-  const results = await prisma.$queryRawUnsafe<ContractData[]>(
-    query,
-    ...params,
+  const results = await prisma.$queryRaw<ContractData[]>(
+    buildContractDataQuery(config),
   );
 
   return results;

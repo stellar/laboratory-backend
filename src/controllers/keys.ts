@@ -9,10 +9,8 @@ export const getAllKeysForContract = async (
   try {
     const { contract_id } = req.params;
 
-    const { query, params } = buildKeysQuery(contract_id);
-    const result = await prisma.$queryRawUnsafe<Array<{ key_symbol: string }>>(
-      query,
-      ...params,
+    const result = await prisma.$queryRaw<Array<{ key_symbol: string }>>(
+      buildKeysQuery(contract_id),
     );
 
     const keys = result

@@ -1,13 +1,9 @@
+import { Prisma } from "../../generated/prisma";
 import { CursorData } from "../helpers/cursor";
-import {
-  APIFieldToDBFieldMap,
-  SortDirection,
-  SortField,
-} from "../types/contract_data";
-import { QueryResult, SqlParam } from "./shared";
+import { SortDirection, SortField } from "../types/contract_data";
 
 /**
- * Configuration object for contract data query building
+ * Configuration for building a contract data query (storage endpoint).
  */
 export interface ContractDataQueryConfig {
   contractId: string;
@@ -19,186 +15,209 @@ export interface ContractDataQueryConfig {
   sortField: SortField;
 }
 
-/**
- * Utility function to invert sort direction
- */
-const invertSortDirection = (sortDirection: SortDirection): SortDirection => {
-  return sortDirection === SortDirection.ASC
-    ? SortDirection.DESC
-    : SortDirection.ASC;
-};
+const SELECT_COLUMNS =
+  "cd.contract_id, cd.ledger_sequence, cd.key_hash, cd.durability, cd.key_symbol, cd.key, cd.val, cd.closed_at, cd.live_until_ledger_sequence";
 
 /**
- * Parameter manager for SQL query building
+ * Builds an ORDER BY clause for contract_data (or CTE alias).
+ * @param direction - ASC or DESC
+ * @param sortDbField - DB column used for sort (e.g. closed_at, durability)
+ * @param sortField - API sort field; KEY_HASH uses key_hash only
+ * @param tablePrefix - Table/alias prefix: "", "cd.", or "pr."
+ * @returns SQL ORDER BY fragment (no trailing semicolon)
  */
-class QueryParameterManager {
-  private params: SqlParam[] = [];
-
-  constructor(initialParams: SqlParam[] = []) {
-    this.params = [...initialParams];
+function orderBy(
+  direction: SortDirection,
+  sortDbField: string,
+  sortField: SortField,
+  tablePrefix: "" | "cd." | "pr.",
+): string {
+  const p = tablePrefix;
+  if (sortField === SortField.KEY_HASH) {
+    return `ORDER BY ${p}key_hash ${direction}`;
   }
-
-  add(param: SqlParam): string {
-    this.params.push(param);
-    return `$${this.params.length}`;
-  }
-
-  getParams(): SqlParam[] {
-    return [...this.params];
-  }
-
-  getCount(): number {
-    return this.params.length;
-  }
+  return `ORDER BY ${p}${sortDbField} ${direction}, ${p}key_hash ${direction}`;
 }
 
 /**
- * Query builder for contract data with pagination
+ * First-page contract data query (no cursor). Parameterized for $queryRaw.
+ * @returns Prisma.Sql for a single SELECT from contract_data with `expired` column.
  */
-class ContractDataQueryBuilder {
-  private paramManager: QueryParameterManager;
-  private config: ContractDataQueryConfig;
+function queryWithoutCursor(
+  contractId: string,
+  latestLedgerSequence: number,
+  limit: number,
+  sortDbField: string,
+  sortDirection: SortDirection,
+  sortField: SortField,
+): Prisma.Sql {
+  const orderByClause = orderBy(sortDirection, sortDbField, sortField, "cd.");
+  return Prisma.sql`
+    SELECT ${Prisma.raw(SELECT_COLUMNS)},
+      (cd.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+    FROM contract_data cd
+    WHERE cd.contract_id = ${contractId}
+    ${Prisma.raw(orderByClause)}
+    LIMIT ${limit}
+  `;
+}
 
-  constructor(config: ContractDataQueryConfig) {
-    this.config = config;
-    this.paramManager = new QueryParameterManager([
-      config.contractId,
-      config.latestLedgerSequence,
-    ]);
-  }
+/**
+ * Cursor-paginated contract data query when sort is by a field other than key_hash.
+ * Uses a CTE to fetch the page then applies the requested order for the response.
+ * @param cursorKeyHash - key_hash of the cursor row
+ * @param cursorSortValue - sort column value at the cursor (for tiebreaker)
+ * @param cursorType - "next" or "prev" (inverts comparison in CTE)
+ * @returns Prisma.Sql for WITH ... SELECT from paginated_result
+ */
+function queryWithCursorSortField(
+  contractId: string,
+  latestLedgerSequence: number,
+  limit: number,
+  sortDbField: string,
+  sortDirection: SortDirection,
+  sortField: SortField,
+  cursorKeyHash: string,
+  cursorSortValue: number | string | bigint,
+  cursorType: "next" | "prev",
+): Prisma.Sql {
+  const directionInCTE =
+    cursorType === "next"
+      ? sortDirection
+      : sortDirection === SortDirection.ASC
+        ? SortDirection.DESC
+        : SortDirection.ASC;
+  const op = directionInCTE === SortDirection.DESC ? "<" : ">";
+  const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
+  const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
+  const sortCol = `cd.${sortDbField}`;
 
-  private buildSelectColumns(): string {
-    return `
-        cd.contract_id,
-        cd.ledger_sequence,
-        cd.key_hash,
-        cd.durability,
-        cd.key_symbol,
-        cd.key,
-        cd.val,
-        cd.closed_at,
-        cd.live_until_ledger_sequence`;
-  }
-
-  private buildFromClause(): string {
-    return `
-      FROM contract_data cd`;
-  }
-
-  private buildPaginationClause(): string {
-    const { cursorData, sortDirection, sortDbField } = this.config;
-
-    if (!cursorData) {
-      return "";
-    }
-
-    let effectiveSortDirection = sortDirection;
-    if (cursorData.cursorType === "prev") {
-      effectiveSortDirection = invertSortDirection(sortDirection);
-    }
-
-    const operator = effectiveSortDirection === SortDirection.DESC ? "<" : ">";
-
-    if (cursorData.sortField && cursorData.sortField !== SortField.KEY_HASH) {
-      return `
+  return Prisma.sql`
+    WITH paginated_result AS (
+      SELECT ${Prisma.raw(SELECT_COLUMNS)}
+      FROM contract_data cd
+      WHERE cd.contract_id = ${contractId}
         AND (
-          cd.${sortDbField} ${operator} ${this.paramManager.add(
-            cursorData.position.sortValue,
-          )}
+          ${Prisma.raw(`${sortCol} ${op}`)} ${cursorSortValue}}
           OR (
-            cd.${sortDbField} = $${this.paramManager.getCount()}
-            AND cd.key_hash ${operator} ${this.paramManager.add(
-              cursorData.position.keyHash,
-            )}
+            ${Prisma.raw(sortCol)} = ${cursorSortValue}
+            AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
           )
-        )`;
-    }
-
-    return `AND cd.key_hash ${operator} ${this.paramManager.add(
-      cursorData.position.keyHash,
-    )}`;
-  }
-
-  private buildOrderByClause(
-    sortDirection: SortDirection,
-    useTablePrefixes: boolean = false,
-  ): string {
-    const { sortField } = this.config;
-    const sortDbField = APIFieldToDBFieldMap[sortField];
-
-    if (sortField === SortField.KEY_HASH) {
-      const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
-      return `ORDER BY ${keyHashColumn} ${sortDirection}`;
-    }
-
-    const keyHashColumn = useTablePrefixes ? "cd.key_hash" : "key_hash";
-    const sortColumn = useTablePrefixes ? `cd.${sortDbField}` : sortDbField;
-
-    return `ORDER BY ${sortColumn} ${sortDirection}, ${keyHashColumn} ${sortDirection}`;
-  }
-
-  private buildPaginatedCTE(): string {
-    const { cursorData, sortDirection, limit } = this.config;
-
-    if (!cursorData) {
-      return "";
-    }
-
-    const effectiveSortDirection =
-      cursorData.cursorType === "next"
-        ? sortDirection
-        : invertSortDirection(sortDirection);
-
-    return `WITH paginated_result AS (
-      SELECT ${this.buildSelectColumns()}
-      ${this.buildFromClause()}
-      WHERE cd.contract_id = $1
-      ${this.buildPaginationClause()}
-      ${this.buildOrderByClause(effectiveSortDirection, true)}
-      LIMIT ${this.paramManager.add(limit)}
-    )`;
-  }
-
-  build(): QueryResult {
-    const { cursorData, sortDirection, limit } = this.config;
-
-    const latestLedgerParam = "$2";
-
-    let query: string;
-
-    if (cursorData) {
-      const paginatedCTE = this.buildPaginatedCTE();
-      query = `${paginatedCTE}
-      SELECT
-        pr.*,
-        (pr.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
-      FROM paginated_result pr
-      ${this.buildOrderByClause(sortDirection)}`;
-    } else {
-      query = `SELECT
-        ${this.buildSelectColumns().trim()},
-        (cd.live_until_ledger_sequence < ${latestLedgerParam}) AS expired
-      ${this.buildFromClause()}
-      WHERE cd.contract_id = $1
-      ${this.buildOrderByClause(sortDirection, true)}
-      LIMIT ${this.paramManager.add(limit)}`;
-    }
-
-    return {
-      query: query.trim(),
-      params: this.paramManager.getParams(),
-    };
-  }
+        )
+      ${Prisma.raw(orderByInCTE)}
+      LIMIT ${limit}
+    )
+    SELECT pr.*,
+      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+    FROM paginated_result pr
+    ${Prisma.raw(orderByFinal)}
+  `;
 }
 
 /**
- * Builds the complete SQL query for contract data with pagination.
- * @param config - Configuration object containing all query parameters
- * @returns Object containing the SQL query string and parameters array
+ * Cursor-paginated contract data query when sort is by key_hash only.
+ * Uses a CTE to fetch the page then applies the requested order for the response.
+ * @param cursorKeyHash - key_hash of the cursor row
+ * @param cursorType - "next" or "prev" (inverts comparison in CTE)
+ * @returns Prisma.Sql for WITH ... SELECT from paginated_result
+ */
+function queryWithCursorKeyHash(
+  contractId: string,
+  latestLedgerSequence: number,
+  limit: number,
+  sortDbField: string,
+  sortDirection: SortDirection,
+  sortField: SortField,
+  cursorKeyHash: string,
+  cursorType: "next" | "prev",
+): Prisma.Sql {
+  const directionInCTE =
+    cursorType === "next"
+      ? sortDirection
+      : sortDirection === SortDirection.ASC
+        ? SortDirection.DESC
+        : SortDirection.ASC;
+  const op = directionInCTE === SortDirection.DESC ? "<" : ">";
+  const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
+  const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
+
+  return Prisma.sql`
+    WITH paginated_result AS (
+      SELECT ${Prisma.raw(SELECT_COLUMNS)}
+      FROM contract_data cd
+      WHERE cd.contract_id = ${contractId}
+        AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
+      ${Prisma.raw(orderByInCTE)}
+      LIMIT ${limit}
+    )
+    SELECT pr.*,
+      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+    FROM paginated_result pr
+    ${Prisma.raw(orderByFinal)}
+  `;
+}
+
+/**
+ * Builds the contract data query for the storage endpoint.
+ * Chooses no-cursor, cursor-by-sort-field, or cursor-by-key-hash based on config.
+ * @param config - Contract id, cursor (if any), limit, sort, and latest ledger
+ * @returns Prisma.Sql safe for prisma.$queryRaw (parameterized)
  */
 export const buildContractDataQuery = (
   config: ContractDataQueryConfig,
-): QueryResult => {
-  const builder = new ContractDataQueryBuilder(config);
-  return builder.build();
+): Prisma.Sql => {
+  const {
+    contractId,
+    cursorData,
+    latestLedgerSequence,
+    limit,
+    sortDbField,
+    sortDirection,
+    sortField,
+  } = config;
+
+  if (!cursorData) {
+    // First query (not paginated)
+    return queryWithoutCursor(
+      contractId,
+      latestLedgerSequence,
+      limit,
+      sortDbField,
+      sortDirection,
+      sortField,
+    );
+  }
+
+  const { keyHash, sortValue } = cursorData.position;
+  const hasSortField =
+    cursorData.sortField &&
+    cursorData.sortField !== SortField.KEY_HASH &&
+    sortValue !== undefined;
+
+  if (!hasSortField) {
+    // Cursor-paginated query (simple cursor w/ `key_hash` only)
+    return queryWithCursorKeyHash(
+      contractId,
+      latestLedgerSequence,
+      limit,
+      sortDbField,
+      sortDirection,
+      sortField,
+      keyHash,
+      cursorData.cursorType,
+    );
+  }
+
+  // Cursor-paginated query (combined cursor w/ `key_hash` and a sortField)
+  return queryWithCursorSortField(
+    contractId,
+    latestLedgerSequence,
+    limit,
+    sortDbField,
+    sortDirection,
+    sortField,
+    keyHash,
+    sortValue,
+    cursorData.cursorType,
+  );
 };
