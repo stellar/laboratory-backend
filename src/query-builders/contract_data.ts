@@ -6,11 +6,6 @@ import {
 } from "../types/contract_data";
 import { QueryResult, SqlParam } from "./shared";
 
-export type {
-  QueryResult as ContractDataQueryResult,
-  SqlParam,
-} from "./shared";
-
 /**
  * Configuration object for contract data query building
  */
