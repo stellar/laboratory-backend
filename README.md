@@ -15,6 +15,7 @@ A Node.js REST API for managing contract data using Express.js with PostgreSQL.
   - [Available Scripts](#available-scripts)
   - [API Endpoints](#api-endpoints)
   - [Project Structure](#project-structure)
+  - [Environment Variables](#environment-variables)
   - [Appendix: Prisma Utilities](#appendix-prisma-utilities)
 
 ## API Design Doc
@@ -219,6 +220,26 @@ prisma/
 ├── schema.prisma # Database schema
 └── migrations/ # Database migrations
 ```
+
+## Environment Variables
+
+| Variable                         | Required | Default       | Description                                                |
+| -------------------------------- | -------- | ------------- | ---------------------------------------------------------- |
+| `NODE_ENV`                       | No       | `development` | Runtime environment (`development`, `production`)          |
+| `PORT`                           | No       | `3000`        | HTTP server port (1-65535)                                 |
+| `NETWORK_PASSPHRASE`             | No       | Testnet       | Stellar network passphrase                                 |
+| `HORIZON_URL`                    | No       | -             | Stellar Horizon API URL                                    |
+| `RPC_URL`                        | No       | -             | Stellar Soroban RPC URL                                    |
+| `DATABASE_URL`                   | Mode A/C | -             | PostgreSQL connection string for direct connection         |
+| `DB_NAME`                        | Mode B   | -             | PostgreSQL database name                                   |
+| `POSTGRES_CONNECTION_NAME`       | Mode B   | -             | Cloud SQL instance connection name                         |
+| `POSTGRES_IAM_USER`              | Mode B   | -             | IAM database user email                                    |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -             | Path to service account credentials file                   |
+| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`     | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`           |
+| `SENTRY_DSN`                     | No       | -             | Sentry DSN for error monitoring (leave empty to disable)   |
+| `SENTRY_ENVIRONMENT`             | No       | `NODE_ENV`    | Environment name in Sentry (e.g., `staging`, `production`) |
+
+See [Environment configuration](#2-environment-configuration) for connection mode details.
 
 ## Appendix: Prisma Utilities
 
