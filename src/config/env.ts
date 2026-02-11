@@ -1,4 +1,5 @@
 import { IpAddressTypes } from "@google-cloud/cloud-sql-connector";
+import { Networks } from "@stellar/stellar-sdk";
 
 type CloudSqlEnv = {
   instanceConnectionName: string;
@@ -43,6 +44,18 @@ class Env {
 
   static get databaseUrl() {
     return this.optionalString("DATABASE_URL");
+  }
+
+  static get networkPassphrase() {
+    return this.optionalString("NETWORK_PASSPHRASE") ?? Networks.TESTNET;
+  }
+
+  static get horizonUrl() {
+    return this.optionalString("HORIZON_URL");
+  }
+
+  static get rpcUrl() {
+    return this.optionalString("RPC_URL");
   }
 
   static get connectionMode(): ConnectionMode {

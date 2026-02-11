@@ -15,6 +15,7 @@ import {
   SortField,
 } from "../types/contract_data";
 import { prisma } from "../utils/connect";
+import { getStellarService, StellarService } from "../utils/stellar";
 
 /**
  * Parses and validates request parameters for contract data queries.
@@ -93,12 +94,14 @@ const parseRequestParams = (req: Request): RequestParams => {
 };
 
 /**
- * Fetches contract data with cursor-based pagination and TTL caching.
+ * Fetches contract data with cursor-based pagination.
+ * Latest ledger sequence is obtained from the Stellar network (RPC with Horizon fallback).
  * @param requestParams - Request parameters including contract ID, cursor, limit, and sorting
  * @returns Promise resolving to array of `ContractData` objects
  */
-const getContractDataWithTTL = async (
+const getContractData = async (
   requestParams: RequestParams,
+  ledgerService: StellarService = getStellarService(),
 ): Promise<ContractData[]> => {
   const {
     contractId,
@@ -109,30 +112,29 @@ const getContractDataWithTTL = async (
     sortField,
   } = requestParams;
 
+  const latestLedgerSequence = await ledgerService.getLatestLedger();
+
   const config: ContractDataQueryConfig = {
     contractId,
     cursorData,
     limit,
+    latestLedgerSequence,
     sortDbField,
     sortDirection,
     sortField,
   };
-  const { query, params } = buildContractDataQuery(config);
-
-  const results = await prisma.$queryRawUnsafe<ContractData[]>(
-    query,
-    ...params,
+  const results = await prisma.$queryRaw<ContractData[]>(
+    buildContractDataQuery(config),
   );
 
   return results;
 };
 
 /**
- * Controller for retrieving contract data by contract ID with pagination and TTL support.
+ * Controller for retrieving contract data by contract ID with pagination.
  *
- * This endpoint fetches contract data entries for a specific contract, including their
- * time-to-live (TTL) information. Results are paginated using cursor-based pagination
- * and can be sorted by various fields.
+ * This endpoint fetches contract data entries for a specific contract. Results are
+ * paginated using cursor-based pagination and can be sorted by various fields.
  *
  * @example
  * GET /contracts/CDLZFC3SYJYDZT7K67VZ75HPJVIEUVNIXF47ZG2FB2RMQQAUHKENNYY/data
@@ -163,13 +165,14 @@ export const getContractDataByContractId = async (
     return res.status(400).json({ error: (e as Error).message });
   }
 
-  const contractData = await getContractDataWithTTL(requestParams);
-
-  // Params for links
-  const links = buildPaginationLinks(requestParams, contractData);
-
-  return res.status(200).json({
-    _links: links,
-    results: serializeContractDataResults(contractData),
-  });
+  try {
+    const contractData = await getContractData(requestParams);
+    const links = buildPaginationLinks(requestParams, contractData);
+    return res.status(200).json({
+      _links: links,
+      results: serializeContractDataResults(contractData),
+    });
+  } catch (e) {
+    return res.status(500).json({ error: (e as Error).message });
+  }
 };

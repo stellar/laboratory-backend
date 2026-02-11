@@ -16,12 +16,7 @@ export interface TestContractData {
  * Seeds the test database with basic contract data for testing
  */
 export async function seedTestData(prisma: PrismaClient): Promise<void> {
-  // Clear existing data (handle missing tables gracefully)
-  try {
-    await prisma.ttl.deleteMany();
-  } catch (error) {
-    console.error("Error deleting TTL data:", error);
-  }
+  // Clear existing data
   try {
     await prisma.contract_data.deleteMany();
   } catch (error) {
@@ -88,18 +83,7 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       key: data.key,
       val: data.val,
       closed_at: data.closed_at,
+      live_until_ledger_sequence: data.live_until_ledger_sequence,
     })) as Prisma.contract_dataCreateManyInput[],
-  });
-
-  // Insert TTL data using batch operation (only if table exists)
-  await prisma.ttl.createMany({
-    data: testContractData
-      .filter(data => data.live_until_ledger_sequence)
-      .map(data => ({
-        key_hash: data.key_hash,
-        ledger_sequence: data.ledger_sequence,
-        live_until_ledger_sequence: data.live_until_ledger_sequence!,
-        closed_at: data.closed_at,
-      })),
   });
 }

@@ -1,4 +1,26 @@
 import { Request, Response } from "express";
+const getLatestLedgerMock = jest.fn();
+
+jest.mock("../../src/config/env", () => ({
+  Env: {
+    get networkPassphrase() {
+      return "Test SDF Network ; September 2015";
+    },
+    get rpcUrl() {
+      return "https://rpc.testnet.example";
+    },
+    get horizonUrl() {
+      return "https://horizon.testnet.example";
+    },
+  },
+}));
+
+jest.mock("../../src/utils/stellar", () => ({
+  getStellarService: jest.fn().mockImplementation(() => ({
+    getLatestLedger: getLatestLedgerMock,
+  })),
+}));
+
 import { PrismaClient } from "../../generated/prisma";
 import { getContractDataByContractId } from "../../src/controllers/contract_data";
 import "../setup-matchers"; // Import custom matchers
@@ -20,6 +42,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
   });
 
   beforeEach(() => {
+    getLatestLedgerMock.mockResolvedValue(700000);
+
     mockRequest = {
       params: {
         contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
