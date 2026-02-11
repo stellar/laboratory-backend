@@ -78,6 +78,8 @@ async function startServer() {
       console.log(`Server is running on port ${PORT}`);
     });
   } catch (error) {
+    Sentry.captureException(error);
+    await Sentry.flush(2000);
     console.error("Failed to connect to database:", error);
     process.exit(1);
   }
