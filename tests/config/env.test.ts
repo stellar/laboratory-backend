@@ -144,6 +144,23 @@ describe("Env", () => {
     });
   });
 
+  describe("gitCommit", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.GIT_COMMIT;
+      expect(Env.gitCommit).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.GIT_COMMIT = "abc123def456";
+      expect(Env.gitCommit).toBe("abc123def456");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.GIT_COMMIT = "  abc123  ";
+      expect(Env.gitCommit).toBe("abc123");
+    });
+  });
+
   describe("requiredString", () => {
     test("🔴throws_when_missing", () => {
       delete process.env.POSTGRES_CONNECTION_NAME;

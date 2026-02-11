@@ -4,9 +4,9 @@ import { Sentry } from "./instrument";
 import express from "express";
 
 import packageJson from "../package.json";
+import { Env } from "./config/env";
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
-import { Env } from "./config/env";
 import { connect } from "./utils/connect";
 
 const app = express();
@@ -18,27 +18,21 @@ app.use(express.json());
 app.use("/api", contractRoutes);
 app.use("/api", keysRoutes);
 
-app.get("/health", (_req, res) => {
+app.get("/health", (_, res) => {
   res.json({
     status: "healthy",
     timestamp: new Date().toISOString(),
     service: "Stellar Lab API",
     version: packageJson.version,
+    commit: Env.gitCommit,
     uptime: process.uptime(),
     environment: Env.nodeEnv,
   });
 });
 
-app.get("/", (_req, res) => {
+app.get("/", (_, res) => {
   res.redirect("/health");
 });
-
-// Debug endpoint to verify Sentry integration - only available in non-production
-if (!Env.isProduction) {
-  app.get("/debug-sentry", (_req, _res) => {
-    throw new Error("Sentry test error from laboratory-backend");
-  });
-}
 
 // Sentry error handler must be registered after all routes but before other error handlers
 Sentry.setupExpressErrorHandler(app);

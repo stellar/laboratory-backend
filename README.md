@@ -223,21 +223,22 @@ prisma/
 
 ## Environment Variables
 
-| Variable                         | Required | Default       | Description                                                |
-| -------------------------------- | -------- | ------------- | ---------------------------------------------------------- |
-| `NODE_ENV`                       | No       | `development` | Runtime environment (`development`, `production`)          |
-| `PORT`                           | No       | `3000`        | HTTP server port (1-65535)                                 |
-| `NETWORK_PASSPHRASE`             | No       | Testnet       | Stellar network passphrase                                 |
-| `HORIZON_URL`                    | No       | -             | Stellar Horizon API URL                                    |
-| `RPC_URL`                        | No       | -             | Stellar Soroban RPC URL                                    |
-| `DATABASE_URL`                   | Mode A/C | -             | PostgreSQL connection string for direct connection         |
-| `DB_NAME`                        | Mode B   | -             | PostgreSQL database name                                   |
-| `POSTGRES_CONNECTION_NAME`       | Mode B   | -             | Cloud SQL instance connection name                         |
-| `POSTGRES_IAM_USER`              | Mode B   | -             | IAM database user email                                    |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -             | Path to service account credentials file                   |
-| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`     | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`           |
-| `SENTRY_DSN`                     | No       | -             | Sentry DSN for error monitoring (leave empty to disable)   |
-| `SENTRY_ENVIRONMENT`             | No       | `NODE_ENV`    | Environment name in Sentry (e.g., `staging`, `production`) |
+| Variable                         | Required | Default       | Description                                                    |
+| -------------------------------- | -------- | ------------- | -------------------------------------------------------------- |
+| `NODE_ENV`                       | No       | `development` | Runtime environment (`development`, `production`)              |
+| `PORT`                           | No       | `3000`        | HTTP server port (1-65535)                                     |
+| `GIT_COMMIT`                     | No       | -             | Git commit SHA for release tracking (set at build/deploy time) |
+| `NETWORK_PASSPHRASE`             | No       | Testnet       | Stellar network passphrase                                     |
+| `HORIZON_URL`                    | No       | -             | Stellar Horizon API URL                                        |
+| `RPC_URL`                        | No       | -             | Stellar Soroban RPC URL                                        |
+| `DATABASE_URL`                   | Mode A/C | -             | PostgreSQL connection string for direct connection             |
+| `DB_NAME`                        | Mode B   | -             | PostgreSQL database name                                       |
+| `POSTGRES_CONNECTION_NAME`       | Mode B   | -             | Cloud SQL instance connection name                             |
+| `POSTGRES_IAM_USER`              | Mode B   | -             | IAM database user email                                        |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -             | Path to service account credentials file                       |
+| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`     | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`               |
+| `SENTRY_DSN`                     | No       | -             | Sentry DSN for error monitoring (leave empty to disable)       |
+| `SENTRY_ENVIRONMENT`             | No       | `NODE_ENV`    | Environment name in Sentry (e.g., `staging`, `production`)     |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 

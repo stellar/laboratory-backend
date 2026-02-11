@@ -13,6 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Set short SHA
+        run: echo "GIT_COMMIT=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -38,6 +41,5 @@ jobs:
           SENTRY_ORG: stellarorg
           SENTRY_PROJECT: laboratory-backend
         run: |
-          VERSION="${{ github.sha }}"
           sentry-cli sourcemaps inject ./dist
-          sentry-cli sourcemaps upload --release="$VERSION" ./dist
+          sentry-cli sourcemaps upload --release="$GIT_COMMIT" ./dist

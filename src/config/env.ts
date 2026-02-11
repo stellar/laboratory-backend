@@ -66,6 +66,10 @@ class Env {
     return this.optionalString("SENTRY_ENVIRONMENT") ?? this.nodeEnv;
   }
 
+  static get gitCommit() {
+    return this.optionalString("GIT_COMMIT");
+  }
+
   static get connectionMode(): ConnectionMode {
     return this.databaseUrl ? "direct_database_url" : "cloud_sql_connector_iam";
   }

@@ -21,9 +21,9 @@ model contract_data {
   live_until_ledger_sequence Int?
 
   @@index([contract_id, key_hash, ledger_sequence(sort: Desc)], map: "idx_contract_data_contract_id_key_hash_ledger_sequence_desc_loa")
-  @@index([contract_id], map: "idx_contract_data_contract_id_loadtest")
-  @@index([key_hash], map: "idx_contract_data_key_hash_loadtest")
-  @@index([key_symbol], map: "idx_contract_data_key_symbol_loadtest")
+  @@index([contract_id, closed_at(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_closed_at")
+  @@index([contract_id, durability(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_durability")
+  @@index([contract_id, live_until_ledger_sequence(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_live_until")
 }
 
 model gorp_migrations {

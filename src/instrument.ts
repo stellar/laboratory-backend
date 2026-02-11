@@ -10,6 +10,7 @@ import * as Sentry from "@sentry/node";
  * - SENTRY_DSN: Required to enable Sentry (same DSN for all environments)
  * - SENTRY_ENVIRONMENT: Optional override for environment name (defaults to NODE_ENV)
  *   Examples: "development", "staging", "production"
+ * - GIT_COMMIT: Git commit SHA for release tracking (set at build/deploy time)
  *
  * @see https://docs.sentry.io/platforms/javascript/guides/express/
  */
@@ -23,6 +24,9 @@ Sentry.init({
 
   // Only enable Sentry when DSN is configured
   enabled: !!process.env.SENTRY_DSN,
+
+  // Release version for source map association
+  release: process.env.GIT_COMMIT,
 
   // Environment tag to distinguish between dev/staging/production in Sentry UI
   environment,
