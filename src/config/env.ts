@@ -58,6 +58,14 @@ class Env {
     return this.optionalString("RPC_URL");
   }
 
+  static get sentryDsn() {
+    return this.optionalString("SENTRY_DSN");
+  }
+
+  static get sentryEnvironment() {
+    return this.optionalString("SENTRY_ENVIRONMENT") ?? this.nodeEnv;
+  }
+
   static get connectionMode(): ConnectionMode {
     return this.databaseUrl ? "direct_database_url" : "cloud_sql_connector_iam";
   }
