@@ -102,6 +102,48 @@ describe("Env", () => {
     });
   });
 
+  describe("sentryDsn", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.SENTRY_DSN;
+      expect(Env.sentryDsn).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.SENTRY_DSN = "https://key@sentry.io/123";
+      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.SENTRY_DSN = "  https://key@sentry.io/123  ";
+      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+    });
+  });
+
+  describe("sentryEnvironment", () => {
+    test("🟢defaults_to_nodeEnv_when_not_set", () => {
+      delete process.env.SENTRY_ENVIRONMENT;
+      process.env.NODE_ENV = "production";
+      expect(Env.sentryEnvironment).toBe("production");
+    });
+
+    test("🟢defaults_to_development_when_neither_set", () => {
+      delete process.env.SENTRY_ENVIRONMENT;
+      delete process.env.NODE_ENV;
+      expect(Env.sentryEnvironment).toBe("development");
+    });
+
+    test("🟢overrides_nodeEnv_when_explicitly_set", () => {
+      process.env.SENTRY_ENVIRONMENT = "staging";
+      process.env.NODE_ENV = "production";
+      expect(Env.sentryEnvironment).toBe("staging");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.SENTRY_ENVIRONMENT = "  preview  ";
+      expect(Env.sentryEnvironment).toBe("preview");
+    });
+  });
+
   describe("requiredString", () => {
     test("🔴throws_when_missing", () => {
       delete process.env.POSTGRES_CONNECTION_NAME;
