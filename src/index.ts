@@ -1,3 +1,6 @@
+// Sentry must be imported first to properly instrument all modules
+import { Sentry } from "./instrument";
+
 import express from "express";
 
 import packageJson from "../package.json";
@@ -29,6 +32,16 @@ app.get("/health", (_req, res) => {
 app.get("/", (_req, res) => {
   res.redirect("/health");
 });
+
+// Debug endpoint to verify Sentry integration - only available in non-production
+if (!Env.isProduction) {
+  app.get("/debug-sentry", (_req, _res) => {
+    throw new Error("Sentry test error from laboratory-backend");
+  });
+}
+
+// Sentry error handler must be registered after all routes but before other error handlers
+Sentry.setupExpressErrorHandler(app);
 
 let closeDbConnection: (() => Promise<void>) | null = null;
 let server: ReturnType<typeof app.listen> | null = null;
