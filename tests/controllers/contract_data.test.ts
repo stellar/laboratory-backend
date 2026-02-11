@@ -16,7 +16,7 @@ jest.mock("../../src/config/env", () => ({
 }));
 
 jest.mock("../../src/utils/stellar", () => ({
-  StellarService: jest.fn().mockImplementation(() => ({
+  getStellarService: jest.fn().mockImplementation(() => ({
     getLatestLedger: getLatestLedgerMock,
   })),
 }));

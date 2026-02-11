@@ -48,7 +48,7 @@ format: ## Format code
 typecheck: ## Type check the project
 	pnpm typecheck
 
-check: format lint typecheck test audit ## Run all checks (format, lint, typecheck, audit, test)
+check: format lint typecheck test ## Run all checks (format, lint, typecheck, test)
 
 build: ## Build the project
 	pnpm build

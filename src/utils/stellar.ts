@@ -1,16 +1,17 @@
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
+import { Env } from "../config/env";
 
 const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
 
-type StellarServiceConfig = {
+export type StellarServiceConfig = {
   networkPassphrase: string;
   rpcUrl?: string;
   horizonUrl?: string;
 };
 
-class StellarService {
+export class StellarService {
   private readonly fetchLatestLedger: () => Promise<number>;
   private cachedLatestLedgerSequence: number | undefined;
   private cachedLatestLedgerAtMs: number | undefined;
@@ -69,4 +70,22 @@ class StellarService {
   }
 }
 
-export { StellarService, type StellarServiceConfig };
+/**
+ * Singleton instance of StellarService.
+ */
+let _stellarService: StellarService | undefined;
+
+/**
+ * Returns a lazily-initialized singleton instance of StellarService.
+ * The service is configured using environment variables (NETWORK_PASSPHRASE, RPC_URL, HORIZON_URL).
+ */
+export const getStellarService = (): StellarService => {
+  if (!_stellarService) {
+    _stellarService = new StellarService({
+      networkPassphrase: Env.networkPassphrase,
+      rpcUrl: Env.rpcUrl,
+      horizonUrl: Env.horizonUrl,
+    });
+  }
+  return _stellarService;
+};

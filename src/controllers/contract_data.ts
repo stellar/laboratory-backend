@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { Env } from "../config/env";
 import { CursorData, decodeCursor } from "../helpers/cursor";
 import { buildPaginationLinks } from "../pagination/contract_data";
 import {
@@ -16,13 +15,7 @@ import {
   SortField,
 } from "../types/contract_data";
 import { prisma } from "../utils/connect";
-import { StellarService } from "../utils/stellar";
-
-const stellarService = new StellarService({
-  networkPassphrase: Env.networkPassphrase,
-  rpcUrl: Env.rpcUrl,
-  horizonUrl: Env.horizonUrl,
-});
+import { getStellarService, StellarService } from "../utils/stellar";
 
 /**
  * Parses and validates request parameters for contract data queries.
@@ -108,7 +101,7 @@ const parseRequestParams = (req: Request): RequestParams => {
  */
 const getContractData = async (
   requestParams: RequestParams,
-  ledgerService: StellarService = stellarService,
+  ledgerService: StellarService = getStellarService(),
 ): Promise<ContractData[]> => {
   const {
     contractId,
