@@ -5,6 +5,7 @@ import cors from "cors";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import rateLimit from "express-rate-limit";
+import helmet from "helmet";
 import morgan from "morgan";
 import proxyAddr from "proxy-addr";
 
@@ -24,6 +25,8 @@ const trustProxyCidrs = Env.trustProxy;
 app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
 
 app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
+// Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
+app.use(helmet());
 
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan("combined")); // Log requests to the console
