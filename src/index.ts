@@ -1,6 +1,7 @@
 // Sentry must be imported first to properly instrument all modules
 import { Sentry } from "./instrument";
 
+import cors from "cors";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import rateLimit from "express-rate-limit";
@@ -21,6 +22,8 @@ const app = express();
 
 const trustProxyCidrs = Env.trustProxy;
 app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
+
+app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
 
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan("combined")); // Log requests to the console

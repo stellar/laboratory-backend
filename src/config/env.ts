@@ -67,6 +67,20 @@ class Env {
     return this.optionalString("GIT_COMMIT");
   }
 
+  static get corsOrigins(): (string | RegExp)[] {
+    const raw = this.optionalString("CORS_ORIGINS");
+    const defaultValue =
+      "https://lab.stellar.org,/^https:\\/\\/.*\\.services\\.stellar-ops\\.com$/";
+    return (raw ?? defaultValue)
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(entry => {
+        const match = entry.match(/^\/(.+)\/([gimsuy]*)$/);
+        return match ? new RegExp(match[1], match[2]) : entry;
+      });
+  }
+
   static get trustProxy(): string[] {
     const raw = this.optionalString("TRUST_PROXY");
     const defaultValue = "loopback,linklocal,uniquelocal";

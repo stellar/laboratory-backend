@@ -233,6 +233,55 @@ describe("Env", () => {
     });
   });
 
+  describe("corsOrigins", () => {
+    test("🟢returns_defaults_when_not_set", () => {
+      delete process.env.CORS_ORIGINS;
+      const origins = Env.corsOrigins;
+      expect(origins).toHaveLength(2);
+      expect(origins[0]).toBe("https://lab.stellar.org");
+      expect(origins[1]).toBeInstanceOf(RegExp);
+      expect(
+        (origins[1] as RegExp).test("https://foo.services.stellar-ops.com"),
+      ).toBe(true);
+    });
+
+    test("🟢parses_plain_string_origins", () => {
+      process.env.CORS_ORIGINS =
+        "https://app.example.com,https://other.example.com";
+      expect(Env.corsOrigins).toEqual([
+        "https://app.example.com",
+        "https://other.example.com",
+      ]);
+    });
+
+    test("🟢parses_regex_patterns", () => {
+      process.env.CORS_ORIGINS = "/^https:\\/\\/.*\\.example\\.com$/";
+      const origins = Env.corsOrigins;
+      expect(origins).toHaveLength(1);
+      expect(origins[0]).toBeInstanceOf(RegExp);
+      expect((origins[0] as RegExp).test("https://app.example.com")).toBe(true);
+      expect((origins[0] as RegExp).test("http://app.example.com")).toBe(false);
+    });
+
+    test("🟢handles_mixed_strings_and_regex", () => {
+      process.env.CORS_ORIGINS =
+        "https://app.example.com,/^https:\\/\\/.*\\.preview\\.example\\.com$/";
+      const origins = Env.corsOrigins;
+      expect(origins).toHaveLength(2);
+      expect(origins[0]).toBe("https://app.example.com");
+      expect(origins[1]).toBeInstanceOf(RegExp);
+    });
+
+    test("🟢trims_whitespace_and_filters_empty", () => {
+      process.env.CORS_ORIGINS =
+        " https://app.example.com , , https://other.example.com ";
+      expect(Env.corsOrigins).toEqual([
+        "https://app.example.com",
+        "https://other.example.com",
+      ]);
+    });
+  });
+
   describe("trustProxy", () => {
     test("🟢returns_defaults_when_not_set", () => {
       delete process.env.TRUST_PROXY;
