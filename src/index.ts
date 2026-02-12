@@ -54,9 +54,7 @@ app.use(
       return;
     }
     console.error("Unhandled error:", err);
-    const message =
-      err instanceof Error ? err.message : "Internal Server Error";
-    res.status(500).json({ error: message });
+    res.status(500).json({ error: "Internal Server Error" });
   },
 );
 
