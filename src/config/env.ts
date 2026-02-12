@@ -62,10 +62,6 @@ class Env {
     return this.optionalString("SENTRY_DSN");
   }
 
-  static get sentryEnvironment() {
-    return this.optionalString("SENTRY_ENVIRONMENT") ?? this.nodeEnv;
-  }
-
   static get gitCommit() {
     return this.optionalString("GIT_COMMIT");
   }

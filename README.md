@@ -238,7 +238,6 @@ prisma/
 | `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -             | Path to service account credentials file                       |
 | `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`     | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`               |
 | `SENTRY_DSN`                     | No       | -             | Sentry DSN for error monitoring (leave empty to disable)       |
-| `SENTRY_ENVIRONMENT`             | No       | `NODE_ENV`    | Environment name in Sentry (e.g., `staging`, `production`)     |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 
