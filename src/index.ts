@@ -3,6 +3,7 @@ import { Sentry } from "./instrument";
 
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
+import morgan from "morgan";
 
 import packageJson from "../package.json";
 import { Env } from "./config/env";
@@ -15,6 +16,7 @@ const app = express();
 const PORT = Env.port;
 
 app.use(express.json());
+app.use(morgan("combined"));
 
 app.use("/api", contractRoutes);
 app.use("/api", keysRoutes);
