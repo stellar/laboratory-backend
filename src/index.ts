@@ -50,15 +50,20 @@ app.get("/", (_, res) => {
 });
 
 app.get("/health", (_, res) => {
-  res.json({
+  const health: Record<string, unknown> = {
     status: "healthy",
     timestamp: new Date().toISOString(),
-    service: "Stellar Lab API",
-    version: packageJson.version,
-    commit: Env.gitCommit,
-    uptime: process.uptime(),
-    environment: Env.environment,
-  });
+  };
+
+  if (Env.debug) {
+    health.service = "Stellar Lab API";
+    health.version = packageJson.version;
+    health.commit = Env.gitCommit;
+    health.uptime = process.uptime();
+    health.environment = Env.environment;
+  }
+
+  res.json(health);
 });
 
 app.use("/api", contractRoutes);
