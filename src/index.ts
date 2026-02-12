@@ -119,6 +119,8 @@ async function startServer() {
     server = app.listen(Env.port, () => {
       console.log(`Server is running on port ${Env.port}`);
     });
+    server.requestTimeout = 60_000;
+    server.headersTimeout = 65_000;
   } catch (error) {
     Sentry.captureException(error);
     await Sentry.flush(2000);
