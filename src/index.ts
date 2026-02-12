@@ -35,10 +35,11 @@ app.get("/", (_, res) => {
   res.redirect("/health");
 });
 
-// Sentry error handler must be registered after all routes but before other error handlers
+// Middlewares:
+// Middleware: Sentry error handler. Must be registered after all routes but before other error handlers
 Sentry.setupExpressErrorHandler(app);
 
-// Global error handler to avoid unhandled exceptions leaking to clients
+// Middleware: global error handler. Avoids unhandled exceptions from leaking to clients
 app.use(
   (err: unknown, req: Request, res: Response, next: NextFunction): void => {
     void req;
