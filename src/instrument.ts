@@ -1,4 +1,5 @@
 import * as Sentry from "@sentry/node";
+import { Env } from "./config/env";
 
 /**
  * Sentry SDK initialization for error monitoring and performance tracing.
@@ -15,31 +16,22 @@ import * as Sentry from "@sentry/node";
  * @see https://docs.sentry.io/platforms/javascript/guides/express/
  */
 
-const environment =
-  process.env.SENTRY_ENVIRONMENT || process.env.NODE_ENV || "development";
-const isProduction = environment === "production";
-
 Sentry.init({
-  dsn: process.env.SENTRY_DSN,
+  dsn: Env.sentryDsn,
 
   // Only enable Sentry when DSN is configured
-  enabled: !!process.env.SENTRY_DSN,
+  enabled: !!Env.sentryDsn,
 
   // Release version for source map association
-  release: process.env.GIT_COMMIT,
+  release: Env.gitCommit,
 
   // Environment tag to distinguish between dev/staging/production in Sentry UI
-  environment,
+  environment: Env.sentryEnvironment,
 
-  // Capture 100% of transactions for tracing in development,
-  // reduce to 10% in production to manage costs
-  tracesSampleRate: isProduction ? 0.1 : 1.0,
+  tracesSampleRate: 0,
 
-  // Include request headers and IP for debugging (respects privacy settings)
-  sendDefaultPii: false,
-
-  // Enable debug mode when SENTRY_DEBUG is set (useful for troubleshooting)
-  debug: !!process.env.SENTRY_DEBUG,
+  // Include request headers and IP
+  sendDefaultPii: true,
 });
 
 export { Sentry };

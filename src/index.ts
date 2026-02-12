@@ -1,6 +1,7 @@
 // Sentry must be imported first to properly instrument all modules
 import { Sentry } from "./instrument";
 
+import type { NextFunction, Request, Response } from "express";
 import express from "express";
 
 import packageJson from "../package.json";
@@ -36,6 +37,21 @@ app.get("/", (_, res) => {
 
 // Sentry error handler must be registered after all routes but before other error handlers
 Sentry.setupExpressErrorHandler(app);
+
+// Global error handler to avoid unhandled exceptions leaking to clients
+app.use(
+  (err: unknown, req: Request, res: Response, next: NextFunction): void => {
+    void req;
+    if (res.headersSent) {
+      next(err);
+      return;
+    }
+    console.error("Unhandled error:", err);
+    const message =
+      err instanceof Error ? err.message : "Internal Server Error";
+    res.status(500).json({ error: message });
+  },
+);
 
 let closeDbConnection: (() => Promise<void>) | null = null;
 let server: ReturnType<typeof app.listen> | null = null;
