@@ -3,7 +3,9 @@ import { Sentry } from "./instrument";
 
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
+import rateLimit from "express-rate-limit";
 import morgan from "morgan";
+import proxyAddr from "proxy-addr";
 
 import packageJson from "../package.json";
 import { Env } from "./config/env";
@@ -17,8 +19,25 @@ const app = express();
 
 // ── Middleware ────────────────────────────────────────────────────────
 
+const trustProxyCidrs = Env.trustProxy;
+app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
+
 app.use(express.json()); // Parse JSON bodies
 app.use(morgan("combined")); // Log requests to the console
+
+app.use(
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    message: {
+      error: "Too Many Requests",
+      message: "Too many requests from this IP, please try again later.",
+      retryAfter: 900,
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+  }),
+);
 
 // ── Routes ───────────────────────────────────────────────────────────
 

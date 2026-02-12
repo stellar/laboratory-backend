@@ -67,6 +67,15 @@ class Env {
     return this.optionalString("GIT_COMMIT");
   }
 
+  static get trustProxy(): string[] {
+    const raw = this.optionalString("TRUST_PROXY");
+    const defaultValue = "loopback,linklocal,uniquelocal";
+    return (raw ?? defaultValue)
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+  }
+
   static get connectionMode(): ConnectionMode {
     return this.databaseUrl ? "direct_database_url" : "cloud_sql_connector_iam";
   }

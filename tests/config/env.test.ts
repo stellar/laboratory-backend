@@ -232,4 +232,30 @@ describe("Env", () => {
       expect(Env.googleApplicationCredentials).toBe("./creds.json");
     });
   });
+
+  describe("trustProxy", () => {
+    test("🟢returns_defaults_when_not_set", () => {
+      delete process.env.TRUST_PROXY;
+      expect(Env.trustProxy).toEqual(["loopback", "linklocal", "uniquelocal"]);
+    });
+
+    test("🟢parses_comma_separated_CIDRs", () => {
+      process.env.TRUST_PROXY = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16";
+      expect(Env.trustProxy).toEqual([
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+      ]);
+    });
+
+    test("🟢trims_whitespace_and_filters_empty", () => {
+      process.env.TRUST_PROXY = " loopback , , linklocal ";
+      expect(Env.trustProxy).toEqual(["loopback", "linklocal"]);
+    });
+
+    test("🟢handles_single_value", () => {
+      process.env.TRUST_PROXY = "10.0.0.0/8";
+      expect(Env.trustProxy).toEqual(["10.0.0.0/8"]);
+    });
+  });
 });
