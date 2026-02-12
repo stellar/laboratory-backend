@@ -11,15 +11,20 @@ import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
 import { connect } from "./utils/connect";
 
+// ── App Setup ────────────────────────────────────────────────────────
+
 const app = express();
 
-const PORT = Env.port;
+// ── Middleware ────────────────────────────────────────────────────────
 
-app.use(express.json());
-app.use(morgan("combined"));
+app.use(express.json()); // Parse JSON bodies
+app.use(morgan("combined")); // Log requests to the console
 
-app.use("/api", contractRoutes);
-app.use("/api", keysRoutes);
+// ── Routes ───────────────────────────────────────────────────────────
+
+app.get("/", (_, res) => {
+  res.redirect("/health");
+});
 
 app.get("/health", (_, res) => {
   res.json({
@@ -33,18 +38,17 @@ app.get("/health", (_, res) => {
   });
 });
 
-app.get("/", (_, res) => {
-  res.redirect("/health");
-});
+app.use("/api", contractRoutes);
+app.use("/api", keysRoutes);
 
-// Middlewares:
-// Middleware: Sentry error handler. Must be registered after all routes but before other error handlers
+// ── Error Handling ───────────────────────────────────────────────────
+
+// Sentry error handler must be registered after all routes but before other error handlers
 Sentry.setupExpressErrorHandler(app);
 
-// Middleware: global error handler. Avoids unhandled exceptions from leaking to clients
+// Global error handler — prevents unhandled exceptions from leaking to clients
 app.use(
-  (err: unknown, req: Request, res: Response, next: NextFunction): void => {
-    void req;
+  (err: unknown, _req: Request, res: Response, next: NextFunction): void => {
     if (res.headersSent) {
       next(err);
       return;
@@ -56,19 +60,17 @@ app.use(
   },
 );
 
-let closeDbConnection: (() => Promise<void>) | null = null;
-let server: ReturnType<typeof app.listen> | null = null;
+// ── Database ─────────────────────────────────────────────────────────
 
-/**
- * Initializes the database connection and checks if the tables exist.
- */
+let closeDbConnection: (() => Promise<void>) | null = null;
+
 async function initializeDatabase() {
   console.log("Connecting to database...");
   const { prisma, close } = await connect();
 
   closeDbConnection = close;
 
-  console.log("✅ Database connected successfully!");
+  console.log("Database connected successfully");
 
   if (Env.debug) {
     const tables = await prisma.$queryRaw`
@@ -80,15 +82,16 @@ async function initializeDatabase() {
   }
 }
 
-/**
- * Starts the server and initializes the database connection.
- */
+// ── Server Lifecycle ─────────────────────────────────────────────────
+
+let server: ReturnType<typeof app.listen> | null = null;
+
 async function startServer() {
   try {
     await initializeDatabase();
 
-    server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    server = app.listen(Env.port, () => {
+      console.log(`Server is running on port ${Env.port}`);
     });
   } catch (error) {
     Sentry.captureException(error);
@@ -98,12 +101,7 @@ async function startServer() {
   }
 }
 
-startServer();
-
-/**
- * Gracefully shuts down the server and closes the database connection.
- */
-const gracefulShutdown = async () => {
+async function gracefulShutdown() {
   console.log("Shutting down gracefully...");
 
   if (server) {
@@ -117,8 +115,10 @@ const gracefulShutdown = async () => {
   }
 
   process.exit(0);
-};
+}
 
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGUSR2", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
+
+startServer();
