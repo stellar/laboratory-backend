@@ -8,8 +8,7 @@ services:
       - "3000:3000"
     environment:
       GOOGLE_APPLICATION_CREDENTIALS: /app/creds.json
-      # ⚠️ MUST set NODE_ENV to production to use /tmp for socket (writable directory)
-      NODE_ENV: production
+      ENVIRONMENT: development
       PORT: ${PORT:-3000}
       POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME}
       POSTGRES_IAM_USER: ${POSTGRES_IAM_USER}

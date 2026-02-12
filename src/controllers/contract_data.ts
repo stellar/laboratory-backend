@@ -165,14 +165,10 @@ export const getContractDataByContractId = async (
     return res.status(400).json({ error: (e as Error).message });
   }
 
-  try {
-    const contractData = await getContractData(requestParams);
-    const links = buildPaginationLinks(requestParams, contractData);
-    return res.status(200).json({
-      _links: links,
-      results: serializeContractDataResults(contractData),
-    });
-  } catch (e) {
-    return res.status(500).json({ error: (e as Error).message });
-  }
+  const contractData = await getContractData(requestParams);
+  const links = buildPaginationLinks(requestParams, contractData);
+  return res.status(200).json({
+    _links: links,
+    results: serializeContractDataResults(contractData),
+  });
 };

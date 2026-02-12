@@ -37,6 +37,51 @@ describe("Env", () => {
     });
   });
 
+  describe("environment", () => {
+    test("🟢defaults_to_development_when_not_set", () => {
+      delete process.env.ENVIRONMENT;
+      expect(Env.environment).toBe("development");
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.ENVIRONMENT = "prd-testnet";
+      expect(Env.environment).toBe("prd-testnet");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.ENVIRONMENT = "  dev-pubnet  ";
+      expect(Env.environment).toBe("dev-pubnet");
+    });
+  });
+
+  describe("debug", () => {
+    test("🟢returns_false_when_not_set", () => {
+      delete process.env.DEBUG;
+      expect(Env.debug).toBe(false);
+    });
+
+    test("🟢returns_true_for_true_1_yes", () => {
+      for (const v of ["true", "1", "yes"]) {
+        process.env.DEBUG = v;
+        expect(Env.debug).toBe(true);
+      }
+    });
+
+    test("🟢is_case_insensitive_and_trims_whitespace", () => {
+      process.env.DEBUG = " TRUE";
+      expect(Env.debug).toBe(true);
+      process.env.DEBUG = " Yes ";
+      expect(Env.debug).toBe(true);
+    });
+
+    test("🟡returns_false_for_other_values", () => {
+      process.env.DEBUG = "false";
+      expect(Env.debug).toBe(false);
+      process.env.DEBUG = "0";
+      expect(Env.debug).toBe(false);
+    });
+  });
+
   describe("connectionMode", () => {
     test("🟢returns_direct_database_url_when_DATABASE_URL_set", () => {
       process.env.DATABASE_URL = "postgresql://localhost";
@@ -99,6 +144,40 @@ describe("Env", () => {
     test("🟢trims_whitespace", () => {
       process.env.RPC_URL = "  https://rpc.example.org  ";
       expect(Env.rpcUrl).toBe("https://rpc.example.org");
+    });
+  });
+
+  describe("sentryDsn", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.SENTRY_DSN;
+      expect(Env.sentryDsn).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.SENTRY_DSN = "https://key@sentry.io/123";
+      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.SENTRY_DSN = "  https://key@sentry.io/123  ";
+      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+    });
+  });
+
+  describe("gitCommit", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.GIT_COMMIT;
+      expect(Env.gitCommit).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.GIT_COMMIT = "abc123def456";
+      expect(Env.gitCommit).toBe("abc123def456");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.GIT_COMMIT = "  abc123  ";
+      expect(Env.gitCommit).toBe("abc123");
     });
   });
 
