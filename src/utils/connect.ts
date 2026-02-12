@@ -27,14 +27,7 @@ import { CloudSqlEnv, Env } from "../config/env";
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
 
-/**
- * Returns the directory for the Unix socket file created by Google Cloud SQL Connector.
- * Uses /tmp in production (writable by non-root users in containers).
- * Uses current directory in development for easier debugging.
- */
-const getGoogleCloudSocketDir = () => {
-  return Env.isProduction ? os.tmpdir() : process.cwd();
-};
+const getGoogleCloudSocketDir = () => os.tmpdir();
 
 /**
  * Cleans up stale Unix socket file from previous runs.

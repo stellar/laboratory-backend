@@ -27,7 +27,7 @@ app.get("/health", (_, res) => {
     version: packageJson.version,
     commit: Env.gitCommit,
     uptime: process.uptime(),
-    environment: Env.nodeEnv,
+    environment: Env.environment,
   });
 });
 
@@ -68,7 +68,7 @@ async function initializeDatabase() {
 
   console.log("✅ Database connected successfully!");
 
-  if (!Env.isProduction) {
+  if (Env.debug) {
     const tables = await prisma.$queryRaw`
       SELECT table_name
       FROM information_schema.tables

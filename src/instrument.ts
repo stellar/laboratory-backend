@@ -20,7 +20,7 @@ Sentry.init({
   release: Env.gitCommit,
 
   // Environment tag to distinguish between dev/staging/production in Sentry UI
-  environment: Env.nodeEnv,
+  environment: Env.environment,
 
   tracesSampleRate: 0,
 

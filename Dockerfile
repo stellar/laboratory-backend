@@ -25,7 +25,7 @@ ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
 
 # All environment variables are set at runtime, not build time
-# NODE_ENV and other env vars will be provided via docker-compose or k8s
+# ENVIRONMENT and other env vars will be provided via docker-compose or k8s
 
 COPY --from=dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist

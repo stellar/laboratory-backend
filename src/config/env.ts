@@ -11,12 +11,13 @@ type CloudSqlEnv = {
 type ConnectionMode = "direct_database_url" | "cloud_sql_connector_iam";
 
 class Env {
-  static get nodeEnv() {
-    return this.optionalString("NODE_ENV") ?? "development";
+  static get environment() {
+    return this.optionalString("ENVIRONMENT") ?? "development";
   }
 
-  static get isProduction() {
-    return this.nodeEnv === "production";
+  static get debug() {
+    const v = this.optionalString("DEBUG")?.toLowerCase().trim();
+    return ["true", "1", "yes"].includes(v ?? "");
   }
 
   static get port() {
