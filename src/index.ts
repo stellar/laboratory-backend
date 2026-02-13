@@ -183,4 +183,10 @@ process.on("unhandledRejection", reason => {
   Sentry.flush(2000).finally(() => process.exit(1));
 });
 
+process.on("uncaughtException", err => {
+  logger.fatal({ err }, "Uncaught exception");
+  Sentry.captureException(err);
+  Sentry.flush(2000).finally(() => process.exit(1));
+});
+
 startServer();
