@@ -1,4 +1,4 @@
-import pino, { SerializerFn } from "pino";
+import pino from "pino";
 import type { Options } from "pino-http";
 import { Env } from "../config/env";
 
