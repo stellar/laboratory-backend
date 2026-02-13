@@ -66,21 +66,21 @@ export class CursorParameterMismatchError extends Error {
 }
 
 export type ContractData = {
-  durability: string;
+  durability: string | null;
   key_hash: string;
-  key: Buffer;
-  val: Buffer;
+  key: Buffer | null;
+  val: Buffer | null;
   closed_at: Date;
-  live_until_ledger_sequence: number;
-  expired: boolean;
+  live_until_ledger_sequence: number | null;
+  expired: boolean | null;
 };
 
 export type ContractDataDTO = {
-  durability: string;
+  durability: string | null;
   key_hash: string;
-  key: string;
-  value: string;
+  key: string | null;
+  value: string | null;
   updated: number;
-  ttl: number;
+  ttl: number | null;
   expired: boolean;
 };
