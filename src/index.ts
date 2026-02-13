@@ -134,13 +134,32 @@ async function startServer() {
   }
 }
 
+const SHUTDOWN_TIMEOUT_MS = 10_000;
+
+let isShuttingDown = false;
+
 async function gracefulShutdown() {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
   console.log("Shutting down gracefully...");
 
   if (server) {
-    server.close(() => {
-      console.log("HTTP server closed");
-    });
+    const s = server;
+    await Promise.race([
+      new Promise<void>(resolve =>
+        s.close(() => {
+          console.log("HTTP server closed");
+          resolve();
+        }),
+      ),
+      new Promise<void>(resolve =>
+        setTimeout(() => {
+          console.warn("graceful shutdown timed out, forcing exit");
+          resolve();
+        }, SHUTDOWN_TIMEOUT_MS),
+      ),
+    ]);
   }
 
   if (closeDbConnection) {
