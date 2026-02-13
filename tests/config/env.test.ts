@@ -309,6 +309,13 @@ describe("Env", () => {
         "https://other.example.com",
       ]);
     });
+
+    test("🔴throws_on_invalid_regex", () => {
+      process.env.CORS_ORIGINS = "/[invalid(/";
+      expect(() => Env.corsOrigins).toThrow(
+        'Invalid regex in CORS_ORIGINS: "/[invalid(/"',
+      );
+    });
   });
 
   describe("trustProxy", () => {

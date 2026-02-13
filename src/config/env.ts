@@ -89,7 +89,14 @@ class Env {
       .filter(Boolean)
       .map(entry => {
         const match = entry.match(/^\/(.+)\/([gimsuy]*)$/);
-        return match ? new RegExp(match[1], match[2]) : entry;
+        if (!match) return entry;
+        try {
+          return new RegExp(match[1], match[2]);
+        } catch (e) {
+          throw new Error(
+            `Invalid regex in CORS_ORIGINS: "${entry}". ${(e as Error).message}`,
+          );
+        }
       });
   }
 
