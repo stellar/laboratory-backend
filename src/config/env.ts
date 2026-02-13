@@ -68,7 +68,22 @@ class Env {
   }
 
   static get logLevel() {
-    return this.optionalString("LOG_LEVEL")?.toLowerCase() ?? "info";
+    const level = this.optionalString("LOG_LEVEL")?.toLowerCase() ?? "info";
+    const validLevels = [
+      "trace",
+      "debug",
+      "info",
+      "warn",
+      "error",
+      "fatal",
+      "silent",
+    ];
+    if (!validLevels.includes(level)) {
+      throw new Error(
+        `Invalid LOG_LEVEL: "${level}". Expected one of: ${validLevels.join(", ")}.`,
+      );
+    }
+    return level;
   }
 
   static get corsOrigins(): (string | RegExp)[] {
