@@ -11,7 +11,10 @@ const router: Router = express.Router();
  * Validates contract identifier.
  */
 export const requestParamsSchema = z.object({
-  contract_id: z.string().trim().min(1),
+  contract_id: z
+    .string()
+    .trim()
+    .regex(/^C[A-Z2-7]{55}$/, "Invalid Stellar contract ID"),
 });
 
 /**
