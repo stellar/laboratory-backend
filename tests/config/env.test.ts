@@ -205,7 +205,7 @@ describe("Env", () => {
     test("🔴throws_on_invalid_value", () => {
       process.env.LOG_LEVEL = "verbose";
       expect(() => Env.logLevel).toThrow(
-        'Invalid LOG_LEVEL: "verbose". Expected one of: trace, debug, info, warn, error, fatal, silent.',
+        'Invalid LOG_LEVEL: "verbose". Expected one of: trace, debug, info, warn, error, fatal.',
       );
     });
   });

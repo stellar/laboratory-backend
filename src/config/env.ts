@@ -1,5 +1,6 @@
 import { IpAddressTypes } from "@google-cloud/cloud-sql-connector";
 import { Networks } from "@stellar/stellar-sdk";
+import pino from "pino";
 
 type CloudSqlEnv = {
   instanceConnectionName: string;
@@ -67,23 +68,15 @@ class Env {
     return this.optionalString("GIT_COMMIT");
   }
 
-  static get logLevel() {
+  static get logLevel(): pino.Level {
     const level = this.optionalString("LOG_LEVEL")?.toLowerCase() ?? "info";
-    const validLevels = [
-      "trace",
-      "debug",
-      "info",
-      "warn",
-      "error",
-      "fatal",
-      "silent",
-    ];
-    if (!validLevels.includes(level)) {
+    const validLevels = Object.keys(pino.levels.values) as pino.Level[];
+    if (!validLevels.includes(level as pino.Level)) {
       throw new Error(
         `Invalid LOG_LEVEL: "${level}". Expected one of: ${validLevels.join(", ")}.`,
       );
     }
-    return level;
+    return level as pino.Level;
   }
 
   static get corsOrigins(): (string | RegExp)[] {
