@@ -27,7 +27,7 @@ app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
 app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
 // Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
 app.use(helmet());
-// Like "combined" but without :remote-addr and :remote-user to avoid logging PII
+// HTTP request logger
 app.use(
   morgan(
     ':method :url :status :res[content-length] ":referrer" ":user-agent" - :response-time ms',
