@@ -38,7 +38,6 @@ app.use(
     message: {
       error: "Too Many Requests",
       message: "Too many requests from this IP, please try again later.",
-      retryAfter: 900,
     },
     standardHeaders: true,
     legacyHeaders: false,
