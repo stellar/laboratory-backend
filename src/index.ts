@@ -78,12 +78,15 @@ Sentry.setupExpressErrorHandler(app);
 
 // Global error handler — prevents unhandled exceptions from leaking to clients
 app.use(
-  (err: unknown, _req: Request, res: Response, next: NextFunction): void => {
+  (err: unknown, req: Request, res: Response, next: NextFunction): void => {
     if (res.headersSent) {
       next(err);
       return;
     }
-    logger.error({ err }, "Unhandled error");
+    logger.error(
+      { err, method: req.method, url: req.originalUrl },
+      "Unhandled error",
+    );
     res.status(500).json({ error: "Internal Server Error" });
   },
 );
