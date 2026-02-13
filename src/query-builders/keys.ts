@@ -25,5 +25,5 @@ export const buildKeysQuery = (contractId: string): Prisma.Sql =>
       FROM keys k
       WHERE k.key_symbol IS NOT NULL
     )
-    SELECT key_symbol FROM keys WHERE key_symbol IS NOT NULL ORDER BY key_symbol
+    SELECT key_symbol FROM keys WHERE key_symbol IS NOT NULL ORDER BY key_symbol LIMIT 10000
   `;
