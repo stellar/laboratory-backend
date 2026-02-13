@@ -9,6 +9,11 @@ FROM base AS dependencies
 COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
+FROM base AS prod-dependencies
+
+COPY package.json pnpm-lock.yaml ./
+RUN pnpm install --frozen-lockfile --prod
+
 FROM base AS build
 
 COPY --from=dependencies /app/node_modules ./node_modules
@@ -28,7 +33,7 @@ ENV NODE_ENV=production
 # All environment variables are set at runtime, not build time
 # ENVIRONMENT and other env vars will be provided via docker-compose or k8s
 
-COPY --from=dependencies /app/node_modules ./node_modules
+COPY --from=prod-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/generated ./generated
 COPY --from=build /app/package.json ./package.json
