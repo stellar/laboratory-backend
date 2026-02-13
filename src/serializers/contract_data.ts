@@ -11,7 +11,7 @@ export const serializeContractDataResults = (
 ): ContractDataDTO[] => {
   return results.map((row: ContractData) => ({
     durability: row.durability,
-    expired: row.expired ?? true,
+    expired: row.expired ?? false,
     key_hash: row.key_hash,
     key: row.key ? Buffer.from(row.key).toString() : null,
     ttl: row.live_until_ledger_sequence,
