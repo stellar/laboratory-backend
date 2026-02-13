@@ -174,4 +174,10 @@ process.on("SIGINT", gracefulShutdown);
 process.on("SIGUSR2", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
 
+process.on("unhandledRejection", reason => {
+  logger.fatal({ err: reason }, "Unhandled promise rejection");
+  Sentry.captureException(reason);
+  Sentry.flush(2000).finally(() => process.exit(1));
+});
+
 startServer();
