@@ -4,6 +4,7 @@ import { Env } from "../config/env";
 const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
+const UPSTREAM_REQUEST_TIMEOUT_MS = 10_000;
 
 export type StellarServiceConfig = {
   networkPassphrase: string;
@@ -23,10 +24,13 @@ export class StellarService {
       const testnetRpcClient = new rpc.Server(
         rpcUrl ?? DEFAULT_TESTNET_RPC_URL,
       );
+      testnetRpcClient.httpClient.defaults.timeout =
+        UPSTREAM_REQUEST_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await testnetRpcClient.getLatestLedger()).sequence;
     } else if (rpcUrl) {
       const pubnetRpcClient = new rpc.Server(rpcUrl);
+      pubnetRpcClient.httpClient.defaults.timeout = UPSTREAM_REQUEST_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await pubnetRpcClient.getLatestLedger()).sequence;
     } else {
@@ -37,6 +41,8 @@ export class StellarService {
         horizonUrl ?? DEFAULT_PUBNET_HORIZON_URL,
         {},
       );
+      pubnetHorizonClient.httpClient.defaults.timeout =
+        UPSTREAM_REQUEST_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await pubnetHorizonClient.root()).core_latest_ledger;
     }
