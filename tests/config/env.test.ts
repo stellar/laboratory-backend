@@ -154,13 +154,13 @@ describe("Env", () => {
     });
 
     test("🟢returns_value_when_set", () => {
-      process.env.SENTRY_DSN = "https://key@sentry.io/123";
-      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+      process.env.SENTRY_DSN = "https://key@sentry.example.com/123";
+      expect(Env.sentryDsn).toBe("https://key@sentry.example.com/123");
     });
 
     test("🟢trims_whitespace", () => {
-      process.env.SENTRY_DSN = "  https://key@sentry.io/123  ";
-      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+      process.env.SENTRY_DSN = "  https://key@sentry.example.com/123  ";
+      expect(Env.sentryDsn).toBe("https://key@sentry.example.com/123");
     });
   });
 
@@ -266,12 +266,7 @@ describe("Env", () => {
     test("🟢returns_defaults_when_not_set", () => {
       delete process.env.CORS_ORIGINS;
       const origins = Env.corsOrigins;
-      expect(origins).toHaveLength(2);
-      expect(origins[0]).toBe("https://lab.stellar.org");
-      expect(origins[1]).toBeInstanceOf(RegExp);
-      expect(
-        (origins[1] as RegExp).test("https://foo.services.stellar-ops.com"),
-      ).toBe(true);
+      expect(origins).toEqual(["https://lab.stellar.org"]);
     });
 
     test("🟢parses_plain_string_origins", () => {

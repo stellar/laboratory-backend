@@ -81,8 +81,7 @@ class Env {
 
   static get corsOrigins(): (string | RegExp)[] {
     const raw = this.optionalString("CORS_ORIGINS");
-    const defaultValue =
-      "https://lab.stellar.org,/^https:\\/\\/.*\\.services\\.stellar-ops\\.com$/";
+    const defaultValue = "https://lab.stellar.org";
     return (raw ?? defaultValue)
       .split(",")
       .map(s => s.trim())
