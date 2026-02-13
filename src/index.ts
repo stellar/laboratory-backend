@@ -6,7 +6,7 @@ import type { NextFunction, Request, Response } from "express";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
-import morgan from "morgan";
+import pinoHttp from "pino-http";
 import proxyAddr from "proxy-addr";
 
 import packageJson from "../package.json";
@@ -14,6 +14,7 @@ import { Env } from "./config/env";
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
 import { connect } from "./utils/connect";
+import { logger, pinoHttpSerializers } from "./utils/logger";
 
 // ── App Setup ────────────────────────────────────────────────────────
 
@@ -27,12 +28,8 @@ app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
 app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
 // Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
 app.use(helmet());
-// HTTP request logger
-app.use(
-  morgan(
-    ':method :url :status :res[content-length] ":referrer" ":user-agent" - :response-time ms',
-  ),
-);
+// HTTP request logger — only log method, url, status, and response time
+app.use(pinoHttp({ logger, serializers: pinoHttpSerializers }));
 
 app.use(
   rateLimit({
@@ -86,7 +83,7 @@ app.use(
       next(err);
       return;
     }
-    console.error("Unhandled error:", err);
+    logger.error({ err }, "Unhandled error");
     res.status(500).json({ error: "Internal Server Error" });
   },
 );
@@ -96,21 +93,19 @@ app.use(
 let closeDbConnection: (() => Promise<void>) | null = null;
 
 async function initializeDatabase() {
-  console.log("Connecting to database...");
+  logger.info("Connecting to database...");
   const { prisma, close } = await connect();
 
   closeDbConnection = close;
 
-  console.log("Database connected successfully");
+  logger.info("Database connected successfully");
 
-  if (Env.debug) {
-    const tables = await prisma.$queryRaw`
-      SELECT table_name
-      FROM information_schema.tables
-      WHERE table_schema = 'public'
-    `;
-    console.log("Available tables:", tables);
-  }
+  const tables = await prisma.$queryRaw`
+    SELECT table_name
+    FROM information_schema.tables
+    WHERE table_schema = 'public'
+  `;
+  logger.debug({ tables }, "Available tables");
 }
 
 // ── Server Lifecycle ─────────────────────────────────────────────────
@@ -122,14 +117,14 @@ async function startServer() {
     await initializeDatabase();
 
     server = app.listen(Env.port, () => {
-      console.log(`Server is running on port ${Env.port}`);
+      logger.info({ port: Env.port }, "Server is running");
     });
     server.requestTimeout = 60_000;
     server.headersTimeout = 65_000;
   } catch (error) {
     Sentry.captureException(error);
     await Sentry.flush(2000);
-    console.error("Failed to connect to database:", error);
+    logger.fatal({ err: error }, "Failed to connect to database");
     process.exit(1);
   }
 }
@@ -142,20 +137,20 @@ async function gracefulShutdown() {
   if (isShuttingDown) return;
   isShuttingDown = true;
 
-  console.log("Shutting down gracefully...");
+  logger.info("Shutting down gracefully...");
 
   if (server) {
     const s = server;
     await Promise.race([
       new Promise<void>(resolve =>
         s.close(() => {
-          console.log("HTTP server closed");
+          logger.info("HTTP server closed");
           resolve();
         }),
       ),
       new Promise<void>(resolve =>
         setTimeout(() => {
-          console.warn("graceful shutdown timed out, forcing exit");
+          logger.warn("Graceful shutdown timed out, forcing exit");
           resolve();
         }, SHUTDOWN_TIMEOUT_MS),
       ),
@@ -166,7 +161,7 @@ async function gracefulShutdown() {
     try {
       await closeDbConnection();
     } catch (error) {
-      console.error("Error closing database connection:", error);
+      logger.error({ err: error }, "Error closing database connection");
       Sentry.captureException(error);
     }
   }

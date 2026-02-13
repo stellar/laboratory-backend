@@ -67,6 +67,10 @@ class Env {
     return this.optionalString("GIT_COMMIT");
   }
 
+  static get logLevel() {
+    return this.optionalString("LOG_LEVEL")?.toLowerCase() ?? "info";
+  }
+
   static get corsOrigins(): (string | RegExp)[] {
     const raw = this.optionalString("CORS_ORIGINS");
     const defaultValue =

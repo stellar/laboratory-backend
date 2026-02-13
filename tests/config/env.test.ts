@@ -181,6 +181,28 @@ describe("Env", () => {
     });
   });
 
+  describe("logLevel", () => {
+    test("🟢defaults_to_info_when_not_set", () => {
+      delete process.env.LOG_LEVEL;
+      expect(Env.logLevel).toBe("info");
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.LOG_LEVEL = "debug";
+      expect(Env.logLevel).toBe("debug");
+    });
+
+    test("🟢normalizes_to_lowercase", () => {
+      process.env.LOG_LEVEL = "WARN";
+      expect(Env.logLevel).toBe("warn");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.LOG_LEVEL = "  error  ";
+      expect(Env.logLevel).toBe("error");
+    });
+  });
+
   describe("requiredString", () => {
     test("🔴throws_when_missing", () => {
       delete process.env.POSTGRES_CONNECTION_NAME;

@@ -230,6 +230,7 @@ prisma/
 | `DEBUG`                          | No       | -                                      | Set to `true`, `1`, or `yes` to enable debug output (e.g. table listing)                       |
 | `PORT`                           | No       | `3000`                                 | HTTP server port (1-65535)                                                                     |
 | `GIT_COMMIT`                     | No       | -                                      | Git commit SHA for release tracking (set at build/deploy time)                                 |
+| `LOG_LEVEL`                      | No       | `info`                                 | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                            |
 | `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal`       | Comma-separated trusted proxy CIDRs or named tokens                                            |
 | `CORS_ORIGINS`                   | No       | `lab.stellar.org`, `*.stellar-ops.com` | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                          |
 | `NETWORK_PASSPHRASE`             | No       | Testnet                                | Stellar network passphrase                                                                     |

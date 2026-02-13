@@ -1,5 +1,6 @@
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
 import { Env } from "../config/env";
+import { logger } from "./logger";
 
 const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
@@ -35,7 +36,7 @@ export class StellarService {
       this.fetchLatestLedger = async () =>
         (await pubnetRpcClient.getLatestLedger()).sequence;
     } else {
-      console.warn(
+      logger.warn(
         "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
       );
       const pubnetHorizonClient = new Horizon.Server(

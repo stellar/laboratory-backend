@@ -1,4 +1,5 @@
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
+import { logger } from "../../src/utils/logger";
 import { StellarService } from "../../src/utils/stellar";
 
 jest.mock("@stellar/stellar-sdk", () => ({
@@ -13,6 +14,12 @@ jest.mock("@stellar/stellar-sdk", () => ({
     PUBLIC: "Public Global Stellar Network ; September 2015",
   },
 }));
+
+jest.mock("../../src/utils/logger", () => ({
+  logger: { warn: jest.fn() },
+}));
+
+const mockLoggerWarn = logger.warn as jest.Mock;
 
 const mockRpcServer = rpc.Server as jest.Mock;
 const mockHorizonServer = Horizon.Server as jest.Mock;
@@ -71,8 +78,6 @@ describe("getLatestLedger", () => {
       mockServer({ getLatestLedger: getLatestLedgerMock }),
     );
 
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
-
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
       rpcUrl: "https://rpc.pubnet.example",
@@ -82,10 +87,8 @@ describe("getLatestLedger", () => {
     expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.pubnet.example");
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(mockLoggerWarn).not.toHaveBeenCalled();
     expect(latest).toBe(789);
-
-    warnSpy.mockRestore();
   });
 
   test("🟡pubnet_falls_back_to_horizon_with_custom_url", async () => {
@@ -93,8 +96,6 @@ describe("getLatestLedger", () => {
       .fn()
       .mockResolvedValue({ core_latest_ledger: 654321 });
     mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -108,12 +109,10 @@ describe("getLatestLedger", () => {
       {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
     );
     expect(latest).toBe(654321);
-
-    warnSpy.mockRestore();
   });
 
   test("🟡pubnet_falls_back_to_default_horizon_when_missing_url", async () => {
@@ -121,8 +120,6 @@ describe("getLatestLedger", () => {
       .fn()
       .mockResolvedValue({ core_latest_ledger: 987654 });
     mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -135,12 +132,10 @@ describe("getLatestLedger", () => {
       {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
     );
     expect(latest).toBe(987654);
-
-    warnSpy.mockRestore();
   });
 
   test("🟢uses_cache_within_5_seconds", async () => {
@@ -242,7 +237,6 @@ describe("getLatestLedger", () => {
         root: jest.fn().mockRejectedValue(horizonError),
       }),
     );
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -251,8 +245,6 @@ describe("getLatestLedger", () => {
     await expect(service.getLatestLedger()).rejects.toThrow(
       "Horizon unreachable",
     );
-
-    warnSpy.mockRestore();
   });
 
   test("🟢horizon_calls_are_cached", async () => {
@@ -261,8 +253,6 @@ describe("getLatestLedger", () => {
 
     const rootMock = jest.fn().mockResolvedValue({ core_latest_ledger: 333 });
     mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -275,9 +265,8 @@ describe("getLatestLedger", () => {
     expect(second).toBe(333);
     expect(mockHorizonServer).toHaveBeenCalledTimes(1);
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
 
-    warnSpy.mockRestore();
     jest.useRealTimers();
   });
 });

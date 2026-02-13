@@ -23,6 +23,7 @@ import os from "os";
 import path from "path";
 import { PrismaClient } from "../../generated/prisma";
 import { CloudSqlEnv, Env } from "../config/env";
+import { logger } from "./logger";
 
 // Export a shared Prisma instance that will be set during initialization
 export let prisma: PrismaClient;
@@ -57,14 +58,11 @@ async function cleanupSocketIfNeeded() {
 
       if (!isInUse) {
         fs.unlinkSync(socketPath);
-        console.log("🧹 Cleaned up existing socket file");
+        logger.info("🧹 Cleaned up existing socket file");
       }
     }
   } catch (error: any) {
-    console.warn(
-      "Warning: Could not clean up socket file:",
-      error.message || error,
-    );
+    logger.warn({ err: error }, "⚠️ Could not clean up socket file");
   }
 }
 
@@ -139,7 +137,7 @@ const connectWithCloudSqlConnector = async ({
  */
 async function connect(): Promise<ConnectionResult> {
   const dbConnectionMode = Env.connectionMode;
-  console.log(`🔌 Database connection mode: ${dbConnectionMode}`);
+  logger.info(`🔌 Database connection mode: ${dbConnectionMode}`);
 
   if (dbConnectionMode === "direct_database_url") {
     const databaseUrl = Env.databaseUrl!;
