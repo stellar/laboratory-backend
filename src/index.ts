@@ -163,7 +163,12 @@ async function gracefulShutdown() {
   }
 
   if (closeDbConnection) {
-    await closeDbConnection();
+    try {
+      await closeDbConnection();
+    } catch (error) {
+      console.error("Error closing database connection:", error);
+      Sentry.captureException(error);
+    }
   }
 
   process.exit(0);
