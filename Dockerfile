@@ -23,6 +23,7 @@ FROM base AS runtime
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
+ENV NODE_ENV=production
 
 # All environment variables are set at runtime, not build time
 # ENVIRONMENT and other env vars will be provided via docker-compose or k8s
