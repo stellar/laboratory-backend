@@ -45,7 +45,7 @@ jobs:
           TAG: stellar/laboratory-backend:${{ github.event.release.tag_name }}
         run: make docker-build
       - name: Tag image as latest
-        run: docker tag stellar/laboratory-backend:${{ github.event.release.tag_name }} stellar/laboratory-backend:latest
+        run: docker tag "stellar/laboratory-backend:${{ github.event.release.tag_name }}" "stellar/laboratory-backend:latest"
       - name: Push image to DockerHub
         env:
           TAG: stellar/laboratory-backend:${{ github.event.release.tag_name }}
