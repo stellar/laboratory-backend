@@ -16,6 +16,7 @@ export class StellarService {
   private readonly fetchLatestLedger: () => Promise<number>;
   private cachedLatestLedgerSequence: number | undefined;
   private cachedLatestLedgerAtMs: number | undefined;
+  private inflightFetchLatestLedger: Promise<number> | undefined;
 
   constructor({ networkPassphrase, rpcUrl, horizonUrl }: StellarServiceConfig) {
     const isTestnet = networkPassphrase === Networks.TESTNET;
@@ -69,10 +70,21 @@ export class StellarService {
       return cached;
     }
 
-    const latest = await this.fetchLatestLedger();
-    this.cachedLatestLedgerSequence = latest;
-    this.cachedLatestLedgerAtMs = Date.now();
-    return latest;
+    if (this.inflightFetchLatestLedger) {
+      return this.inflightFetchLatestLedger;
+    }
+
+    this.inflightFetchLatestLedger = this.fetchLatestLedger()
+      .then(latest => {
+        this.cachedLatestLedgerSequence = latest;
+        this.cachedLatestLedgerAtMs = Date.now();
+        return latest;
+      })
+      .finally(() => {
+        this.inflightFetchLatestLedger = undefined;
+      });
+
+    return this.inflightFetchLatestLedger;
   }
 }
 
