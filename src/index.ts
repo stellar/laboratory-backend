@@ -176,16 +176,12 @@ process.on("SIGINT", gracefulShutdown);
 process.on("SIGUSR2", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
 
-process.on("unhandledRejection", reason => {
-  logger.fatal({ err: reason }, "Unhandled promise rejection");
-  Sentry.captureException(reason);
-  Sentry.flush(2000).finally(() => process.exit(1));
-});
-
-process.on("uncaughtException", err => {
-  logger.fatal({ err }, "Uncaught exception");
+const catchUnhandled = (err: unknown) => {
+  logger.fatal({ err }, "Unhandled error");
   Sentry.captureException(err);
   Sentry.flush(2000).finally(() => process.exit(1));
-});
+};
+process.on("unhandledRejection", catchUnhandled);
+process.on("uncaughtException", catchUnhandled);
 
 startServer();
