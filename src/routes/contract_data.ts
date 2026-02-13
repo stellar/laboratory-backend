@@ -1,6 +1,7 @@
 import express, { NextFunction, Request, Response, Router } from "express";
 import { z } from "zod";
 
+import { StrKey } from "@stellar/stellar-sdk";
 import { getContractDataByContractId } from "../controllers/contract_data";
 
 const router: Router = express.Router();
@@ -8,13 +9,14 @@ const router: Router = express.Router();
 /**
  * Validation schema for route parameters.
  *
- * Validates contract identifier.
+ * Validates contract identifier format (base32, 56 chars) and checksum via StrKey.
  */
 export const requestParamsSchema = z.object({
   contract_id: z
     .string()
     .trim()
-    .regex(/^C[A-Z2-7]{55}$/, "Invalid Stellar contract ID"),
+    .regex(/^C[A-Z2-7]{55}$/, "Invalid Stellar contract ID")
+    .refine(v => StrKey.isValidContract(v), "Invalid Stellar contract ID"),
 });
 
 /**
