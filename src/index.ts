@@ -1,6 +1,7 @@
 // Sentry must be imported first to properly instrument all modules
 import { Sentry } from "./instrument";
 
+import cors from "cors";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
 
@@ -13,6 +14,32 @@ import { connect } from "./utils/connect";
 const app = express();
 
 const PORT = Env.port;
+
+// CORS configuration
+const allowedOrigins = [
+  "https://laboratory.stellar.org",
+  "http://localhost:3000",
+  "http://localhost:3001",
+];
+
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (e.g., curl, Postman, server-to-server)
+      if (!origin) {
+        callback(null, true);
+        return;
+      }
+      if (allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
+    methods: ["GET", "OPTIONS"],
+    allowedHeaders: ["Content-Type"],
+  }),
+);
 
 app.use(express.json());
 
