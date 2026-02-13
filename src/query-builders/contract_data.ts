@@ -68,7 +68,7 @@ function queryWithoutCursor(
   const orderByClause = orderBy(sortDirection, sortDbField, sortField, "cd.");
   return Prisma.sql`
     SELECT ${Prisma.raw(SELECT_COLUMNS)},
-      (cd.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(cd.live_until_ledger_sequence < ${latestLedgerSequence}, true) AS expired
     FROM contract_data cd
     WHERE cd.contract_id = ${contractId}
     ${Prisma.raw(orderByClause)}
@@ -122,7 +122,7 @@ function queryWithCursorSortField(
       LIMIT ${limit}
     )
     SELECT pr.*,
-      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, true) AS expired
     FROM paginated_result pr
     ${Prisma.raw(orderByFinal)}
   `;
@@ -165,7 +165,7 @@ function queryWithCursorKeyHash(
       LIMIT ${limit}
     )
     SELECT pr.*,
-      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, true) AS expired
     FROM paginated_result pr
     ${Prisma.raw(orderByFinal)}
   `;
