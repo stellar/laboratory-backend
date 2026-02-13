@@ -2,6 +2,20 @@ import { Prisma } from "../../generated/prisma";
 import { CursorData } from "../helpers/cursor";
 import { SortDbField, SortDirection, SortField } from "../types/contract_data";
 
+/** Runtime allowlist for DB columns used in raw SQL ORDER BY / WHERE clauses. */
+const VALID_SORT_DB_FIELDS: ReadonlySet<string> = new Set<SortDbField>([
+  "durability",
+  "key_hash",
+  "live_until_ledger_sequence",
+  "closed_at",
+]);
+
+function assertValidSortDbField(field: SortDbField): void {
+  if (!VALID_SORT_DB_FIELDS.has(field)) {
+    throw new Error(`Invalid sort DB field: ${field}`);
+  }
+}
+
 /**
  * Configuration for building a contract data query (storage endpoint).
  */
@@ -175,6 +189,8 @@ export const buildContractDataQuery = (
     sortDirection,
     sortField,
   } = config;
+
+  assertValidSortDbField(sortDbField);
 
   if (!cursorData) {
     // First query (not paginated)
