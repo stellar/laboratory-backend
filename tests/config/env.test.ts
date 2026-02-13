@@ -287,6 +287,16 @@ describe("Env", () => {
       expect((origins[0] as RegExp).test("http://app.example.com")).toBe(false);
     });
 
+    test("🟢regex_allows_matching_and_rejects_non_matching", () => {
+      process.env.CORS_ORIGINS =
+        "/^https:\\/\\/.*\\.services\\.example\\.com$/";
+      const regex = Env.corsOrigins[0] as RegExp;
+      expect(regex.test("https://foo.services.example.com")).toBe(true);
+      expect(regex.test("https://bar.services.example.com")).toBe(true);
+      expect(regex.test("https://foo.services.example.net")).toBe(false);
+      expect(regex.test("http://foo.services.example.com")).toBe(false);
+    });
+
     test("🟢handles_mixed_strings_and_regex", () => {
       process.env.CORS_ORIGINS =
         "https://app.example.com,/^https:\\/\\/.*\\.preview\\.example\\.com$/";
