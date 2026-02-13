@@ -2,10 +2,6 @@ name: Run Tests
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
-      - develop
   workflow_call:
 
 jobs:
