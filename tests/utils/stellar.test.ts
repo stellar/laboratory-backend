@@ -47,7 +47,9 @@ describe("getLatestLedger", () => {
     });
     const latest = await service.getLatestLedger();
 
-    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.testnet.example");
+    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.testnet.example", {
+      timeout: 10000,
+    });
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
     expect(latest).toBe(123);
@@ -66,6 +68,7 @@ describe("getLatestLedger", () => {
 
     expect(mockRpcServer).toHaveBeenCalledWith(
       "https://soroban-testnet.stellar.org",
+      { timeout: 10000 },
     );
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
@@ -84,7 +87,9 @@ describe("getLatestLedger", () => {
     });
     const latest = await service.getLatestLedger();
 
-    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.pubnet.example");
+    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.pubnet.example", {
+      timeout: 10000,
+    });
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
     expect(mockLoggerWarn).not.toHaveBeenCalled();
@@ -106,7 +111,6 @@ describe("getLatestLedger", () => {
     expect(mockRpcServer).not.toHaveBeenCalled();
     expect(mockHorizonServer).toHaveBeenCalledWith(
       "https://horizon.custom.example",
-      {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -129,7 +133,6 @@ describe("getLatestLedger", () => {
     expect(mockRpcServer).not.toHaveBeenCalled();
     expect(mockHorizonServer).toHaveBeenCalledWith(
       "https://horizon.stellar.org",
-      {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
     expect(mockLoggerWarn).toHaveBeenCalledWith(
@@ -265,7 +268,9 @@ describe("getLatestLedger", () => {
     expect(second).toBe(333);
     expect(mockHorizonServer).toHaveBeenCalledTimes(1);
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(mockLoggerWarn).toHaveBeenCalledTimes(1);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
+    );
 
     jest.useRealTimers();
   });

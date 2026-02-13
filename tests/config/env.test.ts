@@ -263,10 +263,9 @@ describe("Env", () => {
   });
 
   describe("corsOrigins", () => {
-    test("🟢returns_defaults_when_not_set", () => {
+    test("🟢allows_all_origins_when_not_set", () => {
       delete process.env.CORS_ORIGINS;
-      const origins = Env.corsOrigins;
-      expect(origins).toEqual(["https://lab.stellar.org"]);
+      expect(Env.corsOrigins).toBe(true);
     });
 
     test("🟢parses_plain_string_origins", () => {
@@ -280,7 +279,7 @@ describe("Env", () => {
 
     test("🟢parses_regex_patterns", () => {
       process.env.CORS_ORIGINS = "/^https:\\/\\/.*\\.example\\.com$/";
-      const origins = Env.corsOrigins;
+      const origins = Env.corsOrigins as (string | RegExp)[];
       expect(origins).toHaveLength(1);
       expect(origins[0]).toBeInstanceOf(RegExp);
       expect((origins[0] as RegExp).test("https://app.example.com")).toBe(true);
@@ -290,7 +289,7 @@ describe("Env", () => {
     test("🟢regex_allows_matching_and_rejects_non_matching", () => {
       process.env.CORS_ORIGINS =
         "/^https:\\/\\/.*\\.services\\.example\\.com$/";
-      const regex = Env.corsOrigins[0] as RegExp;
+      const regex = (Env.corsOrigins as (string | RegExp)[])[0] as RegExp;
       expect(regex.test("https://foo.services.example.com")).toBe(true);
       expect(regex.test("https://bar.services.example.com")).toBe(true);
       expect(regex.test("https://foo.services.example.net")).toBe(false);
@@ -300,7 +299,7 @@ describe("Env", () => {
     test("🟢handles_mixed_strings_and_regex", () => {
       process.env.CORS_ORIGINS =
         "https://app.example.com,/^https:\\/\\/.*\\.preview\\.example\\.com$/";
-      const origins = Env.corsOrigins;
+      const origins = Env.corsOrigins as (string | RegExp)[];
       expect(origins).toHaveLength(2);
       expect(origins[0]).toBe("https://app.example.com");
       expect(origins[1]).toBeInstanceOf(RegExp);

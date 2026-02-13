@@ -2,12 +2,25 @@ import pino from "pino";
 import type { Options } from "pino-http";
 import { Env } from "../config/env";
 
+/**
+ * Pino transport configuration for logging.
+ * - When not in production, use pino-pretty for pretty printing with colors.
+ * - When in production, leave undefined to use the default transport (console).
+ */
 const transport =
   process.env.NODE_ENV !== "production"
     ? { target: "pino-pretty", options: { colorize: true } }
     : undefined;
 
-export const logger = pino({ level: Env.logLevel, transport });
+export const logger = pino({
+  level: Env.logLevel,
+  transport,
+  formatters: {
+    level(label) {
+      return { level: label };
+    },
+  },
+});
 
 export const pinoHttpOptions: Options = {
   logger,

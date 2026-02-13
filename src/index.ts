@@ -23,13 +23,10 @@ const app = express();
 // ── Middleware ────────────────────────────────────────────────────────
 
 const trustProxyCidrs = Env.trustProxy;
-app.set("trust proxy", proxyAddr.compile(trustProxyCidrs));
-
+app.set("trust proxy", proxyAddr.compile(trustProxyCidrs)); // Trust proxy CIDRs
 app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
-// Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
-app.use(helmet());
-// HTTP request logger — only log method, url, status, and response time
-app.use(pinoHttp(pinoHttpOptions));
+app.use(helmet()); // Sets security headers
+app.use(pinoHttp(pinoHttpOptions)); // HTTP request logger
 
 app.use(
   rateLimit({
@@ -82,7 +79,7 @@ app.use(
       next(err);
       return;
     }
-    logger.error(
+    req.log.error(
       { err, method: req.method, url: req.originalUrl },
       "Unhandled error",
     );
@@ -102,12 +99,14 @@ async function initializeDatabase() {
 
   logger.info("Database connected successfully");
 
-  const tables = await prisma.$queryRaw`
+  if (Env.debug) {
+    const tables = await prisma.$queryRaw`
     SELECT table_name
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-  `;
-  logger.debug({ tables }, "Available tables");
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+    `;
+    logger.debug({ tables }, "Available tables");
+  }
 }
 
 // ── Server Lifecycle ─────────────────────────────────────────────────

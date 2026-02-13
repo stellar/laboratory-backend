@@ -1,17 +1,16 @@
 import { Prisma } from "../../generated/prisma";
 import { CursorData } from "../helpers/cursor";
-import { SortDbField, SortDirection, SortField } from "../types/contract_data";
+import {
+  SortDbField,
+  SortDirection,
+  SortField,
+  VALID_SORT_DB_FIELDS,
+} from "../types/contract_data";
 
-/** Runtime allowlist for DB columns used in raw SQL ORDER BY / WHERE clauses. */
-const VALID_SORT_DB_FIELDS: ReadonlySet<string> = new Set<SortDbField>([
-  "durability",
-  "key_hash",
-  "live_until_ledger_sequence",
-  "closed_at",
-]);
+const sortDbFieldSet: ReadonlySet<string> = new Set(VALID_SORT_DB_FIELDS);
 
 function assertValidSortDbField(field: SortDbField): void {
-  if (!VALID_SORT_DB_FIELDS.has(field)) {
+  if (!sortDbFieldSet.has(field)) {
     throw new Error(`Invalid sort DB field: ${field}`);
   }
 }

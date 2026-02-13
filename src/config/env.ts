@@ -79,10 +79,10 @@ class Env {
     return level as pino.Level;
   }
 
-  static get corsOrigins(): (string | RegExp)[] {
+  static get corsOrigins(): true | (string | RegExp)[] {
     const raw = this.optionalString("CORS_ORIGINS");
-    const defaultValue = "https://lab.stellar.org";
-    return (raw ?? defaultValue)
+    if (!raw) return true;
+    return raw
       .split(",")
       .map(s => s.trim())
       .filter(Boolean)

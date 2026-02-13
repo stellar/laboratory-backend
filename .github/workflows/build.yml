@@ -16,6 +16,7 @@ jobs:
     name: Build and push a sha tagged container image
     needs: test
     runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v5
       - name: Login to DockerHub

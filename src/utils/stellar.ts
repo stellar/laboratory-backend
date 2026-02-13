@@ -5,7 +5,7 @@ import { logger } from "./logger";
 const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
-const UPSTREAM_REQUEST_TIMEOUT_MS = 10_000;
+const STELLAR_API_TIMEOUT_MS = 10_000;
 
 export type StellarServiceConfig = {
   networkPassphrase: string;
@@ -17,7 +17,7 @@ export class StellarService {
   private readonly fetchLatestLedger: () => Promise<number>;
   private cachedLatestLedgerSequence: number | undefined;
   private cachedLatestLedgerAtMs: number | undefined;
-  private inflightFetchLatestLedger: Promise<number> | undefined;
+  private ongoingFetchLatestLedger: Promise<number> | undefined;
 
   constructor({ networkPassphrase, rpcUrl, horizonUrl }: StellarServiceConfig) {
     const isTestnet = networkPassphrase === Networks.TESTNET;
@@ -25,14 +25,14 @@ export class StellarService {
     if (isTestnet) {
       const testnetRpcClient = new rpc.Server(
         rpcUrl ?? DEFAULT_TESTNET_RPC_URL,
+        { timeout: STELLAR_API_TIMEOUT_MS },
       );
-      testnetRpcClient.httpClient.defaults.timeout =
-        UPSTREAM_REQUEST_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await testnetRpcClient.getLatestLedger()).sequence;
     } else if (rpcUrl) {
-      const pubnetRpcClient = new rpc.Server(rpcUrl);
-      pubnetRpcClient.httpClient.defaults.timeout = UPSTREAM_REQUEST_TIMEOUT_MS;
+      const pubnetRpcClient = new rpc.Server(rpcUrl, {
+        timeout: STELLAR_API_TIMEOUT_MS,
+      });
       this.fetchLatestLedger = async () =>
         (await pubnetRpcClient.getLatestLedger()).sequence;
     } else {
@@ -41,10 +41,8 @@ export class StellarService {
       );
       const pubnetHorizonClient = new Horizon.Server(
         horizonUrl ?? DEFAULT_PUBNET_HORIZON_URL,
-        {},
       );
-      pubnetHorizonClient.httpClient.defaults.timeout =
-        UPSTREAM_REQUEST_TIMEOUT_MS;
+      pubnetHorizonClient.httpClient.defaults.timeout = STELLAR_API_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await pubnetHorizonClient.root()).core_latest_ledger;
     }
@@ -71,21 +69,22 @@ export class StellarService {
       return cached;
     }
 
-    if (this.inflightFetchLatestLedger) {
-      return this.inflightFetchLatestLedger;
+    // If there is an ongoing fetch, return the promise.
+    if (this.ongoingFetchLatestLedger) {
+      return this.ongoingFetchLatestLedger;
     }
 
-    this.inflightFetchLatestLedger = this.fetchLatestLedger()
+    this.ongoingFetchLatestLedger = this.fetchLatestLedger()
       .then(latest => {
         this.cachedLatestLedgerSequence = latest;
         this.cachedLatestLedgerAtMs = Date.now();
         return latest;
       })
       .finally(() => {
-        this.inflightFetchLatestLedger = undefined;
+        this.ongoingFetchLatestLedger = undefined;
       });
 
-    return this.inflightFetchLatestLedger;
+    return this.ongoingFetchLatestLedger;
   }
 }
 

@@ -12,12 +12,14 @@ export enum SortField {
   UPDATED_AT = "updated_at",
 }
 
-/** DB column names that can appear in ORDER BY / cursor comparisons. */
-export type SortDbField =
-  | "durability"
-  | "key_hash"
-  | "live_until_ledger_sequence"
-  | "closed_at";
+export const VALID_SORT_DB_FIELDS = [
+  "durability",
+  "key_hash",
+  "live_until_ledger_sequence",
+  "closed_at",
+] as const;
+
+export type SortDbField = (typeof VALID_SORT_DB_FIELDS)[number];
 
 export const APIFieldToDBFieldMap: Record<SortField, SortDbField> = {
   [SortField.DURABILITY]: "durability",

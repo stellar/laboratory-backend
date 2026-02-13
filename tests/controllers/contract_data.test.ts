@@ -284,8 +284,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
     });
 
     test("🔴cursor_valid_base64_but_wrong_shape_returns_400", async () => {
-      // "MQ==" decodes to "1", which is valid JSON but not a CursorData object
-      mockRequest.query = { cursor: "MQ==" };
+      // "e30=" decodes to "{}", which is valid JSON but not a CursorData object
+      mockRequest.query = { cursor: "e30=" };
 
       await getContractDataByContractId(
         mockRequest as Request,
@@ -294,7 +294,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: expect.stringContaining("Invalid cursor"),
+        error: expect.stringContaining("Invalid cursor: e30="),
       });
     });
 
