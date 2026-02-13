@@ -14,7 +14,7 @@ import { Env } from "./config/env";
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
 import { connect } from "./utils/connect";
-import { logger, pinoHttpSerializers } from "./utils/logger";
+import { logger, pinoHttpOptions } from "./utils/logger";
 
 // ── App Setup ────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
 // Sets security headers (X-Content-Type-Options, X-Frame-Options, CSP, etc.)
 app.use(helmet());
 // HTTP request logger — only log method, url, status, and response time
-app.use(pinoHttp({ logger, serializers: pinoHttpSerializers }));
+app.use(pinoHttp(pinoHttpOptions));
 
 app.use(
   rateLimit({
