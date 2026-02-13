@@ -25,8 +25,19 @@ import { PrismaClient } from "../../generated/prisma";
 import { CloudSqlEnv, Env } from "../config/env";
 import { logger } from "./logger";
 
-// Export a shared Prisma instance that will be set during initialization
-export let prisma: PrismaClient;
+// Shared Prisma instance — set during initialization via connect()
+let _prisma: PrismaClient | null = null;
+
+/**
+ * Returns the shared PrismaClient instance.
+ * Throws if called before connect() has completed.
+ */
+export function getPrisma(): PrismaClient {
+  if (!_prisma) {
+    throw new Error("Database not initialized — call connect() first");
+  }
+  return _prisma;
+}
 
 const getGoogleCloudSocketDir = () => os.tmpdir();
 
@@ -61,7 +72,7 @@ async function cleanupSocketIfNeeded() {
         logger.info("🧹 Cleaned up existing socket file");
       }
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     logger.warn({ err: error }, "⚠️ Could not clean up socket file");
   }
 }
@@ -79,12 +90,12 @@ export type ConnectionResult = {
 const connectWithDatabaseUrl = async (
   databaseUrl: string,
 ): Promise<ConnectionResult> => {
-  prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+  _prisma = new PrismaClient({ datasourceUrl: databaseUrl });
 
   return {
-    prisma,
+    prisma: _prisma,
     async close() {
-      await prisma.$disconnect();
+      await _prisma!.$disconnect();
     },
   };
 };
@@ -118,12 +129,12 @@ const connectWithCloudSqlConnector = async ({
 
   const datasourceUrl = `postgresql://${user}@localhost/${database}?host=${gCloudSqlSocketDir}`;
 
-  prisma = new PrismaClient({ datasourceUrl });
+  _prisma = new PrismaClient({ datasourceUrl });
 
   return {
-    prisma,
+    prisma: _prisma,
     async close() {
-      await prisma.$disconnect();
+      await _prisma!.$disconnect();
       gCloudSqlConnector.close();
       await new Promise(resolve => setTimeout(resolve, 1000));
     },

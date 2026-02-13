@@ -14,7 +14,7 @@ import {
   SortDirection,
   SortField,
 } from "../types/contract_data";
-import { prisma } from "../utils/connect";
+import { getPrisma } from "../utils/connect";
 import { getStellarService, StellarService } from "../utils/stellar";
 
 /**
@@ -123,7 +123,7 @@ const getContractData = async (
     sortDirection,
     sortField,
   };
-  const results = await prisma.$queryRaw<ContractData[]>(
+  const results = await getPrisma().$queryRaw<ContractData[]>(
     buildContractDataQuery(config),
   );
 
