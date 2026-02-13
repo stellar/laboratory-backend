@@ -10,30 +10,7 @@ on:
 
 jobs:
   test:
-    name: Run tests before building
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v5
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "22.x"
-      - name: Install pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@10.14.0 --activate
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-      - name: Generate Prisma Client
-        run: npx prisma generate
-      - name: Run eslint
-        run: pnpm lint
-      - name: Run prettier:check
-        run: pnpm format:check
-      - name: Run typecheck
-        run: pnpm typecheck
-      - name: Run tests
-        run: pnpm test
+    uses: ./.github/workflows/test.yml
 
   build-and-push-sha-tagged-image:
     name: Build and push a sha tagged container image
