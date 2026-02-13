@@ -166,6 +166,7 @@ async function gracefulShutdown() {
     }
   }
 
+  await Sentry.flush(2000);
   process.exit(0);
 }
 
