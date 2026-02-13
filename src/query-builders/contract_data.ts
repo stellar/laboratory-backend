@@ -1,6 +1,6 @@
 import { Prisma } from "../../generated/prisma";
 import { CursorData } from "../helpers/cursor";
-import { SortDirection, SortField } from "../types/contract_data";
+import { SortDbField, SortDirection, SortField } from "../types/contract_data";
 
 /**
  * Configuration for building a contract data query (storage endpoint).
@@ -10,7 +10,7 @@ export interface ContractDataQueryConfig {
   cursorData?: CursorData;
   latestLedgerSequence: number;
   limit: number;
-  sortDbField: string;
+  sortDbField: SortDbField;
   sortDirection: SortDirection;
   sortField: SortField;
 }
@@ -28,7 +28,7 @@ const SELECT_COLUMNS =
  */
 function orderBy(
   direction: SortDirection,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortField: SortField,
   tablePrefix: "" | "cd." | "pr.",
 ): string {
@@ -47,7 +47,7 @@ function queryWithoutCursor(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
 ): Prisma.Sql {
@@ -74,7 +74,7 @@ function queryWithCursorSortField(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
   cursorKeyHash: string,
@@ -125,7 +125,7 @@ function queryWithCursorKeyHash(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
   cursorKeyHash: string,
