@@ -24,7 +24,7 @@ export const requestParamsSchema = z.object({
  * sorting order, and multiple sort field options.
  */
 const requestQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(200).default(10),
+  limit: z.coerce.number().int().min(1).max(200).default(20),
   order: z.enum(["asc", "desc"]).default("desc"),
   cursor: z.string().trim().optional(),
   sort_by: z.enum(["durability", "key_hash", "ttl", "updated_at"]).optional(),
