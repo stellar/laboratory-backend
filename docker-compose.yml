@@ -7,12 +7,19 @@ services:
     ports:
       - "3000:3000"
     environment:
-      GOOGLE_APPLICATION_CREDENTIALS: /app/creds.json
-      ENVIRONMENT: development
+      NODE_ENV: ${NODE_ENV:-development}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       PORT: ${PORT:-3000}
-      POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME}
-      POSTGRES_IAM_USER: ${POSTGRES_IAM_USER}
-      DB_NAME: ${DB_NAME}
+
+      # DB Connection (Mode A: set DATABASE_URL in .env)
+      DATABASE_URL: ${DATABASE_URL:-}
+      # Mode B: Cloud SQL Connector with IAM — set these when not using DATABASE_URL
+      DB_NAME: ${DB_NAME:-}
+      POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME:-}
+      POSTGRES_IAM_USER: ${POSTGRES_IAM_USER:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/creds.json}
+      GOOGLE_CLOUD_SQL_IP_TYPE: ${GOOGLE_CLOUD_SQL_IP_TYPE:-PRIVATE}
+
     volumes:
       # `creds.json` must exist in the directory where you run docker-compose up (the project root):
       - ./creds.json:/app/creds.json:ro

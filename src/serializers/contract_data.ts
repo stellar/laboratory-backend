@@ -11,11 +11,11 @@ export const serializeContractDataResults = (
 ): ContractDataDTO[] => {
   return results.map((row: ContractData) => ({
     durability: row.durability,
-    expired: row.expired,
+    expired: row.expired ?? null,
     key_hash: row.key_hash,
-    key: Buffer.from(row.key).toString(),
+    key: row.key ? Buffer.from(row.key).toString() : null,
     ttl: row.live_until_ledger_sequence,
     updated: Math.floor(row.closed_at.getTime() / 1000),
-    value: Buffer.from(row.val).toString(),
+    value: row.val ? Buffer.from(row.val).toString() : null,
   }));
 };

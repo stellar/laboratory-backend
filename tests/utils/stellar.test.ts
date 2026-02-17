@@ -1,4 +1,5 @@
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
+import { logger } from "../../src/utils/logger";
 import { StellarService } from "../../src/utils/stellar";
 
 jest.mock("@stellar/stellar-sdk", () => ({
@@ -14,8 +15,20 @@ jest.mock("@stellar/stellar-sdk", () => ({
   },
 }));
 
+jest.mock("../../src/utils/logger", () => ({
+  logger: { warn: jest.fn() },
+}));
+
+const mockLoggerWarn = logger.warn as jest.Mock;
+
 const mockRpcServer = rpc.Server as jest.Mock;
 const mockHorizonServer = Horizon.Server as jest.Mock;
+
+/** Builds a mock server instance with the httpClient.defaults stub required by StellarService. */
+const mockServer = (methods: Record<string, jest.Mock>) => ({
+  ...methods,
+  httpClient: { defaults: {} },
+});
 
 describe("getLatestLedger", () => {
   beforeEach(() => {
@@ -24,7 +37,9 @@ describe("getLatestLedger", () => {
 
   test("🟢testnet_uses_rpc_with_configured_url", async () => {
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 123 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -32,7 +47,9 @@ describe("getLatestLedger", () => {
     });
     const latest = await service.getLatestLedger();
 
-    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.testnet.example");
+    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.testnet.example", {
+      timeout: 10000,
+    });
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
     expect(latest).toBe(123);
@@ -40,7 +57,9 @@ describe("getLatestLedger", () => {
 
   test("🟢testnet_uses_default_rpc_url_when_missing", async () => {
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 456 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -49,6 +68,7 @@ describe("getLatestLedger", () => {
 
     expect(mockRpcServer).toHaveBeenCalledWith(
       "https://soroban-testnet.stellar.org",
+      { timeout: 10000 },
     );
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
@@ -57,9 +77,9 @@ describe("getLatestLedger", () => {
 
   test("🟢pubnet_uses_rpc_when_rpc_url_provided", async () => {
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 789 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -67,22 +87,20 @@ describe("getLatestLedger", () => {
     });
     const latest = await service.getLatestLedger();
 
-    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.pubnet.example");
+    expect(mockRpcServer).toHaveBeenCalledWith("https://rpc.pubnet.example", {
+      timeout: 10000,
+    });
     expect(getLatestLedgerMock).toHaveBeenCalledTimes(1);
     expect(mockHorizonServer).not.toHaveBeenCalled();
-    expect(warnSpy).not.toHaveBeenCalled();
+    expect(mockLoggerWarn).not.toHaveBeenCalled();
     expect(latest).toBe(789);
-
-    warnSpy.mockRestore();
   });
 
   test("🟡pubnet_falls_back_to_horizon_with_custom_url", async () => {
     const rootMock = jest
       .fn()
       .mockResolvedValue({ core_latest_ledger: 654321 });
-    mockHorizonServer.mockReturnValue({ root: rootMock });
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+    mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -93,24 +111,19 @@ describe("getLatestLedger", () => {
     expect(mockRpcServer).not.toHaveBeenCalled();
     expect(mockHorizonServer).toHaveBeenCalledWith(
       "https://horizon.custom.example",
-      {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
     );
     expect(latest).toBe(654321);
-
-    warnSpy.mockRestore();
   });
 
   test("🟡pubnet_falls_back_to_default_horizon_when_missing_url", async () => {
     const rootMock = jest
       .fn()
       .mockResolvedValue({ core_latest_ledger: 987654 });
-    mockHorizonServer.mockReturnValue({ root: rootMock });
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+    mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -120,15 +133,12 @@ describe("getLatestLedger", () => {
     expect(mockRpcServer).not.toHaveBeenCalled();
     expect(mockHorizonServer).toHaveBeenCalledWith(
       "https://horizon.stellar.org",
-      {},
     );
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledWith(
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
       "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
     );
     expect(latest).toBe(987654);
-
-    warnSpy.mockRestore();
   });
 
   test("🟢uses_cache_within_5_seconds", async () => {
@@ -136,7 +146,9 @@ describe("getLatestLedger", () => {
     jest.setSystemTime(0);
 
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 111 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -158,7 +170,9 @@ describe("getLatestLedger", () => {
     jest.setSystemTime(0);
 
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 222 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -181,7 +195,9 @@ describe("getLatestLedger", () => {
     jest.setSystemTime(0);
 
     const getLatestLedgerMock = jest.fn().mockResolvedValue({ sequence: 222 });
-    mockRpcServer.mockReturnValue({ getLatestLedger: getLatestLedgerMock });
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -201,9 +217,11 @@ describe("getLatestLedger", () => {
 
   test("🔴rpc_error_propagates_to_caller", async () => {
     const rpcError = new Error("RPC connection failed");
-    mockRpcServer.mockReturnValue({
-      getLatestLedger: jest.fn().mockRejectedValue(rpcError),
-    });
+    mockRpcServer.mockReturnValue(
+      mockServer({
+        getLatestLedger: jest.fn().mockRejectedValue(rpcError),
+      }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.TESTNET,
@@ -217,10 +235,11 @@ describe("getLatestLedger", () => {
 
   test("🔴horizon_error_propagates_to_caller", async () => {
     const horizonError = new Error("Horizon unreachable");
-    mockHorizonServer.mockReturnValue({
-      root: jest.fn().mockRejectedValue(horizonError),
-    });
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+    mockHorizonServer.mockReturnValue(
+      mockServer({
+        root: jest.fn().mockRejectedValue(horizonError),
+      }),
+    );
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -229,8 +248,6 @@ describe("getLatestLedger", () => {
     await expect(service.getLatestLedger()).rejects.toThrow(
       "Horizon unreachable",
     );
-
-    warnSpy.mockRestore();
   });
 
   test("🟢horizon_calls_are_cached", async () => {
@@ -238,9 +255,7 @@ describe("getLatestLedger", () => {
     jest.setSystemTime(0);
 
     const rootMock = jest.fn().mockResolvedValue({ core_latest_ledger: 333 });
-    mockHorizonServer.mockReturnValue({ root: rootMock });
-
-    const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+    mockHorizonServer.mockReturnValue(mockServer({ root: rootMock }));
 
     const service = new StellarService({
       networkPassphrase: Networks.PUBLIC,
@@ -253,9 +268,10 @@ describe("getLatestLedger", () => {
     expect(second).toBe(333);
     expect(mockHorizonServer).toHaveBeenCalledTimes(1);
     expect(rootMock).toHaveBeenCalledTimes(1);
-    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(mockLoggerWarn).toHaveBeenCalledWith(
+      "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
+    );
 
-    warnSpy.mockRestore();
     jest.useRealTimers();
   });
 });

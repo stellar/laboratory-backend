@@ -9,9 +9,14 @@ on:
       - published
 
 jobs:
+  test:
+    uses: ./.github/workflows/test.yml
+
   build-and-push-sha-tagged-image:
     name: Build and push a sha tagged container image
+    needs: test
     runs-on: ubuntu-24.04
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v5
       - name: Login to DockerHub
@@ -23,8 +28,10 @@ jobs:
         run: make docker-build
       - name: Push image to DockerHub
         run: make docker-push
+
   build-and-push-release-image:
     name: Build and push a release tagged container image
+    needs: test
     runs-on: ubuntu-24.04
     if: github.event_name == 'release'
     steps:
@@ -39,7 +46,7 @@ jobs:
           TAG: stellar/laboratory-backend:${{ github.event.release.tag_name }}
         run: make docker-build
       - name: Tag image as latest
-        run: docker tag stellar/laboratory-backend:${{ github.event.release.tag_name }} stellar/laboratory-backend:latest
+        run: docker tag "stellar/laboratory-backend:${{ github.event.release.tag_name }}" "stellar/laboratory-backend:latest"
       - name: Push image to DockerHub
         env:
           TAG: stellar/laboratory-backend:${{ github.event.release.tag_name }}

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { buildKeysQuery } from "../query-builders/keys";
-import { prisma } from "../utils/connect";
+import { getPrisma } from "../utils/connect";
 
 export const getAllKeysForContract = async (
   req: Request,
@@ -8,7 +8,7 @@ export const getAllKeysForContract = async (
 ): Promise<void | Response> => {
   const { contract_id } = req.params;
 
-  const result = await prisma.$queryRaw<Array<{ key_symbol: string }>>(
+  const result = await getPrisma().$queryRaw<Array<{ key_symbol: string }>>(
     buildKeysQuery(contract_id),
   );
 

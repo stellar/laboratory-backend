@@ -4,146 +4,184 @@ import { Sentry } from "./instrument";
 import cors from "cors";
 import type { NextFunction, Request, Response } from "express";
 import express from "express";
+import rateLimit from "express-rate-limit";
+import helmet from "helmet";
+import pinoHttp from "pino-http";
+import proxyAddr from "proxy-addr";
 
 import packageJson from "../package.json";
 import { Env } from "./config/env";
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
 import { connect } from "./utils/connect";
+import { logger, pinoHttpOptions } from "./utils/logger";
+
+// ── App Setup ────────────────────────────────────────────────────────
 
 const app = express();
 
-const PORT = Env.port;
+// ── Middleware ────────────────────────────────────────────────────────
 
-// CORS configuration
-const allowedOrigins = [
-  "https://laboratory.stellar.org",
-  "http://localhost:3000",
-  "http://localhost:3001",
-];
+const trustProxyCidrs = Env.trustProxy;
+app.set("trust proxy", proxyAddr.compile(trustProxyCidrs)); // Trust proxy CIDRs
+app.use(cors({ origin: Env.corsOrigins, methods: ["GET", "OPTIONS"] })); // Allow CORS for specified origins
+app.use(helmet()); // Sets security headers
+app.use(pinoHttp(pinoHttpOptions)); // HTTP request logger
 
 app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Allow requests with no origin (e.g., curl, Postman, server-to-server)
-      if (!origin) {
-        callback(null, true);
-        return;
-      }
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error("Not allowed by CORS"));
-      }
+  rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 1000,
+    skip: req => req.path === "/health",
+    message: {
+      error: "Too Many Requests",
+      message: "Too many requests from this IP, please try again later.",
     },
-    methods: ["GET", "OPTIONS"],
-    allowedHeaders: ["Content-Type"],
+    standardHeaders: true,
+    legacyHeaders: false,
   }),
 );
 
-app.use(express.json());
-
-app.use("/api", contractRoutes);
-app.use("/api", keysRoutes);
-
-app.get("/health", (_, res) => {
-  res.json({
-    status: "healthy",
-    timestamp: new Date().toISOString(),
-    service: "Stellar Lab API",
-    version: packageJson.version,
-    commit: Env.gitCommit,
-    uptime: process.uptime(),
-    environment: Env.environment,
-  });
-});
+// ── Routes ───────────────────────────────────────────────────────────
 
 app.get("/", (_, res) => {
   res.redirect("/health");
 });
 
-// Middlewares:
-// Middleware: Sentry error handler. Must be registered after all routes but before other error handlers
+app.get("/health", (_, res) => {
+  const health: Record<string, unknown> = {
+    status: "healthy",
+    timestamp: new Date().toISOString(),
+  };
+
+  if (Env.debug) {
+    health.service = "Stellar Lab API";
+    health.version = packageJson.version;
+    health.commit = Env.gitCommit;
+    health.uptime = process.uptime();
+    health.environment = Env.environment;
+  }
+
+  res.json(health);
+});
+
+app.use("/api", contractRoutes);
+app.use("/api", keysRoutes);
+
+// ── Error Handling ───────────────────────────────────────────────────
+
+// Sentry error handler must be registered after all routes but before other error handlers
 Sentry.setupExpressErrorHandler(app);
 
-// Middleware: global error handler. Avoids unhandled exceptions from leaking to clients
+// Global error handler — prevents unhandled exceptions from leaking to clients
 app.use(
   (err: unknown, req: Request, res: Response, next: NextFunction): void => {
-    void req;
     if (res.headersSent) {
       next(err);
       return;
     }
-    console.error("Unhandled error:", err);
-    const message =
-      err instanceof Error ? err.message : "Internal Server Error";
-    res.status(500).json({ error: message });
+    req.log.error(
+      { err, method: req.method, url: req.originalUrl },
+      "Unhandled error",
+    );
+    res.status(500).json({ error: "Internal Server Error" });
   },
 );
 
-let closeDbConnection: (() => Promise<void>) | null = null;
-let server: ReturnType<typeof app.listen> | null = null;
+// ── Database ─────────────────────────────────────────────────────────
 
-/**
- * Initializes the database connection and checks if the tables exist.
- */
+let closeDbConnection: (() => Promise<void>) | null = null;
+
 async function initializeDatabase() {
-  console.log("Connecting to database...");
+  logger.info("Connecting to database...");
   const { prisma, close } = await connect();
 
   closeDbConnection = close;
 
-  console.log("✅ Database connected successfully!");
+  logger.info("Database connected successfully");
 
   if (Env.debug) {
     const tables = await prisma.$queryRaw`
-      SELECT table_name
+    SELECT table_name
       FROM information_schema.tables
       WHERE table_schema = 'public'
     `;
-    console.log("Available tables:", tables);
+    logger.debug({ tables }, "Available tables");
   }
 }
 
-/**
- * Starts the server and initializes the database connection.
- */
+// ── Server Lifecycle ─────────────────────────────────────────────────
+
+let server: ReturnType<typeof app.listen> | null = null;
+
 async function startServer() {
   try {
     await initializeDatabase();
 
-    server = app.listen(PORT, () => {
-      console.log(`Server is running on port ${PORT}`);
+    server = app.listen(Env.port, () => {
+      logger.info({ port: Env.port }, "Server is running");
     });
+    server.requestTimeout = 60_000;
+    server.headersTimeout = 65_000;
   } catch (error) {
     Sentry.captureException(error);
     await Sentry.flush(2000);
-    console.error("Failed to connect to database:", error);
+    logger.fatal({ err: error }, "Failed to connect to database");
     process.exit(1);
   }
 }
 
-startServer();
+const SHUTDOWN_TIMEOUT_MS = 10_000;
 
-/**
- * Gracefully shuts down the server and closes the database connection.
- */
-const gracefulShutdown = async () => {
-  console.log("Shutting down gracefully...");
+let isShuttingDown = false;
+
+async function gracefulShutdown() {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
+
+  logger.info("Shutting down gracefully...");
 
   if (server) {
-    server.close(() => {
-      console.log("HTTP server closed");
-    });
+    const s = server;
+    await Promise.race([
+      new Promise<void>(resolve =>
+        s.close(() => {
+          logger.info("HTTP server closed");
+          resolve();
+        }),
+      ),
+      new Promise<void>(resolve =>
+        setTimeout(() => {
+          logger.warn("Graceful shutdown timed out, forcing exit");
+          resolve();
+        }, SHUTDOWN_TIMEOUT_MS),
+      ),
+    ]);
   }
 
   if (closeDbConnection) {
-    await closeDbConnection();
+    try {
+      await closeDbConnection();
+    } catch (error) {
+      logger.error({ err: error }, "Error closing database connection");
+      Sentry.captureException(error);
+    }
   }
 
+  await Sentry.flush(2000);
   process.exit(0);
-};
+}
 
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGUSR2", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
+
+const catchUnhandled = (err: unknown) => {
+  logger.fatal({ err }, "Unhandled error");
+  Sentry.captureException(err);
+  Sentry.flush(2000).finally(() => process.exit(1));
+};
+process.on("unhandledRejection", catchUnhandled);
+process.on("uncaughtException", catchUnhandled);
+
+startServer();

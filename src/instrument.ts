@@ -24,8 +24,7 @@ Sentry.init({
 
   tracesSampleRate: 0,
 
-  // Include request headers and IP
-  sendDefaultPii: true,
+  sendDefaultPii: false,
 });
 
 export { Sentry };

@@ -12,7 +12,16 @@ export enum SortField {
   UPDATED_AT = "updated_at",
 }
 
-export const APIFieldToDBFieldMap: Record<SortField, string> = {
+export const VALID_SORT_DB_FIELDS = [
+  "durability",
+  "key_hash",
+  "live_until_ledger_sequence",
+  "closed_at",
+] as const;
+
+export type SortDbField = (typeof VALID_SORT_DB_FIELDS)[number];
+
+export const APIFieldToDBFieldMap: Record<SortField, SortDbField> = {
   [SortField.DURABILITY]: "durability",
   [SortField.KEY_HASH]: "key_hash",
   [SortField.TTL]: "live_until_ledger_sequence",
@@ -38,7 +47,7 @@ export type RequestParams = {
   limit: number;
   sortDirection: SortDirection;
   sortField: SortField;
-  sortDbField: string;
+  sortDbField: SortDbField;
 };
 
 /**
@@ -59,21 +68,21 @@ export class CursorParameterMismatchError extends Error {
 }
 
 export type ContractData = {
-  durability: string;
+  durability: string | null;
   key_hash: string;
-  key: Buffer;
-  val: Buffer;
+  key: Buffer | null;
+  val: Buffer | null;
   closed_at: Date;
-  live_until_ledger_sequence: number;
-  expired: boolean;
+  live_until_ledger_sequence: number | null;
+  expired: boolean | null;
 };
 
 export type ContractDataDTO = {
-  durability: string;
+  durability: string | null;
   key_hash: string;
-  key: string;
-  value: string;
+  key: string | null;
+  value: string | null;
   updated: number;
-  ttl: number;
-  expired: boolean;
+  ttl: number | null;
+  expired: boolean | null;
 };

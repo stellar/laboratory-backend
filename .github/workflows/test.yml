@@ -1,11 +1,11 @@
 name: Run Tests
 
 on:
-  pull_request:
   push:
     branches:
-      - main
       - develop
+  pull_request:
+  workflow_call:
 
 jobs:
   test:
@@ -21,7 +21,7 @@ jobs:
       - name: Install pnpm
         run: |
           corepack enable
-          corepack use pnpm@latest
+          corepack install
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -34,6 +34,9 @@ jobs:
 
       - name: Run prettier:check
         run: pnpm format:check
+
+      - name: Run typecheck
+        run: pnpm typecheck
 
       - name: Run tests
         run: pnpm test

@@ -1,9 +1,11 @@
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
 import { Env } from "../config/env";
+import { logger } from "./logger";
 
 const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
+const STELLAR_API_TIMEOUT_MS = 10_000;
 
 export type StellarServiceConfig = {
   networkPassphrase: string;
@@ -15,6 +17,7 @@ export class StellarService {
   private readonly fetchLatestLedger: () => Promise<number>;
   private cachedLatestLedgerSequence: number | undefined;
   private cachedLatestLedgerAtMs: number | undefined;
+  private ongoingFetchLatestLedger: Promise<number> | undefined;
 
   constructor({ networkPassphrase, rpcUrl, horizonUrl }: StellarServiceConfig) {
     const isTestnet = networkPassphrase === Networks.TESTNET;
@@ -22,21 +25,24 @@ export class StellarService {
     if (isTestnet) {
       const testnetRpcClient = new rpc.Server(
         rpcUrl ?? DEFAULT_TESTNET_RPC_URL,
+        { timeout: STELLAR_API_TIMEOUT_MS },
       );
       this.fetchLatestLedger = async () =>
         (await testnetRpcClient.getLatestLedger()).sequence;
     } else if (rpcUrl) {
-      const pubnetRpcClient = new rpc.Server(rpcUrl);
+      const pubnetRpcClient = new rpc.Server(rpcUrl, {
+        timeout: STELLAR_API_TIMEOUT_MS,
+      });
       this.fetchLatestLedger = async () =>
         (await pubnetRpcClient.getLatestLedger()).sequence;
     } else {
-      console.warn(
+      logger.warn(
         "RPC_URL is empty for pubnet; falling back to Horizon for latest ledger.",
       );
       const pubnetHorizonClient = new Horizon.Server(
         horizonUrl ?? DEFAULT_PUBNET_HORIZON_URL,
-        {},
       );
+      pubnetHorizonClient.httpClient.defaults.timeout = STELLAR_API_TIMEOUT_MS;
       this.fetchLatestLedger = async () =>
         (await pubnetHorizonClient.root()).core_latest_ledger;
     }
@@ -63,10 +69,22 @@ export class StellarService {
       return cached;
     }
 
-    const latest = await this.fetchLatestLedger();
-    this.cachedLatestLedgerSequence = latest;
-    this.cachedLatestLedgerAtMs = Date.now();
-    return latest;
+    // If there is an ongoing fetch, return the promise.
+    if (this.ongoingFetchLatestLedger) {
+      return this.ongoingFetchLatestLedger;
+    }
+
+    this.ongoingFetchLatestLedger = this.fetchLatestLedger()
+      .then(latest => {
+        this.cachedLatestLedgerSequence = latest;
+        this.cachedLatestLedgerAtMs = Date.now();
+        return latest;
+      })
+      .finally(() => {
+        this.ongoingFetchLatestLedger = undefined;
+      });
+
+    return this.ongoingFetchLatestLedger;
   }
 }
 

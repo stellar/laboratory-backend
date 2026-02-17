@@ -1,6 +1,19 @@
 import { Prisma } from "../../generated/prisma";
 import { CursorData } from "../helpers/cursor";
-import { SortDirection, SortField } from "../types/contract_data";
+import {
+  SortDbField,
+  SortDirection,
+  SortField,
+  VALID_SORT_DB_FIELDS,
+} from "../types/contract_data";
+
+const sortDbFieldSet: ReadonlySet<string> = new Set(VALID_SORT_DB_FIELDS);
+
+function assertValidSortDbField(field: SortDbField): void {
+  if (!sortDbFieldSet.has(field)) {
+    throw new Error(`Invalid sort DB field: ${field}`);
+  }
+}
 
 /**
  * Configuration for building a contract data query (storage endpoint).
@@ -10,7 +23,7 @@ export interface ContractDataQueryConfig {
   cursorData?: CursorData;
   latestLedgerSequence: number;
   limit: number;
-  sortDbField: string;
+  sortDbField: SortDbField;
   sortDirection: SortDirection;
   sortField: SortField;
 }
@@ -28,7 +41,7 @@ const SELECT_COLUMNS =
  */
 function orderBy(
   direction: SortDirection,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortField: SortField,
   tablePrefix: "" | "cd." | "pr.",
 ): string {
@@ -47,14 +60,14 @@ function queryWithoutCursor(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
 ): Prisma.Sql {
   const orderByClause = orderBy(sortDirection, sortDbField, sortField, "cd.");
   return Prisma.sql`
     SELECT ${Prisma.raw(SELECT_COLUMNS)},
-      (cd.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(cd.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
     FROM contract_data cd
     WHERE cd.contract_id = ${contractId}
     ${Prisma.raw(orderByClause)}
@@ -74,7 +87,7 @@ function queryWithCursorSortField(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
   cursorKeyHash: string,
@@ -108,7 +121,7 @@ function queryWithCursorSortField(
       LIMIT ${limit}
     )
     SELECT pr.*,
-      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
     FROM paginated_result pr
     ${Prisma.raw(orderByFinal)}
   `;
@@ -125,7 +138,7 @@ function queryWithCursorKeyHash(
   contractId: string,
   latestLedgerSequence: number,
   limit: number,
-  sortDbField: string,
+  sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
   cursorKeyHash: string,
@@ -151,7 +164,7 @@ function queryWithCursorKeyHash(
       LIMIT ${limit}
     )
     SELECT pr.*,
-      (pr.live_until_ledger_sequence < ${latestLedgerSequence}) AS expired
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
     FROM paginated_result pr
     ${Prisma.raw(orderByFinal)}
   `;
@@ -175,6 +188,8 @@ export const buildContractDataQuery = (
     sortDirection,
     sortField,
   } = config;
+
+  assertValidSortDbField(sortDbField);
 
   if (!cursorData) {
     // First query (not paginated)

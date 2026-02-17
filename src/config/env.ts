@@ -1,5 +1,6 @@
 import { IpAddressTypes } from "@google-cloud/cloud-sql-connector";
 import { Networks } from "@stellar/stellar-sdk";
+import pino from "pino";
 
 type CloudSqlEnv = {
   instanceConnectionName: string;
@@ -13,6 +14,10 @@ type ConnectionMode = "direct_database_url" | "cloud_sql_connector_iam";
 class Env {
   static get environment() {
     return this.optionalString("ENVIRONMENT") ?? "development";
+  }
+
+  static get nodeEnv() {
+    return this.optionalString("NODE_ENV") ?? undefined;
   }
 
   static get debug() {
@@ -65,6 +70,46 @@ class Env {
 
   static get gitCommit() {
     return this.optionalString("GIT_COMMIT");
+  }
+
+  static get logLevel(): pino.Level {
+    const level = this.optionalString("LOG_LEVEL")?.toLowerCase() ?? "info";
+    const validLevels = Object.keys(pino.levels.values) as pino.Level[];
+    if (!validLevels.includes(level as pino.Level)) {
+      throw new Error(
+        `Invalid LOG_LEVEL: "${level}". Expected one of: ${validLevels.join(", ")}.`,
+      );
+    }
+    return level as pino.Level;
+  }
+
+  static get corsOrigins(): true | (string | RegExp)[] {
+    const raw = this.optionalString("CORS_ORIGINS");
+    if (!raw) return true;
+    return raw
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean)
+      .map(entry => {
+        const match = entry.match(/^\/(.+)\/([gimsuy]*)$/);
+        if (!match) return entry;
+        try {
+          return new RegExp(match[1], match[2]);
+        } catch (e) {
+          throw new Error(
+            `Invalid regex in CORS_ORIGINS: "${entry}". ${(e as Error).message}`,
+          );
+        }
+      });
+  }
+
+  static get trustProxy(): string[] {
+    const raw = this.optionalString("TRUST_PROXY");
+    const defaultValue = "loopback,linklocal,uniquelocal";
+    return (raw ?? defaultValue)
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
   }
 
   static get connectionMode(): ConnectionMode {

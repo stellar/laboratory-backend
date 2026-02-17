@@ -5,7 +5,6 @@ import {
 import { execSync } from "child_process";
 
 import { PrismaClient } from "../generated/prisma";
-import { prisma } from "../src/utils/connect";
 import { setupCustomMatchers } from "./setup-matchers";
 
 // Global type declaration
@@ -15,9 +14,10 @@ declare global {
 
 let testContainer: StartedPostgreSqlContainer;
 
-// Global mocks:
+const _mockPrisma: Record<string, unknown> = {};
+
 jest.mock("../src/utils/connect", () => ({
-  prisma: {},
+  getPrisma: () => _mockPrisma,
 }));
 
 beforeAll(async () => {
@@ -49,7 +49,7 @@ beforeAll(async () => {
   });
 
   // Global mocks assigning:
-  Object.assign(prisma, global.testPrismaClient);
+  Object.assign(_mockPrisma, global.testPrismaClient);
 
   console.log("🪣✅ Database setup complete!");
 });

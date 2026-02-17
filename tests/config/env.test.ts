@@ -82,6 +82,28 @@ describe("Env", () => {
     });
   });
 
+  describe("nodeEnv", () => {
+    test("🟢has no default value", () => {
+      delete process.env.NODE_ENV;
+      expect(Env.nodeEnv).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.NODE_ENV = "production";
+      expect(Env.nodeEnv).toBe("production");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.NODE_ENV = "  development  ";
+      expect(Env.nodeEnv).toBe("development");
+    });
+
+    test("🟡returns_undefined_for_empty_string", () => {
+      process.env.NODE_ENV = "  \t\n\r";
+      expect(Env.nodeEnv).toBeUndefined();
+    });
+  });
+
   describe("connectionMode", () => {
     test("🟢returns_direct_database_url_when_DATABASE_URL_set", () => {
       process.env.DATABASE_URL = "postgresql://localhost";
@@ -154,13 +176,13 @@ describe("Env", () => {
     });
 
     test("🟢returns_value_when_set", () => {
-      process.env.SENTRY_DSN = "https://key@sentry.io/123";
-      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+      process.env.SENTRY_DSN = "https://key@sentry.example.com/123";
+      expect(Env.sentryDsn).toBe("https://key@sentry.example.com/123");
     });
 
     test("🟢trims_whitespace", () => {
-      process.env.SENTRY_DSN = "  https://key@sentry.io/123  ";
-      expect(Env.sentryDsn).toBe("https://key@sentry.io/123");
+      process.env.SENTRY_DSN = "  https://key@sentry.example.com/123  ";
+      expect(Env.sentryDsn).toBe("https://key@sentry.example.com/123");
     });
   });
 
@@ -178,6 +200,35 @@ describe("Env", () => {
     test("🟢trims_whitespace", () => {
       process.env.GIT_COMMIT = "  abc123  ";
       expect(Env.gitCommit).toBe("abc123");
+    });
+  });
+
+  describe("logLevel", () => {
+    test("🟢defaults_to_info_when_not_set", () => {
+      delete process.env.LOG_LEVEL;
+      expect(Env.logLevel).toBe("info");
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.LOG_LEVEL = "debug";
+      expect(Env.logLevel).toBe("debug");
+    });
+
+    test("🟢normalizes_to_lowercase", () => {
+      process.env.LOG_LEVEL = "WARN";
+      expect(Env.logLevel).toBe("warn");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.LOG_LEVEL = "  error  ";
+      expect(Env.logLevel).toBe("error");
+    });
+
+    test("🔴throws_on_invalid_value", () => {
+      process.env.LOG_LEVEL = "verbose";
+      expect(() => Env.logLevel).toThrow(
+        'Invalid LOG_LEVEL: "verbose". Expected one of: trace, debug, info, warn, error, fatal.',
+      );
     });
   });
 
@@ -230,6 +281,92 @@ describe("Env", () => {
     test("🟢returns_value_when_set", () => {
       process.env.GOOGLE_APPLICATION_CREDENTIALS = "./creds.json";
       expect(Env.googleApplicationCredentials).toBe("./creds.json");
+    });
+  });
+
+  describe("corsOrigins", () => {
+    test("🟢allows_all_origins_when_not_set", () => {
+      delete process.env.CORS_ORIGINS;
+      expect(Env.corsOrigins).toBe(true);
+    });
+
+    test("🟢parses_plain_string_origins", () => {
+      process.env.CORS_ORIGINS =
+        "https://app.example.com,https://other.example.com";
+      expect(Env.corsOrigins).toEqual([
+        "https://app.example.com",
+        "https://other.example.com",
+      ]);
+    });
+
+    test("🟢parses_regex_patterns", () => {
+      process.env.CORS_ORIGINS = "/^https:\\/\\/.*\\.example\\.com$/";
+      const origins = Env.corsOrigins as (string | RegExp)[];
+      expect(origins).toHaveLength(1);
+      expect(origins[0]).toBeInstanceOf(RegExp);
+      expect((origins[0] as RegExp).test("https://app.example.com")).toBe(true);
+      expect((origins[0] as RegExp).test("http://app.example.com")).toBe(false);
+    });
+
+    test("🟢regex_allows_matching_and_rejects_non_matching", () => {
+      process.env.CORS_ORIGINS =
+        "/^https:\\/\\/.*\\.services\\.example\\.com$/";
+      const regex = (Env.corsOrigins as (string | RegExp)[])[0] as RegExp;
+      expect(regex.test("https://foo.services.example.com")).toBe(true);
+      expect(regex.test("https://bar.services.example.com")).toBe(true);
+      expect(regex.test("https://foo.services.example.net")).toBe(false);
+      expect(regex.test("http://foo.services.example.com")).toBe(false);
+    });
+
+    test("🟢handles_mixed_strings_and_regex", () => {
+      process.env.CORS_ORIGINS =
+        "https://app.example.com,/^https:\\/\\/.*\\.preview\\.example\\.com$/";
+      const origins = Env.corsOrigins as (string | RegExp)[];
+      expect(origins).toHaveLength(2);
+      expect(origins[0]).toBe("https://app.example.com");
+      expect(origins[1]).toBeInstanceOf(RegExp);
+    });
+
+    test("🟢trims_whitespace_and_filters_empty", () => {
+      process.env.CORS_ORIGINS =
+        " https://app.example.com , , https://other.example.com ";
+      expect(Env.corsOrigins).toEqual([
+        "https://app.example.com",
+        "https://other.example.com",
+      ]);
+    });
+
+    test("🔴throws_on_invalid_regex", () => {
+      process.env.CORS_ORIGINS = "/[invalid(/";
+      expect(() => Env.corsOrigins).toThrow(
+        'Invalid regex in CORS_ORIGINS: "/[invalid(/"',
+      );
+    });
+  });
+
+  describe("trustProxy", () => {
+    test("🟢returns_defaults_when_not_set", () => {
+      delete process.env.TRUST_PROXY;
+      expect(Env.trustProxy).toEqual(["loopback", "linklocal", "uniquelocal"]);
+    });
+
+    test("🟢parses_comma_separated_CIDRs", () => {
+      process.env.TRUST_PROXY = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16";
+      expect(Env.trustProxy).toEqual([
+        "10.0.0.0/8",
+        "172.16.0.0/12",
+        "192.168.0.0/16",
+      ]);
+    });
+
+    test("🟢trims_whitespace_and_filters_empty", () => {
+      process.env.TRUST_PROXY = " loopback , , linklocal ";
+      expect(Env.trustProxy).toEqual(["loopback", "linklocal"]);
+    });
+
+    test("🟢handles_single_value", () => {
+      process.env.TRUST_PROXY = "10.0.0.0/8";
+      expect(Env.trustProxy).toEqual(["10.0.0.0/8"]);
     });
   });
 });

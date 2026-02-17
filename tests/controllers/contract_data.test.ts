@@ -283,10 +283,25 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
+    test("🔴cursor_valid_base64_but_wrong_shape_returns_400", async () => {
+      // "e30=" decodes to "{}", which is valid JSON but not a CursorData object
+      mockRequest.query = { cursor: "e30=" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: expect.stringContaining("Invalid cursor: e30="),
+      });
+    });
+
     test("🔴cursor_data_mismatch_with_query_options_returns_400", async () => {
       mockRequest.query = {
         cursor:
-          "eyJzb3J0RGlyZWN0aW9uIjoiZGVzYyIsInBvc2l0aW9uIjp7ImtleUhhc2giOiIxMTQ1ODU1MDkifX0=",
+          "eyJjdXJzb3JUeXBlIjoibmV4dCIsInBvc2l0aW9uIjp7ImtleUhhc2giOiIxMTQ1ODU1MDkifX0=",
         sort_by: "updated_at",
       };
 
