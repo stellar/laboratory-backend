@@ -7,21 +7,18 @@ services:
     ports:
       - "3000:3000"
     environment:
-      NODE_ENV: development
-      ENVIRONMENT: development
+      NODE_ENV: ${NODE_ENV:-development}
+      ENVIRONMENT: ${ENVIRONMENT:-development}
       PORT: ${PORT:-3000}
 
-      # DB Connection
-      #   - Mode A: Direct database URL
-      DATABASE_URL: "postgresql://marcelosantos@host.docker.internal:5432/lab-backend-testnet"
-      #   - Mode B: Cloud SQL Connector with IAM
-      # DB Connection (Mode B)
-      # DB_NAME: "postgres"
-      # POSTGRES_CONNECTION_NAME: "hubble-261722:us-central1:ledger-data"
-      # POSTGRES_IAM_USER: "ledger-data-indexer-api-prod-r@hubble-261722.iam"
-      # POSTGRES_IAM_USER_URL_ENCODED: "ledger-data-indexer-api-prod-r%40hubble-261722.iam"
-      # GOOGLE_APPLICATION_CREDENTIALS: "./creds.json"
-      # GOOGLE_CLOUD_SQL_IP_TYPE: "PUBLIC"
+      # DB Connection (Mode A: set DATABASE_URL in .env)
+      DATABASE_URL: ${DATABASE_URL:-}
+      # Mode B: Cloud SQL Connector with IAM — set these when not using DATABASE_URL
+      DB_NAME: ${DB_NAME:-}
+      POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME:-}
+      POSTGRES_IAM_USER: ${POSTGRES_IAM_USER:-}
+      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/creds.json}
+      GOOGLE_CLOUD_SQL_IP_TYPE: ${GOOGLE_CLOUD_SQL_IP_TYPE:-PRIVATE}
 
     volumes:
       # `creds.json` must exist in the directory where you run docker-compose up (the project root):
