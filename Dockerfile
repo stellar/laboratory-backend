@@ -31,9 +31,6 @@ ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
 ENV NODE_ENV=production
 
-# All environment variables are set at runtime, not build time
-# ENVIRONMENT and other env vars will be provided via docker-compose or k8s
-
 COPY --from=prod-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/generated ./generated
@@ -41,8 +38,8 @@ COPY package.json ./
 COPY prisma ./prisma
 
 # creds.json is NOT included in the image - it must be mounted at runtime
-# For docker-compose: mounted as volume
-# For Kubernetes: mounted as secret
+#  - For docker-compose: mounted as volume
+#  - For Kubernetes: mounted as secret
 
 EXPOSE 3000
 
