@@ -98,6 +98,7 @@ class Env {
         } catch (e) {
           throw new Error(
             `Invalid regex in CORS_ORIGINS: "${entry}". ${(e as Error).message}`,
+            { cause: e },
           );
         }
       });

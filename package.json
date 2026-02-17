@@ -20,8 +20,8 @@
     "typecheck": "tsc --noEmit",
     "test": "jest",
     "test:watch": "jest --watch",
-    "lint": "eslint . --ext .ts",
-    "lint:fix": "eslint . --ext .ts --fix",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "prepare": "husky"
@@ -40,7 +40,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
+    "@eslint/js": "^10.0.1",
     "@prisma/client": "^6.19.0",
     "@testcontainers/postgresql": "^11.12.0",
     "@types/cors": "^2.8.19",
@@ -48,7 +48,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^25.2.3",
     "@types/proxy-addr": "^2.0.3",
-    "eslint": "^9.39.1",
+    "eslint": "^10.0.0",
     "globals": "^17.3.0",
     "husky": "^9.1.7",
     "jest": "^30.2.0",
