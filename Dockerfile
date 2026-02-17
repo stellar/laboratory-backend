@@ -1,28 +1,26 @@
 FROM node:22-alpine AS base
 
-RUN corepack enable && corepack prepare pnpm@10.14.0 --activate
-
 WORKDIR /app
+
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable && corepack install
 
 FROM base AS dependencies
 
-COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile
 
 FROM base AS prod-dependencies
 
-COPY package.json pnpm-lock.yaml ./
 RUN pnpm install --frozen-lockfile --prod --ignore-scripts
 
 FROM base AS build
 
 COPY --from=dependencies /app/node_modules ./node_modules
-COPY package.json pnpm-lock.yaml tsconfig.json ./
+COPY tsconfig.json ./
 COPY prisma ./prisma
 COPY src ./src
 
-RUN pnpm prisma:generate
-RUN pnpm build
+RUN pnpm prisma:generate && pnpm build
 
 FROM base AS runtime
 
