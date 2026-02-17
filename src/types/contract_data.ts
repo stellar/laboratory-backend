@@ -84,5 +84,5 @@ export type ContractDataDTO = {
   value: string | null;
   updated: number;
   ttl: number | null;
-  expired: boolean;
+  expired: boolean | null;
 };

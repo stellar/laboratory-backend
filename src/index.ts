@@ -32,6 +32,7 @@ app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 1000,
+    skip: req => req.path === "/health",
     message: {
       error: "Too Many Requests",
       message: "Too many requests from this IP, please try again later.",
