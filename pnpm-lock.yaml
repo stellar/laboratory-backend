@@ -17,9 +17,6 @@ importers:
       '@google-cloud/cloud-sql-connector':
         specifier: ^1.8.4
         version: 1.8.4
-      '@prisma/client':
-        specifier: ^6.19.0
-        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
       '@sentry/node':
         specifier: ^10.38.0
         version: 10.38.0
@@ -54,6 +51,9 @@ importers:
       '@eslint/js':
         specifier: ^9.39.1
         version: 9.39.1
+      '@prisma/client':
+        specifier: ^6.19.0
+        version: 6.19.0(prisma@6.19.0(typescript@5.9.3))(typescript@5.9.3)
       '@testcontainers/postgresql':
         specifier: ^11.9.0
         version: 11.9.0

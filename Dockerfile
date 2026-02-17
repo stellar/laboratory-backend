@@ -22,7 +22,10 @@ COPY src ./src
 
 RUN pnpm prisma:generate && pnpm build
 
-FROM base AS runtime
+# Runtime stage: start from plain alpine node (no corepack/pnpm needed)
+FROM node:22-alpine AS runtime
+
+WORKDIR /app
 
 ARG GIT_COMMIT
 ENV GIT_COMMIT=${GIT_COMMIT}
@@ -34,7 +37,7 @@ ENV NODE_ENV=production
 COPY --from=prod-dependencies /app/node_modules ./node_modules
 COPY --from=build /app/dist ./dist
 COPY --from=build /app/generated ./generated
-COPY --from=build /app/package.json ./package.json
+COPY package.json ./
 COPY prisma ./prisma
 
 # creds.json is NOT included in the image - it must be mounted at runtime
