@@ -8,7 +8,7 @@ import { Env } from "../config/env";
  * - When in production, leave undefined to use the default transport (console).
  */
 const transport =
-  process.env.NODE_ENV !== "production"
+  Env.nodeEnv !== "production"
     ? { target: "pino-pretty", options: { colorize: true } }
     : undefined;
 

@@ -16,6 +16,10 @@ class Env {
     return this.optionalString("ENVIRONMENT") ?? "development";
   }
 
+  static get nodeEnv() {
+    return this.optionalString("NODE_ENV") ?? undefined;
+  }
+
   static get debug() {
     const v = this.optionalString("DEBUG")?.toLowerCase().trim();
     return ["true", "1", "yes"].includes(v ?? "");

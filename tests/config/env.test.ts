@@ -82,6 +82,28 @@ describe("Env", () => {
     });
   });
 
+  describe("nodeEnv", () => {
+    test("🟢has no default value", () => {
+      delete process.env.NODE_ENV;
+      expect(Env.nodeEnv).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.NODE_ENV = "production";
+      expect(Env.nodeEnv).toBe("production");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.NODE_ENV = "  development  ";
+      expect(Env.nodeEnv).toBe("development");
+    });
+
+    test("🟡returns_undefined_for_empty_string", () => {
+      process.env.NODE_ENV = "  \t\n\r";
+      expect(Env.nodeEnv).toBeUndefined();
+    });
+  });
+
   describe("connectionMode", () => {
     test("🟢returns_direct_database_url_when_DATABASE_URL_set", () => {
       process.env.DATABASE_URL = "postgresql://localhost";
