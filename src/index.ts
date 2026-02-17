@@ -24,7 +24,7 @@ const app = express();
 
 const trustProxyCidrs = Env.trustProxy;
 app.set("trust proxy", proxyAddr.compile(trustProxyCidrs)); // Trust proxy CIDRs
-app.use(cors({ origin: Env.corsOrigins })); // Allow CORS for specified origins
+app.use(cors({ origin: Env.corsOrigins, methods: ["GET", "OPTIONS"] })); // Allow CORS for specified origins
 app.use(helmet()); // Sets security headers
 app.use(pinoHttp(pinoHttpOptions)); // HTTP request logger
 
