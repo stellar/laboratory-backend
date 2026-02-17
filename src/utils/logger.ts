@@ -4,17 +4,23 @@ import { Env } from "../config/env";
 
 /**
  * Pino transport configuration for logging.
- * - When not in production, use pino-pretty for pretty printing with colors.
- * - When in production, leave undefined to use the default transport (console).
+ * - In production: use default transport (JSON to stdout).
+ * - Otherwise: use pino-pretty for pretty output if available (dev), else default.
+ * Falls back to default when pino-pretty is not installed (e.g. Docker prod deps).
  */
-const transport =
-  Env.nodeEnv !== "production"
-    ? { target: "pino-pretty", options: { colorize: true } }
-    : undefined;
+function getTransport() {
+  if (Env.nodeEnv === "production") return undefined;
+  try {
+    require.resolve("pino-pretty");
+    return { target: "pino-pretty", options: { colorize: true } };
+  } catch {
+    return undefined;
+  }
+}
 
 export const logger = pino({
   level: Env.logLevel,
-  transport,
+  transport: getTransport(),
   formatters: {
     level(label) {
       return { level: label };
