@@ -28,12 +28,6 @@ export class InvalidCursorError extends Error {
 const NUMERIC_SORT_FIELDS: ReadonlySet<string> = new Set(["ttl", "updated_at"]);
 
 /**
- * Sort fields whose DB column is nullable, so the cursor sortValue may be null.
- * - ttl: live_until_ledger_sequence is Int? in the DB schema
- */
-const NULLABLE_SORT_FIELDS: ReadonlySet<string> = new Set(["ttl"]);
-
-/**
  * Sort fields that expect a string sortValue in the cursor.
  * - durability: stored as text (e.g. "persistent", "instance", "temporary")
  */
@@ -61,8 +55,8 @@ export type CursorData = {
   position: {
     /** Key hash of the boundary record for pagination, used as the primary key */
     keyHash: string;
-    /** The value of the sort field (number for ttl/updated_at, string for durability, null for nullable fields like ttl) */
-    sortValue?: number | string | bigint | null;
+    /** The value of the sort field (number for ttl/updated_at, string for durability) */
+    sortValue?: number | string | bigint;
   };
 };
 
@@ -75,7 +69,7 @@ const cursorDataSchema = z
     sortField: z.string().optional(),
     position: z.object({
       keyHash: z.string(),
-      sortValue: z.union([z.number(), z.string(), z.null()]).optional(),
+      sortValue: z.union([z.number(), z.string()]).optional(),
     }),
   })
   .superRefine((data, ctx) => {
@@ -96,25 +90,13 @@ const cursorDataSchema = z
       return;
     }
 
-    // Non-key_hash sort fields require a sortValue (null is valid for nullable fields)
+    // Non-key_hash sort fields require a sortValue
     if (position.sortValue === undefined) {
       ctx.addIssue({
         code: "custom",
         message: `Sort field "${sortField}" requires a sortValue`,
         path: ["position", "sortValue"],
       });
-      return;
-    }
-
-    // Null sortValue is only valid for nullable sort fields (e.g. ttl)
-    if (position.sortValue === null) {
-      if (!NULLABLE_SORT_FIELDS.has(sortField)) {
-        ctx.addIssue({
-          code: "custom",
-          message: `Sort field "${sortField}" does not allow null sortValue`,
-          path: ["position", "sortValue"],
-        });
-      }
       return;
     }
 

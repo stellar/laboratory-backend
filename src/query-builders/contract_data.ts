@@ -31,10 +31,6 @@ export interface ContractDataQueryConfig {
 const SELECT_COLUMNS =
   "cd.contract_id, cd.ledger_sequence, cd.key_hash, cd.durability, cd.key_symbol, cd.key, cd.val, cd.closed_at, cd.live_until_ledger_sequence";
 
-const NULLABLE_SORT_DB_FIELDS: ReadonlySet<string> = new Set([
-  "live_until_ledger_sequence",
-]);
-
 function orderBy(
   direction: SortDirection,
   sortDbField: SortDbField,
@@ -45,12 +41,7 @@ function orderBy(
   if (sortField === SortField.KEY_HASH) {
     return `ORDER BY ${p}key_hash ${direction}`;
   }
-  const nullsClause = NULLABLE_SORT_DB_FIELDS.has(sortDbField)
-    ? direction === SortDirection.ASC
-      ? " NULLS LAST"
-      : " NULLS FIRST"
-    : "";
-  return `ORDER BY ${p}${sortDbField} ${direction}${nullsClause}, ${p}key_hash ${direction}`;
+  return `ORDER BY ${p}${sortDbField} ${direction}, ${p}key_hash ${direction}`;
 }
 
 /** First-page query (no cursor). */
@@ -82,7 +73,7 @@ function queryWithCursorSortField(
   sortDirection: SortDirection,
   sortField: SortField,
   cursorKeyHash: string,
-  cursorSortValue: number | string | bigint | null,
+  cursorSortValue: number | string | bigint,
   cursorType: "next" | "prev",
 ): Prisma.Sql {
   const directionInCTE =
@@ -96,38 +87,16 @@ function queryWithCursorSortField(
   const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
 
-  // Build the cursor WHERE condition, handling NULLs for nullable sort columns
-  let cursorCondition: Prisma.Sql;
+  // Convert Unix timestamp back to timestamptz for closed_at comparisons
+  const sqlVal =
+    sortDbField === "closed_at" && typeof cursorSortValue === "number"
+      ? Prisma.sql`to_timestamp(${cursorSortValue})`
+      : Prisma.sql`${cursorSortValue}`;
 
-  if (cursorSortValue !== null) {
-    // Convert Unix timestamp back to timestamptz for closed_at comparisons
-    const sqlVal =
-      sortDbField === "closed_at" && typeof cursorSortValue === "number"
-        ? Prisma.sql`to_timestamp(${cursorSortValue})`
-        : Prisma.sql`${cursorSortValue}`;
-
-    const base = Prisma.sql`(
-          ${Prisma.raw(`${sortCol} ${op}`)} ${sqlVal}
-          OR (${Prisma.raw(sortCol)} = ${sqlVal} AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
-        )`;
-
-    // For nullable columns moving forward (op ">"), NULL rows must also be included
-    cursorCondition =
-      NULLABLE_SORT_DB_FIELDS.has(sortDbField) && op === ">"
-        ? Prisma.sql`(${base} OR ${Prisma.raw(sortCol)} IS NULL)`
-        : base;
-  } else if (op === ">") {
-    // NULL cursor, moving forward: stay in the NULL group, advance by key_hash
-    cursorCondition = Prisma.sql`(
-          ${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
-        )`;
-  } else {
-    // NULL cursor, moving backward: all non-NULL rows + NULLs with smaller key_hash
-    cursorCondition = Prisma.sql`(
-          ${Prisma.raw(sortCol)} IS NOT NULL
-          OR (${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
-        )`;
-  }
+  const cursorCondition = Prisma.sql`(
+        ${Prisma.raw(`${sortCol} ${op}`)} ${sqlVal}
+        OR (${Prisma.raw(sortCol)} = ${sqlVal} AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
+      )`;
 
   return Prisma.sql`
     WITH paginated_result AS (

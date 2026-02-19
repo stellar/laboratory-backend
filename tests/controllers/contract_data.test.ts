@@ -129,14 +129,14 @@ describe("GET /api/contract/:contract_id/storage", () => {
       limit: "20",
     });
 
-    // Verify result structure (ttl can be null for records without live_until_ledger_sequence)
+    // Verify result structure
     responseData.results.forEach((item: any) => {
       expect(item).toEqual({
         durability: expect.any(String),
         expired: expect.any(Boolean),
         key_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
         key: expect.any(String),
-        ttl: item.ttl === null ? null : expect.any(Number),
+        ttl: expect.any(Number),
         updated: expect.any(Number),
         value: expect.any(String),
       });
@@ -262,21 +262,12 @@ describe("GET /api/contract/:contract_id/storage", () => {
       limit: "20",
     });
 
-    // Assert sorting order of ttl (null values sort after non-null in ASC)
+    // Assert sorting order of ttl
     const ttlValues = responseData.results.map((r: any) => r.ttl);
-    const nonNullValues = ttlValues.filter((v: any) => v !== null);
-    const nullCount = ttlValues.filter((v: any) => v === null).length;
-    expect(nullCount).toBe(2); // 2 records have null TTL
 
-    // Non-null values should be sorted in ascending order
-    for (let i = 1; i < nonNullValues.length; i++) {
-      expect(nonNullValues[i - 1]).toBeLessThanOrEqual(nonNullValues[i]);
-    }
-
-    // Null values should appear after non-null values in ASC order (NULLS LAST)
-    const firstNullIndex = ttlValues.indexOf(null);
-    for (let i = 0; i < firstNullIndex; i++) {
-      expect(ttlValues[i]).not.toBeNull();
+    // All values should be sorted in ascending order
+    for (let i = 1; i < ttlValues.length; i++) {
+      expect(ttlValues[i - 1]).toBeLessThanOrEqual(ttlValues[i]);
     }
   });
 
@@ -493,63 +484,14 @@ describe("GET /api/contract/:contract_id/storage", () => {
       return Buffer.from(JSON.stringify(obj)).toString("base64");
     }
 
-    describe("Null TTL pagination edge cases", () => {
-      // These tests exercise the combination of nullable sort column
-      // (live_until_ledger_sequence) with cursor-based pagination.
-      // Test data: 3 records with TTL values (61482901, 61482902, 61482903)
-      //            2 records with NULL TTL (aa11..., bb22...)
-
-      test("🟢first_page_sort_by_ttl_asc_returns_all_5_records_without_cursor", async () => {
-        // Without a cursor (limit=20), all 5 records should be returned
-        // including the 2 with null TTL
-        const page = await fetchPage({
-          sort_by: "ttl",
-          order: "asc",
-          limit: "20",
-        });
-        expect(page.results).toHaveLength(5);
-
-        // Non-null TTLs should come first in ASC order, nulls last
-        const ttlValues = page.results.map((r: any) => r.ttl);
-        const nonNullTtls = ttlValues.filter((v: any) => v !== null);
-        const nullCount = ttlValues.filter((v: any) => v === null).length;
-
-        expect(nonNullTtls).toEqual([61482901, 61482902, 61482903]);
-        expect(nullCount).toBe(2);
-      });
-
-      test("🟢first_page_sort_by_ttl_desc_returns_all_5_records_without_cursor", async () => {
-        // Without a cursor (limit=20), all 5 records should be returned
-        // In DESC order, nulls should come first (NULLS FIRST is default for DESC)
-        const page = await fetchPage({
-          sort_by: "ttl",
-          order: "desc",
-          limit: "20",
-        });
-        expect(page.results).toHaveLength(5);
-
-        const ttlValues = page.results.map((r: any) => r.ttl);
-        const nullCount = ttlValues.filter((v: any) => v === null).length;
-        const nonNullTtls = ttlValues.filter((v: any) => v !== null);
-
-        expect(nullCount).toBe(2);
-        expect(nonNullTtls).toEqual([61482903, 61482902, 61482901]);
-      });
-
-      test("🟢cursor_with_null_sortValue_for_ttl_is_accepted", async () => {
-        // A cursor encoding sortValue=null for TTL is valid and should not
-        // be rejected by decodeCursor — null represents a DB NULL in a
-        // nullable sort column.
+    describe("Invalid cursor sortValue validation", () => {
+      test("🔴null_sortValue_for_ttl_returns_400", async () => {
         const cursor = rawCursor({
           cursorType: "next",
           sortField: "ttl",
-          position: {
-            keyHash:
-              "aa11111111111111111111111111111111111111111111111111111111111111",
-            sortValue: null,
-          },
+          position: { keyHash: "abc", sortValue: null },
         });
-        mockRequest.query = { cursor, sort_by: "ttl", order: "asc" };
+        mockRequest.query = { cursor, sort_by: "ttl" };
 
         (mockResponse.json as jest.Mock).mockClear();
         (mockResponse.status as jest.Mock).mockClear();
@@ -559,153 +501,10 @@ describe("GET /api/contract/:contract_id/storage", () => {
           mockResponse as Response,
         );
 
-        // Should NOT return 400 — null sortValue for TTL is valid
-        expect(mockResponse.status).toHaveBeenCalledWith(200);
+        expect(mockResponse.status).toHaveBeenCalledWith(400);
       });
 
-      test("🟢paginate_ttl_asc_limit2_crosses_non_null_to_null_boundary", async () => {
-        // With limit=2 and sort_by=ttl ASC, records should come in order:
-        // Page 1: ttl=61482901, ttl=61482902
-        // Page 2: ttl=61482903, ttl=null (first null-TTL record)
-        // Page 3: ttl=null (second null-TTL record)
-        // This tests the boundary between non-null and null sort values.
-        const baseQuery = { sort_by: "ttl", order: "asc", limit: "2" };
-
-        const page1 = await fetchPage(baseQuery);
-        expect(page1.results).toHaveLength(2);
-        expect(page1.results[0].ttl).toBe(61482901);
-        expect(page1.results[1].ttl).toBe(61482902);
-        expect(page1._links.next).toBeDefined();
-
-        const cursor2 = extractCursor(page1._links.next.href);
-        const page2 = await fetchPage({ ...baseQuery, cursor: cursor2 });
-        expect(page2.results).toHaveLength(2);
-        expect(page2.results[0].ttl).toBe(61482903);
-        expect(page2.results[1].ttl).toBeNull();
-
-        const cursor3 = extractCursor(page2._links.next.href);
-        const page3 = await fetchPage({ ...baseQuery, cursor: cursor3 });
-        expect(page3.results).toHaveLength(1);
-        expect(page3.results[0].ttl).toBeNull();
-
-        // All 5 records accounted for across 3 pages
-        const allKeys = [
-          ...page1.results.map((r: any) => r.key_hash),
-          ...page2.results.map((r: any) => r.key_hash),
-          ...page3.results.map((r: any) => r.key_hash),
-        ];
-        expect(new Set(allKeys).size).toBe(5);
-      });
-
-      test("🟢paginate_ttl_desc_limit2_crosses_null_to_non_null_boundary", async () => {
-        // With limit=2 and sort_by=ttl DESC, null records should come first:
-        // Page 1: ttl=null, ttl=null (both null-TTL records)
-        // Page 2: ttl=61482903, ttl=61482902
-        // Page 3: ttl=61482901
-        const baseQuery = { sort_by: "ttl", order: "desc", limit: "2" };
-
-        const page1 = await fetchPage(baseQuery);
-        expect(page1.results).toHaveLength(2);
-        expect(page1.results[0].ttl).toBeNull();
-        expect(page1.results[1].ttl).toBeNull();
-        expect(page1._links.next).toBeDefined();
-
-        const cursor2 = extractCursor(page1._links.next.href);
-        const page2 = await fetchPage({ ...baseQuery, cursor: cursor2 });
-        expect(page2.results).toHaveLength(2);
-        expect(page2.results[0].ttl).toBe(61482903);
-        expect(page2.results[1].ttl).toBe(61482902);
-
-        const cursor3 = extractCursor(page2._links.next.href);
-        const page3 = await fetchPage({ ...baseQuery, cursor: cursor3 });
-        expect(page3.results).toHaveLength(1);
-        expect(page3.results[0].ttl).toBe(61482901);
-
-        // All 5 records accounted for across 3 pages
-        const allKeys = [
-          ...page1.results.map((r: any) => r.key_hash),
-          ...page2.results.map((r: any) => r.key_hash),
-          ...page3.results.map((r: any) => r.key_hash),
-        ];
-        expect(new Set(allKeys).size).toBe(5);
-      });
-
-      test("🟢paginate_ttl_asc_backward_from_null_region", async () => {
-        // Forward to the null-TTL region, then paginate backward.
-        // Verifies backward cursors work across the null/non-null boundary.
-        const baseQuery = { sort_by: "ttl", order: "asc", limit: "3" };
-
-        // Page 1: first 3 records (all non-null TTL)
-        const page1 = await fetchPage(baseQuery);
-        expect(page1.results).toHaveLength(3);
-        expect(page1.results.every((r: any) => r.ttl !== null)).toBe(true);
-
-        // Page 2: remaining 2 records (both null TTL)
-        const cursor2 = extractCursor(page1._links.next.href);
-        const page2 = await fetchPage({ ...baseQuery, cursor: cursor2 });
-        expect(page2.results).toHaveLength(2);
-        expect(page2.results.every((r: any) => r.ttl === null)).toBe(true);
-
-        // Go backward from page 2 -> should get page 1's records
-        expect(page2._links.prev).toBeDefined();
-        const prevCursor = extractCursor(page2._links.prev.href);
-        const backPage = await fetchPage({ ...baseQuery, cursor: prevCursor });
-        expect(backPage.results).toHaveLength(3);
-
-        // Should match page 1's key_hashes exactly
-        const page1Keys = page1.results.map((r: any) => r.key_hash);
-        const backKeys = backPage.results.map((r: any) => r.key_hash);
-        expect(backKeys).toEqual(page1Keys);
-      });
-
-      test("🟢paginate_ttl_desc_backward_from_non_null_region", async () => {
-        // In DESC order, nulls come first. Go forward past nulls, then backward.
-        const baseQuery = { sort_by: "ttl", order: "desc", limit: "2" };
-
-        // Page 1: 2 null-TTL records
-        const page1 = await fetchPage(baseQuery);
-        expect(page1.results).toHaveLength(2);
-        expect(page1.results.every((r: any) => r.ttl === null)).toBe(true);
-
-        // Page 2: 2 non-null TTL records (61482903, 61482902)
-        const cursor2 = extractCursor(page1._links.next.href);
-        const page2 = await fetchPage({ ...baseQuery, cursor: cursor2 });
-        expect(page2.results).toHaveLength(2);
-        expect(page2.results[0].ttl).toBe(61482903);
-        expect(page2.results[1].ttl).toBe(61482902);
-
-        // Go backward -> should get page 1's null records
-        expect(page2._links.prev).toBeDefined();
-        const prevCursor = extractCursor(page2._links.prev.href);
-        const backPage = await fetchPage({ ...baseQuery, cursor: prevCursor });
-        expect(backPage.results).toHaveLength(2);
-        expect(backPage.results.every((r: any) => r.ttl === null)).toBe(true);
-
-        const page1Keys = page1.results.map((r: any) => r.key_hash);
-        const backKeys = backPage.results.map((r: any) => r.key_hash);
-        expect(backKeys).toEqual(page1Keys);
-      });
-
-      test("🟢null_ttl_records_sorted_by_key_hash_within_null_group", async () => {
-        // When multiple records have null TTL, they should be tiebroken by
-        // key_hash (the secondary sort key), just like non-null duplicates.
-        // ASC order: aa11... should come before bb22...
-        const page = await fetchPage({
-          sort_by: "ttl",
-          order: "asc",
-          limit: "20",
-        });
-        const nullRecords = page.results.filter((r: any) => r.ttl === null);
-        expect(nullRecords).toHaveLength(2);
-
-        // In ASC order, aa11... < bb22... by key_hash
-        expect(nullRecords[0].key_hash.startsWith("aa")).toBe(true);
-        expect(nullRecords[1].key_hash.startsWith("bb")).toBe(true);
-      });
-
-      test("🟢null_sortValue_for_updated_at_is_rejected", async () => {
-        // updated_at (closed_at) is NOT NULL in the schema, so a cursor
-        // with null sortValue for updated_at should be rejected
+      test("🔴null_sortValue_for_updated_at_returns_400", async () => {
         const cursor = rawCursor({
           cursorType: "next",
           sortField: "updated_at",
@@ -721,12 +520,9 @@ describe("GET /api/contract/:contract_id/storage", () => {
           mockResponse as Response,
         );
 
-        // Should return 400 — null is not valid for non-nullable columns
         expect(mockResponse.status).toHaveBeenCalledWith(400);
       });
-    });
 
-    describe("Invalid cursor sortValue validation", () => {
       test("🔴string_sortValue_for_ttl_returns_400", async () => {
         const cursor = rawCursor({
           cursorType: "next",
