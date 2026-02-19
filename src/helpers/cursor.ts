@@ -100,6 +100,18 @@ const cursorDataSchema = z
       return;
     }
 
+    // encodeCursor converts bigint → string (JSON has no bigint type).
+    // Coerce stringified numbers back to numbers for numeric sort fields.
+    if (
+      NUMERIC_SORT_FIELDS.has(sortField) &&
+      typeof position.sortValue === "string"
+    ) {
+      const parsed = Number(position.sortValue);
+      if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+        position.sortValue = parsed;
+      }
+    }
+
     const actualType = typeof position.sortValue;
 
     if (NUMERIC_SORT_FIELDS.has(sortField) && actualType !== "number") {

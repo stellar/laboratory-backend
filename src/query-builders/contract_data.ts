@@ -31,6 +31,14 @@ export interface ContractDataQueryConfig {
 const SELECT_COLUMNS =
   "cd.contract_id, cd.ledger_sequence, cd.key_hash, cd.durability, cd.key_symbol, cd.key, cd.val, cd.closed_at, cd.live_until_ledger_sequence";
 
+/**
+ * Builds an ORDER BY clause for contract_data (or CTE alias).
+ * @param direction - ASC or DESC
+ * @param sortDbField - DB column used for sort (e.g. closed_at, durability)
+ * @param sortField - API sort field; KEY_HASH uses key_hash only
+ * @param tablePrefix - Table/alias prefix: "", "cd.", or "pr."
+ * @returns SQL ORDER BY fragment (no trailing semicolon)
+ */
 function orderBy(
   direction: SortDirection,
   sortDbField: SortDbField,
@@ -44,7 +52,10 @@ function orderBy(
   return `ORDER BY ${p}${sortDbField} ${direction}, ${p}key_hash ${direction}`;
 }
 
-/** First-page query (no cursor). */
+/**
+ * First-page contract data query (no cursor). Parameterized for $queryRaw.
+ * @returns Prisma.Sql for a single SELECT from contract_data with `expired` column.
+ */
 function queryWithoutCursor(
   contractId: string,
   latestLedgerSequence: number,
@@ -64,7 +75,14 @@ function queryWithoutCursor(
   `;
 }
 
-/** Cursor-paginated query when sort is by a field other than key_hash. */
+/**
+ * Cursor-paginated contract data query when sort is by a field other than key_hash.
+ * Uses a CTE to fetch the page then applies the requested order for the response.
+ * @param cursorKeyHash - key_hash of the cursor row
+ * @param cursorSortValue - sort column value at the cursor (for tiebreaker)
+ * @param cursorType - "next" or "prev" (inverts comparison in CTE)
+ * @returns Prisma.Sql for WITH ... SELECT from paginated_result
+ */
 function queryWithCursorSortField(
   contractId: string,
   latestLedgerSequence: number,
@@ -114,7 +132,13 @@ function queryWithCursorSortField(
   `;
 }
 
-/** Cursor-paginated query when sort is by key_hash only. */
+/**
+ * Cursor-paginated contract data query when sort is by key_hash only.
+ * Uses a CTE to fetch the page then applies the requested order for the response.
+ * @param cursorKeyHash - key_hash of the cursor row
+ * @param cursorType - "next" or "prev" (inverts comparison in CTE)
+ * @returns Prisma.Sql for WITH ... SELECT from paginated_result
+ */
 function queryWithCursorKeyHash(
   contractId: string,
   latestLedgerSequence: number,
@@ -151,7 +175,12 @@ function queryWithCursorKeyHash(
   `;
 }
 
-/** Builds the contract data query, choosing the right strategy based on cursor/sort config. */
+/**
+ * Builds the contract data query for the storage endpoint.
+ * Chooses no-cursor, cursor-by-sort-field, or cursor-by-key-hash based on config.
+ * @param config - Contract id, cursor (if any), limit, sort, and latest ledger
+ * @returns Prisma.Sql safe for prisma.$queryRaw (parameterized)
+ */
 export const buildContractDataQuery = (
   config: ContractDataQueryConfig,
 ): Prisma.Sql => {

@@ -354,19 +354,11 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     /**
      * Traverses all pages forward then backward using cursor links.
-     * Dynamically handles any number of records.
-     *
-     * Note: cursor-based pagination may return a "phantom" last page
-     * with 0 results when the server doesn't know ahead of time
-     * whether more records exist. This is standard behavior: the server
-     * emits a `next` link when `results.length >= limit`, and the
-     * client discovers the end by receiving an empty page.
-     *
-     * Verifies:
+     * Dynamically handles any number of records. Verifies:
      * - Each non-empty page returns exactly 1 result
      * - All key_hashes are distinct and collected in order
      * - Forward then backward traversal returns consistent results
-     * - sort_by parameter is preserved in cursor links
+     * - `sort_by` parameter is preserved in cursor links
      * - Correct next/prev links are present on each page
      *
      * @param sortBy - sort_by query parameter (undefined = key_hash)
@@ -474,6 +466,18 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     test("🟢pagination_with_sort_by_durability_asc", async () => {
       await testPaginationTraversal("durability", "asc");
+    });
+
+    test("🟢pagination_tiebreaker_with_duplicate_ttl_values", async () => {
+      // Records aa11... and bb22... share the same live_until_ledger_sequence.
+      // The key_hash tiebreaker must ensure both are visited exactly once.
+      await testPaginationTraversal("ttl", "asc");
+    });
+
+    test("🟢pagination_tiebreaker_with_duplicate_updated_at_values", async () => {
+      // Records aa11... and bb22... share the same closed_at timestamp.
+      // The key_hash tiebreaker must ensure both are visited exactly once.
+      await testPaginationTraversal("updated_at", "desc");
     });
 
     /**
@@ -597,6 +601,35 @@ describe("GET /api/contract/:contract_id/storage", () => {
         expect(mockResponse.json).toHaveBeenCalledWith({
           error: expect.stringContaining("Invalid cursor:"),
         });
+      });
+
+      test("🟢bigint_sortValue_roundtrips_through_encode_decode", async () => {
+        // encodeCursor converts bigint → string via .toString(), so the JSON
+        // payload contains a string like "61482901". decodeCursor must coerce
+        // this back to a number for numeric sort fields (ttl, updated_at).
+        const { encodeCursor } = await import("../../src/helpers/cursor");
+        const cursor = encodeCursor({
+          cursorType: "next",
+          sortField: "ttl",
+          position: {
+            keyHash:
+              "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+            sortValue: BigInt(61482901),
+          },
+        });
+
+        // Use this cursor in a real request — it should succeed, not 400
+        mockRequest.query = { cursor, sort_by: "ttl", order: "asc" };
+
+        (mockResponse.json as jest.Mock).mockClear();
+        (mockResponse.status as jest.Mock).mockClear();
+
+        await getContractDataByContractId(
+          mockRequest as Request,
+          mockResponse as Response,
+        );
+
+        expect(mockResponse.status).toHaveBeenCalledWith(200);
       });
 
       test("🔴unknown_sortField_in_cursor_returns_400", async () => {

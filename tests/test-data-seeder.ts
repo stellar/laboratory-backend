@@ -70,7 +70,6 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       closed_at: new Date("2025-10-01T15:00:36Z"),
       live_until_ledger_sequence: 61482903,
     },
-    // Additional records to test cursor pagination with sort_by=ttl
     {
       key_hash:
         "aa11111111111111111111111111111111111111111111111111111111111111",
@@ -98,8 +97,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
         "base64",
       ),
       val: Buffer.from("AAAAAwAAAAI=", "base64"),
-      closed_at: new Date("2025-10-05T15:00:36Z"),
-      live_until_ledger_sequence: 61482905,
+      closed_at: new Date("2025-10-04T15:00:36Z"),
+      live_until_ledger_sequence: 61482904,
     },
   ];
 
