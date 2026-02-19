@@ -12,6 +12,9 @@ jest.mock("../../src/config/env", () => ({
     get horizonUrl() {
       return "https://horizon.testnet.example";
     },
+    get logLevel() {
+      return "silent";
+    },
   },
 }));
 
@@ -289,7 +292,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: expect.stringContaining("Invalid cursor"),
+        error: "Invalid cursor: invalid_cursor",
       });
     });
 
@@ -304,7 +307,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
-        error: expect.stringContaining("Invalid cursor: e30="),
+        error: "Invalid cursor: e30=",
       });
     });
 
@@ -739,9 +742,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
         expect(mockResponse.status).toHaveBeenCalledWith(400);
         expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining(
-            'Sort field "ttl" requires a numeric sortValue',
-          ),
+          error: expect.stringContaining("Invalid cursor:"),
         });
       });
 
@@ -760,9 +761,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
         expect(mockResponse.status).toHaveBeenCalledWith(400);
         expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining(
-            'Sort field "updated_at" requires a numeric sortValue',
-          ),
+          error: expect.stringContaining("Invalid cursor:"),
         });
       });
 
@@ -781,9 +780,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
         expect(mockResponse.status).toHaveBeenCalledWith(400);
         expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining(
-            'Sort field "durability" requires a string sortValue',
-          ),
+          error: expect.stringContaining("Invalid cursor:"),
         });
       });
 
@@ -802,9 +799,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
         expect(mockResponse.status).toHaveBeenCalledWith(400);
         expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining(
-            'Sort field "ttl" requires a sortValue',
-          ),
+          error: expect.stringContaining("Invalid cursor:"),
         });
       });
 
@@ -825,7 +820,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
         expect(mockResponse.status).toHaveBeenCalledWith(400);
         expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining("Unknown sort field"),
+          error: expect.stringContaining("Invalid cursor:"),
         });
       });
     });

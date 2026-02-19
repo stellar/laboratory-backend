@@ -8,6 +8,7 @@
  */
 
 import { z } from "zod";
+import { logger } from "../utils/logger";
 
 /**
  * Custom error thrown when a cursor string cannot be decoded or parsed.
@@ -66,7 +67,8 @@ export type CursorData = {
 };
 
 // Runtime validation for decoded cursors (must match CursorData above).
-// Uses string | number for sortValue because JSON.parse never produces bigint.
+// Validation issues added via superRefine are intentionally detailed for
+// server-side logging, and they're NOT exposed to API consumers.
 const cursorDataSchema = z
   .object({
     cursorType: z.enum(["next", "prev"]),
@@ -82,7 +84,7 @@ const cursorDataSchema = z
     // If sortField is present, it must be a recognized value
     if (sortField !== undefined && !VALID_SORT_FIELDS.has(sortField)) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Unknown sort field: "${sortField}"`,
         path: ["sortField"],
       });
@@ -97,7 +99,7 @@ const cursorDataSchema = z
     // Non-key_hash sort fields require a sortValue (null is valid for nullable fields)
     if (position.sortValue === undefined) {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Sort field "${sortField}" requires a sortValue`,
         path: ["position", "sortValue"],
       });
@@ -108,7 +110,7 @@ const cursorDataSchema = z
     if (position.sortValue === null) {
       if (!NULLABLE_SORT_FIELDS.has(sortField)) {
         ctx.addIssue({
-          code: z.ZodIssueCode.custom,
+          code: "custom",
           message: `Sort field "${sortField}" does not allow null sortValue`,
           path: ["position", "sortValue"],
         });
@@ -120,7 +122,7 @@ const cursorDataSchema = z
 
     if (NUMERIC_SORT_FIELDS.has(sortField) && actualType !== "number") {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Sort field "${sortField}" requires a numeric sortValue, got ${actualType}`,
         path: ["position", "sortValue"],
       });
@@ -128,7 +130,7 @@ const cursorDataSchema = z
 
     if (STRING_SORT_FIELDS.has(sortField) && actualType !== "string") {
       ctx.addIssue({
-        code: z.ZodIssueCode.custom,
+        code: "custom",
         message: `Sort field "${sortField}" requires a string sortValue, got ${actualType}`,
         path: ["position", "sortValue"],
       });
@@ -167,20 +169,16 @@ export const decodeCursor = (cursor: string): CursorData => {
   try {
     parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
   } catch (err: unknown) {
+    logger.warn({ cursor, err }, "Invalid cursor: not valid base64 JSON");
     throw new InvalidCursorError(cursor, err);
   }
 
   const result = cursorDataSchema.safeParse(parsed);
   if (!result.success) {
-    // Use the first Zod issue message if it's a semantic validation error,
-    // otherwise fall back to the generic message.
-    const customIssue = result.error.issues.find(
-      i => i.code === z.ZodIssueCode.custom,
-    );
-    const message = customIssue
-      ? `Invalid cursor: ${customIssue.message}`
-      : `Invalid cursor: ${cursor}`;
-    throw new InvalidCursorError(message);
+    const customIssue = result.error.issues.find(i => i.code === "custom");
+    const detail = customIssue?.message ?? "Cursor structure is invalid";
+    logger.warn({ cursor, detail }, "Invalid cursor parameter received");
+    throw new InvalidCursorError(cursor);
   }
 
   return result.data as CursorData;
