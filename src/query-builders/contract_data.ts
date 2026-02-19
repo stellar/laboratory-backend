@@ -31,23 +31,10 @@ export interface ContractDataQueryConfig {
 const SELECT_COLUMNS =
   "cd.contract_id, cd.ledger_sequence, cd.key_hash, cd.durability, cd.key_symbol, cd.key, cd.val, cd.closed_at, cd.live_until_ledger_sequence";
 
-/**
- * DB sort columns that are nullable, requiring explicit NULLS positioning.
- */
 const NULLABLE_SORT_DB_FIELDS: ReadonlySet<string> = new Set([
   "live_until_ledger_sequence",
 ]);
 
-/**
- * Builds an ORDER BY clause for contract_data (or CTE alias).
- * For nullable columns, appends NULLS LAST (ASC) or NULLS FIRST (DESC)
- * to ensure deterministic null positioning.
- * @param direction - ASC or DESC
- * @param sortDbField - DB column used for sort (e.g. closed_at, durability)
- * @param sortField - API sort field; KEY_HASH uses key_hash only
- * @param tablePrefix - Table/alias prefix: "", "cd.", or "pr."
- * @returns SQL ORDER BY fragment (no trailing semicolon)
- */
 function orderBy(
   direction: SortDirection,
   sortDbField: SortDbField,
@@ -66,10 +53,7 @@ function orderBy(
   return `ORDER BY ${p}${sortDbField} ${direction}${nullsClause}, ${p}key_hash ${direction}`;
 }
 
-/**
- * First-page contract data query (no cursor). Parameterized for $queryRaw.
- * @returns Prisma.Sql for a single SELECT from contract_data with `expired` column.
- */
+/** First-page query (no cursor). */
 function queryWithoutCursor(
   contractId: string,
   latestLedgerSequence: number,
@@ -89,92 +73,7 @@ function queryWithoutCursor(
   `;
 }
 
-/**
- * Converts a cursor sort value to the appropriate Prisma.Sql for comparison.
- * For timestamptz columns (closed_at), the cursor stores a Unix timestamp (number)
- * which must be converted back to a timestamp via to_timestamp() for SQL comparison.
- */
-function toSqlSortValue(
-  sortDbField: SortDbField,
-  value: number | string | bigint,
-): Prisma.Sql {
-  if (sortDbField === "closed_at" && typeof value === "number") {
-    return Prisma.sql`to_timestamp(${value})`;
-  }
-  return Prisma.sql`${value}`;
-}
-
-/**
- * Builds the WHERE clause fragment for cursor pagination on a sort field.
- *
- * When cursorSortValue is non-null, uses standard keyset comparison:
- *   (sortCol > value) OR (sortCol = value AND key_hash > cursorKeyHash)
- *
- * When cursorSortValue is null (nullable column like live_until_ledger_sequence),
- * NULLs are positioned at the end for ASC (NULLS LAST) and at the start for DESC
- * (NULLS FIRST). The cursor sits within the NULL region, so:
- *   - Moving forward in ASC (op ">"):  stay in NULL region, tiebreak by key_hash
- *   - Moving forward in DESC (op "<"): all non-null rows plus earlier NULLs
- *   - Moving backward in ASC (op "<"): all non-null rows plus earlier NULLs
- *   - Moving backward in DESC (op ">"): stay in NULL region, tiebreak by key_hash
- */
-function buildNullAwareCursorCondition(
-  sortCol: string,
-  op: ">" | "<",
-  cursorKeyHash: string,
-  cursorSortValue: number | string | bigint | null,
-  sortDbField: SortDbField,
-): Prisma.Sql {
-  if (cursorSortValue !== null) {
-    const castedSortValue = toSqlSortValue(sortDbField, cursorSortValue);
-    const baseCondition = Prisma.sql`(
-          ${Prisma.raw(`${sortCol} ${op}`)} ${castedSortValue}
-          OR (
-            ${Prisma.raw(sortCol)} = ${castedSortValue}
-            AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
-          )
-        )`;
-
-    // For nullable columns with NULLS LAST (ASC) / NULLS FIRST (DESC):
-    // When op is ">", NULL rows sort after all non-null rows (ASC NULLS LAST)
-    // or before all non-null rows going backward (DESC NULLS FIRST reversed).
-    // Either way, NULLs are "greater" and must be included.
-    if (NULLABLE_SORT_DB_FIELDS.has(sortDbField) && op === ">") {
-      return Prisma.sql`(
-          ${baseCondition}
-          OR ${Prisma.raw(sortCol)} IS NULL
-        )`;
-    }
-
-    return baseCondition;
-  }
-
-  // Cursor is at a NULL value. NULLs are grouped together (NULLS LAST / NULLS FIRST).
-  if (op === ">") {
-    // Forward in ASC or backward in DESC: stay in the NULL group, advance by key_hash
-    return Prisma.sql`(
-          ${Prisma.raw(sortCol)} IS NULL
-          AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
-        )`;
-  }
-  // Forward in DESC or backward in ASC: all non-NULL rows, plus NULLs with smaller key_hash
-  return Prisma.sql`(
-          ${Prisma.raw(sortCol)} IS NOT NULL
-          OR (
-            ${Prisma.raw(sortCol)} IS NULL
-            AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
-          )
-        )`;
-}
-
-/**
- * Cursor-paginated contract data query when sort is by a field other than key_hash.
- * Uses a CTE to fetch the page then applies the requested order for the response.
- * @param cursorKeyHash - key_hash of the cursor row
- * @param cursorSortValue - sort column value at the cursor (null for nullable columns)
- * @param cursorType - "next" or "prev" (inverts comparison in CTE)
- * @returns Prisma.Sql for WITH ... SELECT from paginated_result
- */
+/** Cursor-paginated query when sort is by a field other than key_hash. */
 function queryWithCursorSortField(
   contractId: string,
   latestLedgerSequence: number,
@@ -197,13 +96,38 @@ function queryWithCursorSortField(
   const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
 
-  const cursorCondition = buildNullAwareCursorCondition(
-    sortCol,
-    op,
-    cursorKeyHash,
-    cursorSortValue,
-    sortDbField,
-  );
+  // Build the cursor WHERE condition, handling NULLs for nullable sort columns
+  let cursorCondition: Prisma.Sql;
+
+  if (cursorSortValue !== null) {
+    // Convert Unix timestamp back to timestamptz for closed_at comparisons
+    const sqlVal =
+      sortDbField === "closed_at" && typeof cursorSortValue === "number"
+        ? Prisma.sql`to_timestamp(${cursorSortValue})`
+        : Prisma.sql`${cursorSortValue}`;
+
+    const base = Prisma.sql`(
+          ${Prisma.raw(`${sortCol} ${op}`)} ${sqlVal}
+          OR (${Prisma.raw(sortCol)} = ${sqlVal} AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
+        )`;
+
+    // For nullable columns moving forward (op ">"), NULL rows must also be included
+    cursorCondition =
+      NULLABLE_SORT_DB_FIELDS.has(sortDbField) && op === ">"
+        ? Prisma.sql`(${base} OR ${Prisma.raw(sortCol)} IS NULL)`
+        : base;
+  } else if (op === ">") {
+    // NULL cursor, moving forward: stay in the NULL group, advance by key_hash
+    cursorCondition = Prisma.sql`(
+          ${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
+        )`;
+  } else {
+    // NULL cursor, moving backward: all non-NULL rows + NULLs with smaller key_hash
+    cursorCondition = Prisma.sql`(
+          ${Prisma.raw(sortCol)} IS NOT NULL
+          OR (${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
+        )`;
+  }
 
   return Prisma.sql`
     WITH paginated_result AS (
@@ -221,13 +145,7 @@ function queryWithCursorSortField(
   `;
 }
 
-/**
- * Cursor-paginated contract data query when sort is by key_hash only.
- * Uses a CTE to fetch the page then applies the requested order for the response.
- * @param cursorKeyHash - key_hash of the cursor row
- * @param cursorType - "next" or "prev" (inverts comparison in CTE)
- * @returns Prisma.Sql for WITH ... SELECT from paginated_result
- */
+/** Cursor-paginated query when sort is by key_hash only. */
 function queryWithCursorKeyHash(
   contractId: string,
   latestLedgerSequence: number,
@@ -264,12 +182,7 @@ function queryWithCursorKeyHash(
   `;
 }
 
-/**
- * Builds the contract data query for the storage endpoint.
- * Chooses no-cursor, cursor-by-sort-field, or cursor-by-key-hash based on config.
- * @param config - Contract id, cursor (if any), limit, sort, and latest ledger
- * @returns Prisma.Sql safe for prisma.$queryRaw (parameterized)
- */
+/** Builds the contract data query, choosing the right strategy based on cursor/sort config. */
 export const buildContractDataQuery = (
   config: ContractDataQueryConfig,
 ): Prisma.Sql => {
