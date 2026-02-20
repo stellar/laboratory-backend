@@ -100,23 +100,28 @@ function queryWithCursorSortField(
       : sortDirection === SortDirection.ASC
         ? SortDirection.DESC
         : SortDirection.ASC;
-  const op = directionInCTE === SortDirection.DESC ? "<" : ">";
+  const op: ">" | "<" = directionInCTE === SortDirection.DESC ? "<" : ">";
   const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
   const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
+
+  // Convert Unix timestamp back to timestamptz for closed_at comparisons
+  const sqlVal =
+    sortDbField === "closed_at" && typeof cursorSortValue === "number"
+      ? Prisma.sql`to_timestamp(${cursorSortValue})`
+      : Prisma.sql`${cursorSortValue}`;
+
+  const cursorCondition = Prisma.sql`(
+        ${Prisma.raw(`${sortCol} ${op}`)} ${sqlVal}
+        OR (${Prisma.raw(sortCol)} = ${sqlVal} AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
+      )`;
 
   return Prisma.sql`
     WITH paginated_result AS (
       SELECT ${Prisma.raw(SELECT_COLUMNS)}
       FROM contract_data cd
       WHERE cd.contract_id = ${contractId}
-        AND (
-          ${Prisma.raw(`${sortCol} ${op}`)} ${cursorSortValue}
-          OR (
-            ${Prisma.raw(sortCol)} = ${cursorSortValue}
-            AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
-          )
-        )
+        AND ${cursorCondition}
       ${Prisma.raw(orderByInCTE)}
       LIMIT ${limit}
     )
@@ -204,12 +209,12 @@ export const buildContractDataQuery = (
   }
 
   const { keyHash, sortValue } = cursorData.position;
-  const hasSortField =
-    cursorData.sortField &&
+  const hasCursorSortField =
+    cursorData.sortField !== undefined &&
     cursorData.sortField !== SortField.KEY_HASH &&
     sortValue !== undefined;
 
-  if (!hasSortField) {
+  if (!hasCursorSortField) {
     // Cursor-paginated query (simple cursor w/ `key_hash` only)
     return queryWithCursorKeyHash(
       contractId,

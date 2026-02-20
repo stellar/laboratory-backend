@@ -1,10 +1,28 @@
-import { encodeCursor } from "../helpers/cursor";
+import { CursorData, encodeCursor } from "../helpers/cursor";
 import {
   ContractData,
   PaginationLinks,
   RequestParams,
+  SortDbField,
   SortField,
 } from "../types/contract_data";
+
+/**
+ * Extracts the sort value from a record for cursor encoding.
+ * Converts values to cursor-safe types:
+ * - Date objects become Unix timestamps (seconds) for unambiguous numeric comparison
+ * - Other types (number, string) pass through unchanged
+ */
+function extractSortValue(
+  record: ContractData,
+  sortDbField: SortDbField,
+): CursorData["position"]["sortValue"] {
+  const raw = (record as any)[sortDbField];
+  if (raw instanceof Date) {
+    return Math.floor(raw.getTime() / 1000);
+  }
+  return raw;
+}
 
 /**
  * Builds pagination link href with query parameters.
@@ -66,7 +84,7 @@ export const buildPaginationLinks = (
         keyHash: lastRecord.key_hash,
         sortValue:
           sortField !== SortField.KEY_HASH
-            ? (lastRecord as any)[sortDbField]
+            ? extractSortValue(lastRecord, sortDbField)
             : undefined,
       },
     });
@@ -88,7 +106,7 @@ export const buildPaginationLinks = (
         keyHash: firstRecord.key_hash,
         sortValue:
           sortField !== SortField.KEY_HASH
-            ? (firstRecord as any)[sortDbField]
+            ? extractSortValue(firstRecord, sortDbField)
             : undefined,
       },
     });

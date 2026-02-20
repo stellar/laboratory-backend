@@ -1,12 +1,14 @@
 /**
  * Cursor-based pagination helpers for efficient API pagination
  *
- * Formats:
- * - Simple: Base64 encoded key_hash (legacy)
- * - Compound: Base64 encoded JSON with keyHash, sortValue, sortBy
+ * Encodes/decodes opaque cursor strings (base64 JSON) used for
+ * keyset pagination. Includes Zod-based runtime validation that
+ * ensures both structural correctness and type consistency between
+ * sortField and sortValue.
  */
 
 import { z } from "zod";
+import { logger } from "../utils/logger";
 
 /**
  * Custom error thrown when a cursor string cannot be decoded or parsed.
@@ -17,6 +19,29 @@ export class InvalidCursorError extends Error {
     this.name = "InvalidCursorError";
   }
 }
+
+/**
+ * Sort fields that expect a numeric sortValue in the cursor.
+ * - ttl: stored as live_until_ledger_sequence (int)
+ * - updated_at: stored as Unix timestamp in seconds (int)
+ */
+const NUMERIC_SORT_FIELDS: ReadonlySet<string> = new Set(["ttl", "updated_at"]);
+
+/**
+ * Sort fields that expect a string sortValue in the cursor.
+ * - durability: stored as text (e.g. "persistent", "instance", "temporary")
+ */
+const STRING_SORT_FIELDS: ReadonlySet<string> = new Set(["durability"]);
+
+/**
+ * All recognized sort fields (used to reject unknown values).
+ */
+const VALID_SORT_FIELDS: ReadonlySet<string> = new Set([
+  "key_hash",
+  "durability",
+  "ttl",
+  "updated_at",
+]);
 
 /**
  * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
@@ -30,28 +55,86 @@ export type CursorData = {
   position: {
     /** Key hash of the boundary record for pagination, used as the primary key */
     keyHash: string;
-    /** The value of the sort field. Example: `"2025-01-01T00:00:00Z"` when `sortField: "updated_at"` */
+    /** The value of the sort field (number for ttl/updated_at, string for durability) */
     sortValue?: number | string | bigint;
   };
 };
 
 // Runtime validation for decoded cursors (must match CursorData above).
-// Uses string | number for sortValue because JSON.parse never produces bigint.
-const cursorDataSchema = z.object({
-  cursorType: z.enum(["next", "prev"]),
-  sortField: z.string().optional(),
-  position: z.object({
-    keyHash: z.string(),
-    sortValue: z.union([z.number(), z.string()]).optional(),
-  }),
-});
+// Validation issues added via superRefine are intentionally detailed for
+// server-side logging, and they're NOT exposed to API consumers.
+const cursorDataSchema = z
+  .object({
+    cursorType: z.enum(["next", "prev"]),
+    sortField: z.string().optional(),
+    position: z.object({
+      keyHash: z.string(),
+      sortValue: z.union([z.number(), z.string()]).optional(),
+    }),
+  })
+  .superRefine((data, ctx) => {
+    const { sortField, position } = data;
+
+    // If sortField is present, it must be a recognized value
+    if (sortField !== undefined && !VALID_SORT_FIELDS.has(sortField)) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Unknown sort field: "${sortField}"`,
+        path: ["sortField"],
+      });
+      return;
+    }
+
+    // key_hash sort uses no sortValue — nothing more to validate
+    if (sortField === undefined || sortField === "key_hash") {
+      return;
+    }
+
+    // Non-key_hash sort fields require a sortValue
+    if (position.sortValue === undefined) {
+      ctx.addIssue({
+        code: "custom",
+        message: `Sort field "${sortField}" requires a sortValue`,
+        path: ["position", "sortValue"],
+      });
+      return;
+    }
+
+    // encodeCursor converts bigint → string (JSON has no bigint type).
+    // Coerce stringified numbers back to numbers for numeric sort fields.
+    if (
+      NUMERIC_SORT_FIELDS.has(sortField) &&
+      typeof position.sortValue === "string"
+    ) {
+      const parsed = Number(position.sortValue);
+      if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
+        position.sortValue = parsed;
+      }
+    }
+
+    const actualType = typeof position.sortValue;
+
+    if (NUMERIC_SORT_FIELDS.has(sortField) && actualType !== "number") {
+      ctx.addIssue({
+        code: "custom",
+        message: `Sort field "${sortField}" requires a numeric sortValue, got ${actualType}`,
+        path: ["position", "sortValue"],
+      });
+    }
+
+    if (STRING_SORT_FIELDS.has(sortField) && actualType !== "string") {
+      ctx.addIssue({
+        code: "custom",
+        message: `Sort field "${sortField}" requires a string sortValue, got ${actualType}`,
+        path: ["position", "sortValue"],
+      });
+    }
+  });
 
 /**
  * Creates a pagination cursor from record data
  *
- * @param keyHash - Key hash of the last record, used as the primary key
- * @param sortValue - Sort value for multi-field sorting
- * @param sortBy - Field name used for sorting
+ * @param cursorData - Cursor data to encode
  * @returns Base64 encoded cursor string
  */
 export const encodeCursor = (cursorData: CursorData): string => {
@@ -67,21 +150,28 @@ export const encodeCursor = (cursorData: CursorData): string => {
 };
 
 /**
- * Parses a pagination cursor from API requests
+ * Decodes and validates a pagination cursor from API requests.
+ * Validates both structure and type consistency (e.g. numeric sortValue
+ * for ttl/updated_at, string sortValue for durability).
  *
  * @param cursor - Base64 encoded cursor string
- * @returns Object with keyHash (BigInt) and optionally sortValue, sortBy
+ * @returns Validated CursorData
+ * @throws InvalidCursorError on any decoding or validation failure
  */
 export const decodeCursor = (cursor: string): CursorData => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
   } catch (err: unknown) {
+    logger.warn({ cursor, err }, "Invalid cursor: not valid base64 JSON");
     throw new InvalidCursorError(cursor, err);
   }
 
   const result = cursorDataSchema.safeParse(parsed);
   if (!result.success) {
+    const customIssue = result.error.issues.find(i => i.code === "custom");
+    const detail = customIssue?.message ?? "Cursor structure is invalid";
+    logger.warn({ cursor, detail }, "Invalid cursor parameter received");
     throw new InvalidCursorError(cursor);
   }
 
