@@ -12,8 +12,8 @@ import { z } from "zod";
  * Custom error thrown when a cursor string cannot be decoded or parsed.
  */
 export class InvalidCursorError extends Error {
-  constructor(cursor: string) {
-    super(`Invalid cursor: ${cursor}`);
+  constructor(cursor: string, cause?: unknown) {
+    super(`Invalid cursor: ${cursor}`, { cause });
     this.name = "InvalidCursorError";
   }
 }
@@ -76,8 +76,8 @@ export const decodeCursor = (cursor: string): CursorData => {
   let parsed: unknown;
   try {
     parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
-  } catch {
-    throw new InvalidCursorError(cursor);
+  } catch (err: unknown) {
+    throw new InvalidCursorError(cursor, err);
   }
 
   const result = cursorDataSchema.safeParse(parsed);
