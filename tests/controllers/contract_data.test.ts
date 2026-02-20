@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { encodeCursor } from "../../src/helpers/cursor";
 const getLatestLedgerMock = jest.fn();
 
 jest.mock("../../src/config/env", () => ({
@@ -607,7 +608,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
         // encodeCursor converts bigint → string via .toString(), so the JSON
         // payload contains a string like "61482901". decodeCursor must coerce
         // this back to a number for numeric sort fields (ttl, updated_at).
-        const { encodeCursor } = await import("../../src/helpers/cursor");
+
         const cursor = encodeCursor({
           cursorType: "next",
           sortField: "ttl",
