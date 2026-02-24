@@ -111,10 +111,10 @@ function queryWithCursorSortField(
       ? Prisma.sql`to_timestamp(${cursorSortValue})`
       : Prisma.sql`${cursorSortValue}`;
 
-  const cursorCondition = Prisma.sql`(
-        ${Prisma.raw(`${sortCol} ${op}`)} ${sqlVal}
-        OR (${Prisma.raw(sortCol)} = ${sqlVal} AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash})
-      )`;
+  // Row-value comparison: (col, key_hash) < (val, hash) is equivalent to
+  // col < val OR (col = val AND key_hash < hash), but PostgreSQL can
+  // optimize it into a single ordered index range scan instead of BitmapOr.
+  const cursorCondition = Prisma.sql`(${Prisma.raw(sortCol)}, cd.key_hash) ${Prisma.raw(op)} (${sqlVal}, ${cursorKeyHash})`;
 
   return Prisma.sql`
     WITH paginated_result AS (
