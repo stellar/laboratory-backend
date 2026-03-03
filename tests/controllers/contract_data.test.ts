@@ -655,4 +655,136 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
   });
+
+  describe("filter_key", () => {
+    test("🟢filter_key=BillingCyclePlanName_returns_matching_row", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData.results[0].key_hash).toBe(
+        "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+      );
+      expect(responseData.results[0].key).toEqual(
+        expect.stringContaining("BillingCyclePlanName"),
+      );
+    });
+
+    test("🟢no_filter_key_returns_all_rows", async () => {
+      mockRequest.query = {};
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(5);
+    });
+
+    test("🟡case_mismatch_filter_key_returns_no_results", async () => {
+      mockRequest.query = { filter_key: "billingcycleplanname" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
+    });
+
+    test("🟢filter_key_appears_in_pagination_links", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      const selfHref = responseData._links.self.href;
+      const selfUrl = new URL(selfHref, "http://example.test");
+      expect(selfUrl.searchParams.get("filter_key")).toBe(
+        "BillingCyclePlanName",
+      );
+    });
+
+    test("🟡non_matching_filter_key_returns_empty_results", async () => {
+      mockRequest.query = { filter_key: "NonExistent" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
+    });
+
+    test("🟢pagination_with_filter_key_and_limit=1", async () => {
+      // BillingCyclePlanName matches exactly 1 record, so with limit=1
+      // we should get 1 result on the first page, then cursor leads to empty.
+      const baseQuery: Record<string, string> = {
+        limit: "1",
+        order: "desc",
+        filter_key: "BillingCyclePlanName",
+      };
+
+      async function fetchFilteredPage(
+        query: Record<string, string>,
+      ): Promise<{ results: any[]; _links: any }> {
+        (mockResponse.json as jest.Mock).mockClear();
+        (mockResponse.status as jest.Mock).mockClear();
+
+        mockRequest.query = query;
+        await getContractDataByContractId(
+          mockRequest as Request,
+          mockResponse as Response,
+        );
+
+        expect(mockResponse.status).toHaveBeenCalledWith(200);
+        return (mockResponse.json as jest.Mock).mock.calls[0][0];
+      }
+
+      // Page 1 — should contain the single matching record
+      const page1 = await fetchFilteredPage(baseQuery);
+      expect(page1.results).toHaveLength(1);
+      expect(page1.results[0].key).toEqual(
+        expect.stringContaining("BillingCyclePlanName"),
+      );
+
+      // results.length === limit, so a next link is generated
+      expect(page1._links.next).toBeDefined();
+
+      // Verify filter_key is preserved in next link
+      const nextUrl = new URL(page1._links.next.href, "http://example.test");
+      expect(nextUrl.searchParams.get("filter_key")).toBe(
+        "BillingCyclePlanName",
+      );
+
+      // Follow the next cursor — should return empty (no more matching rows)
+      const nextCursor = nextUrl.searchParams.get("cursor")!;
+      const page2 = await fetchFilteredPage({
+        ...baseQuery,
+        cursor: nextCursor,
+      });
+      expect(page2.results).toHaveLength(0);
+    });
+  });
 });
