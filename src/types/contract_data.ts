@@ -48,6 +48,7 @@ export type RequestParams = {
   sortDirection: SortDirection;
   sortField: SortField;
   sortDbField: SortDbField;
+  filterKey?: string;
 };
 
 /**
