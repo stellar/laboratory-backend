@@ -61,7 +61,7 @@ function filterClause(filterKey?: string): Prisma.Sql {
   if (!filterKey) {
     return Prisma.empty;
   }
-  return Prisma.sql`AND LOWER(cd.key_symbol) = LOWER(${filterKey})`;
+  return Prisma.sql`AND cd.key_symbol = ${filterKey}`;
 }
 
 /**
