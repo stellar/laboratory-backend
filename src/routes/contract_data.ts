@@ -30,6 +30,7 @@ const requestQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).default("desc"),
   cursor: z.string().trim().optional(),
   sort_by: z.enum(["durability", "key_hash", "ttl", "updated_at"]).optional(),
+  filter_key: z.string().trim().optional(),
 });
 
 /**
