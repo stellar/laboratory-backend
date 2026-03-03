@@ -22,6 +22,10 @@ A Node.js REST API for managing contract data using Express.js with PostgreSQL.
 
 [API Design Doc](https://github.com/stellar/platform-design-docs/blob/contract-data-api/contract-data-api/design.md#api-design) by Data Team.
 
+## Maintenance Doc
+
+[Maintenance Doc](https://docs.google.com/document/d/1GQIJnFkJK5KKwUhKxQXd-lqLh4vB2x3DU1-K-RAO7a4/edit?tab=t.0)
+
 ## Prerequisites
 
 - Node.js (v22 or higher)
