@@ -80,6 +80,19 @@ const parseRequestParams = (req: Request): RequestParams => {
         cursorData.sortField,
       );
     }
+
+    // Validate filter_key is consistent with the cursor
+    const cursorFilterKey = cursorData.filterKey ?? undefined;
+    const requestFilterKey = filter_key
+      ? (filter_key as string).trim()
+      : undefined;
+    if (cursorFilterKey !== requestFilterKey) {
+      throw new CursorParameterMismatchError(
+        "filter_key",
+        requestFilterKey,
+        cursorFilterKey,
+      );
+    }
   }
 
   return {

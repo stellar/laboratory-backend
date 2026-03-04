@@ -88,6 +88,7 @@ export const buildPaginationLinks = (
     const nextCursor = encodeCursor({
       cursorType: "next",
       sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
+      filterKey: filterKey ?? undefined,
       position: {
         keyHash: lastRecord.key_hash,
         sortValue:
@@ -110,6 +111,7 @@ export const buildPaginationLinks = (
     const prevCursor = encodeCursor({
       cursorType: "prev",
       sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
+      filterKey: filterKey ?? undefined,
       position: {
         keyHash: firstRecord.key_hash,
         sortValue:

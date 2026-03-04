@@ -370,11 +370,13 @@ describe("GET /api/contract/:contract_id/storage", () => {
       sortBy: string | undefined,
       order: string,
       expectedRecordCount: number = 5,
+      filterKey?: string,
     ) {
       const CONTRACT_ID =
         "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU";
       const baseQuery: Record<string, string> = { limit: "1", order };
       if (sortBy) baseQuery.sort_by = sortBy;
+      if (filterKey) baseQuery.filter_key = filterKey;
 
       const linkParams = {
         contractId: CONTRACT_ID,
@@ -479,6 +481,18 @@ describe("GET /api/contract/:contract_id/storage", () => {
       // Records aa11... and bb22... share the same closed_at timestamp.
       // The key_hash tiebreaker must ensure both are visited exactly once.
       await testPaginationTraversal("updated_at", "desc");
+    });
+
+    test("🟢cursor_pagination_with_filter_key", async () => {
+      // filter_key=BillingCyclePlanName matches exactly 1 record.
+      // Forward traversal: page 1 returns the match, page 2 is empty.
+      // Backward traversal from page 1 should also work.
+      await testPaginationTraversal(
+        undefined,
+        "desc",
+        1,
+        "BillingCyclePlanName",
+      );
     });
 
     /**
@@ -735,56 +749,6 @@ describe("GET /api/contract/:contract_id/storage", () => {
       const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
       expect(responseData.results).toEqual([]);
-    });
-
-    test("🟢pagination_with_filter_key_and_limit=1", async () => {
-      // BillingCyclePlanName matches exactly 1 record, so with limit=1
-      // we should get 1 result on the first page, then cursor leads to empty.
-      const baseQuery: Record<string, string> = {
-        limit: "1",
-        order: "desc",
-        filter_key: "BillingCyclePlanName",
-      };
-
-      async function fetchFilteredPage(
-        query: Record<string, string>,
-      ): Promise<{ results: any[]; _links: any }> {
-        (mockResponse.json as jest.Mock).mockClear();
-        (mockResponse.status as jest.Mock).mockClear();
-
-        mockRequest.query = query;
-        await getContractDataByContractId(
-          mockRequest as Request,
-          mockResponse as Response,
-        );
-
-        expect(mockResponse.status).toHaveBeenCalledWith(200);
-        return (mockResponse.json as jest.Mock).mock.calls[0][0];
-      }
-
-      // Page 1 — should contain the single matching record
-      const page1 = await fetchFilteredPage(baseQuery);
-      expect(page1.results).toHaveLength(1);
-      expect(page1.results[0].key).toEqual(
-        expect.stringContaining("BillingCyclePlanName"),
-      );
-
-      // results.length === limit, so a next link is generated
-      expect(page1._links.next).toBeDefined();
-
-      // Verify filter_key is preserved in next link
-      const nextUrl = new URL(page1._links.next.href, "http://example.test");
-      expect(nextUrl.searchParams.get("filter_key")).toBe(
-        "BillingCyclePlanName",
-      );
-
-      // Follow the next cursor — should return empty (no more matching rows)
-      const nextCursor = nextUrl.searchParams.get("cursor")!;
-      const page2 = await fetchFilteredPage({
-        ...baseQuery,
-        cursor: nextCursor,
-      });
-      expect(page2.results).toHaveLength(0);
     });
   });
 });
