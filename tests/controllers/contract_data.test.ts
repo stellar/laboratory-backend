@@ -370,11 +370,13 @@ describe("GET /api/contract/:contract_id/storage", () => {
       sortBy: string | undefined,
       order: string,
       expectedRecordCount: number = 5,
+      filterKey?: string,
     ) {
       const CONTRACT_ID =
         "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU";
       const baseQuery: Record<string, string> = { limit: "1", order };
       if (sortBy) baseQuery.sort_by = sortBy;
+      if (filterKey) baseQuery.filter_key = filterKey;
 
       const linkParams = {
         contractId: CONTRACT_ID,
@@ -479,6 +481,18 @@ describe("GET /api/contract/:contract_id/storage", () => {
       // Records aa11... and bb22... share the same closed_at timestamp.
       // The key_hash tiebreaker must ensure both are visited exactly once.
       await testPaginationTraversal("updated_at", "desc");
+    });
+
+    test("🟢cursor_pagination_with_filter_key", async () => {
+      // filter_key=BillingCyclePlanName matches exactly 1 record.
+      // Forward traversal: page 1 returns the match, page 2 is empty.
+      // Backward traversal from page 1 should also work.
+      await testPaginationTraversal(
+        undefined,
+        "desc",
+        1,
+        "BillingCyclePlanName",
+      );
     });
 
     /**
@@ -653,6 +667,88 @@ describe("GET /api/contract/:contract_id/storage", () => {
           error: expect.stringContaining("Invalid cursor:"),
         });
       });
+    });
+  });
+
+  describe("filter_key", () => {
+    test("🟢filter_key=BillingCyclePlanName_returns_matching_row", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData.results[0].key_hash).toBe(
+        "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+      );
+      expect(responseData.results[0].key).toEqual(
+        expect.stringContaining("BillingCyclePlanName"),
+      );
+    });
+
+    test("🟢no_filter_key_returns_all_rows", async () => {
+      mockRequest.query = {};
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(5);
+    });
+
+    test("🟡case_mismatch_filter_key_returns_no_results", async () => {
+      mockRequest.query = { filter_key: "billingcycleplanname" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
+    });
+
+    test("🟢filter_key_appears_in_pagination_links", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      const selfHref = responseData._links.self.href;
+      const selfUrl = new URL(selfHref, "http://example.test");
+      expect(selfUrl.searchParams.get("filter_key")).toBe(
+        "BillingCyclePlanName",
+      );
+    });
+
+    test("🟡non_matching_filter_key_returns_empty_results", async () => {
+      mockRequest.query = { filter_key: "NonExistent" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
     });
   });
 });

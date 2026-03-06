@@ -28,7 +28,7 @@ import { getStellarService, StellarService } from "../utils/stellar";
 const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id } = req.params;
 
-  const { cursor, limit = "20" } = req.query;
+  const { cursor, limit = "20", filter_key } = req.query;
   let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
   sort_by = (sort_by as string).toLowerCase().trim() as SortField;
   order = (order as string).toLowerCase().trim() as SortDirection;
@@ -80,6 +80,19 @@ const parseRequestParams = (req: Request): RequestParams => {
         cursorData.sortField,
       );
     }
+
+    // Validate filter_key is consistent with the cursor
+    const cursorFilterKey = cursorData.filterKey ?? undefined;
+    const requestFilterKey = filter_key
+      ? (filter_key as string).trim()
+      : undefined;
+    if (cursorFilterKey !== requestFilterKey) {
+      throw new CursorParameterMismatchError(
+        "filter_key",
+        requestFilterKey,
+        cursorFilterKey,
+      );
+    }
   }
 
   return {
@@ -90,6 +103,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     sortDirection,
     sortField,
     sortDbField: APIFieldToDBFieldMap[sortField],
+    filterKey: filter_key ? (filter_key as string).trim() : undefined,
   };
 };
 
@@ -110,6 +124,7 @@ const getContractData = async (
     sortDbField,
     sortDirection,
     sortField,
+    filterKey,
   } = requestParams;
 
   const latestLedgerSequence = await ledgerService.getLatestLedger();
@@ -122,6 +137,7 @@ const getContractData = async (
     sortDbField,
     sortDirection,
     sortField,
+    filterKey,
   };
   const results = await getPrisma().$queryRaw<ContractData[]>(
     buildContractDataQuery(config),
