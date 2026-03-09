@@ -323,6 +323,37 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
+    test("🔴cursor_filter_key_mismatch_with_query_options_returns_400", async () => {
+      // Cursor was generated with filterKey="SharedEntry", but request has filter_key="BillingCyclePlanName"
+      const cursor = Buffer.from(
+        JSON.stringify({
+          cursorType: "next",
+          filterKey: "SharedEntry",
+          position: {
+            keyHash:
+              "cc33333333333333333333333333333333333333333333333333333333333333",
+          },
+        }),
+      ).toString("base64");
+
+      mockRequest.query = {
+        cursor,
+        filter_key: "BillingCyclePlanName",
+      };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: expect.stringContaining(
+          `Cursor parameter mismatch for field "filter_key"`,
+        ),
+      });
+    });
+
     /**
      * Helper: executes a single page request and returns the parsed response.
      * Resets mock state before each call so callers don't have to.
