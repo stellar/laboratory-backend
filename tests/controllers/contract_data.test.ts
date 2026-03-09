@@ -123,7 +123,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
     // Verify basic structure
-    expect(responseData.results).toHaveLength(5);
+    expect(responseData.results).toHaveLength(8);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       order: "desc",
@@ -197,7 +197,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
-    expect(responseData.results.length).toEqual(5);
+    expect(responseData.results.length).toEqual(8);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       sortBy: "durability",
@@ -369,7 +369,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     async function testPaginationTraversal(
       sortBy: string | undefined,
       order: string,
-      expectedRecordCount: number = 5,
+      expectedRecordCount: number = 8,
       filterKey?: string,
     ) {
       const CONTRACT_ID =
@@ -483,7 +483,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       await testPaginationTraversal("updated_at", "desc");
     });
 
-    test("🟢cursor_pagination_with_filter_key", async () => {
+    test("🟢cursor_pagination_with_filter_key_single_result", async () => {
       // filter_key=BillingCyclePlanName matches exactly 1 record.
       // Forward traversal: page 1 returns the match, page 2 is empty.
       // Backward traversal from page 1 should also work.
@@ -493,6 +493,13 @@ describe("GET /api/contract/:contract_id/storage", () => {
         1,
         "BillingCyclePlanName",
       );
+    });
+
+    test("🟢cursor_pagination_with_filter_key", async () => {
+      // filter_key=SharedEntry matches 3 records (cc33…, dd44…, ee55…).
+      // With limit=1 we get 3 pages forward, then traverse backward to verify
+      // cursor pagination works correctly when a filter produces multiple pages.
+      await testPaginationTraversal(undefined, "desc", 3, "SharedEntry");
     });
 
     /**
@@ -702,7 +709,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
-      expect(responseData.results).toHaveLength(5);
+      expect(responseData.results).toHaveLength(8);
     });
 
     test("🟡case_mismatch_filter_key_returns_no_results", async () => {

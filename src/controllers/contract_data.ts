@@ -30,8 +30,8 @@ const parseRequestParams = (req: Request): RequestParams => {
 
   const { cursor, limit = "20", filter_key } = req.query;
   let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
-  sort_by = (sort_by as string).toLowerCase().trim() as SortField;
-  order = (order as string).toLowerCase().trim() as SortDirection;
+  sort_by = (sort_by as string).toLowerCase() as SortField;
+  order = (order as string).toLowerCase() as SortDirection;
 
   // limit validation
   if (limit) {
@@ -83,9 +83,7 @@ const parseRequestParams = (req: Request): RequestParams => {
 
     // Validate filter_key is consistent with the cursor
     const cursorFilterKey = cursorData.filterKey ?? undefined;
-    const requestFilterKey = filter_key
-      ? (filter_key as string).trim()
-      : undefined;
+    const requestFilterKey = filter_key ? (filter_key as string) : undefined;
     if (cursorFilterKey !== requestFilterKey) {
       throw new CursorParameterMismatchError(
         "filter_key",
@@ -103,7 +101,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     sortDirection,
     sortField,
     sortDbField: APIFieldToDBFieldMap[sortField],
-    filterKey: filter_key ? (filter_key as string).trim() : undefined,
+    filterKey: filter_key ? (filter_key as string) : undefined,
   };
 };
 
