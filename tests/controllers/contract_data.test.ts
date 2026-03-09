@@ -123,7 +123,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
     // Verify basic structure
-    expect(responseData.results).toHaveLength(5);
+    expect(responseData.results).toHaveLength(8);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       order: "desc",
@@ -197,7 +197,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
-    expect(responseData.results.length).toEqual(5);
+    expect(responseData.results.length).toEqual(8);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       sortBy: "durability",
@@ -323,6 +323,37 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
+    test("🔴cursor_filter_key_mismatch_with_query_options_returns_400", async () => {
+      // Cursor was generated with filterKey="SharedEntry", but request has filter_key="BillingCyclePlanName"
+      const cursor = Buffer.from(
+        JSON.stringify({
+          cursorType: "next",
+          filterKey: "SharedEntry",
+          position: {
+            keyHash:
+              "cc33333333333333333333333333333333333333333333333333333333333333",
+          },
+        }),
+      ).toString("base64");
+
+      mockRequest.query = {
+        cursor,
+        filter_key: "BillingCyclePlanName",
+      };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: expect.stringContaining(
+          `Cursor parameter mismatch for field "filter_key"`,
+        ),
+      });
+    });
+
     /**
      * Helper: executes a single page request and returns the parsed response.
      * Resets mock state before each call so callers don't have to.
@@ -369,12 +400,14 @@ describe("GET /api/contract/:contract_id/storage", () => {
     async function testPaginationTraversal(
       sortBy: string | undefined,
       order: string,
-      expectedRecordCount: number = 5,
+      expectedRecordCount: number = 8,
+      filterKey?: string,
     ) {
       const CONTRACT_ID =
         "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU";
       const baseQuery: Record<string, string> = { limit: "1", order };
       if (sortBy) baseQuery.sort_by = sortBy;
+      if (filterKey) baseQuery.filter_key = filterKey;
 
       const linkParams = {
         contractId: CONTRACT_ID,
@@ -479,6 +512,25 @@ describe("GET /api/contract/:contract_id/storage", () => {
       // Records aa11... and bb22... share the same closed_at timestamp.
       // The key_hash tiebreaker must ensure both are visited exactly once.
       await testPaginationTraversal("updated_at", "desc");
+    });
+
+    test("🟢cursor_pagination_with_filter_key_single_result", async () => {
+      // filter_key=BillingCyclePlanName matches exactly 1 record.
+      // Forward traversal: page 1 returns the match, page 2 is empty.
+      // Backward traversal from page 1 should also work.
+      await testPaginationTraversal(
+        undefined,
+        "desc",
+        1,
+        "BillingCyclePlanName",
+      );
+    });
+
+    test("🟢cursor_pagination_with_filter_key", async () => {
+      // filter_key=SharedEntry matches 3 records (cc33…, dd44…, ee55…).
+      // With limit=1 we get 3 pages forward, then traverse backward to verify
+      // cursor pagination works correctly when a filter produces multiple pages.
+      await testPaginationTraversal(undefined, "desc", 3, "SharedEntry");
     });
 
     /**
@@ -653,6 +705,88 @@ describe("GET /api/contract/:contract_id/storage", () => {
           error: expect.stringContaining("Invalid cursor:"),
         });
       });
+    });
+  });
+
+  describe("filter_key", () => {
+    test("🟢filter_key=BillingCyclePlanName_returns_matching_row", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(1);
+      expect(responseData.results[0].key_hash).toBe(
+        "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+      );
+      expect(responseData.results[0].key).toEqual(
+        expect.stringContaining("BillingCyclePlanName"),
+      );
+    });
+
+    test("🟢no_filter_key_returns_all_rows", async () => {
+      mockRequest.query = {};
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toHaveLength(8);
+    });
+
+    test("🟡case_mismatch_filter_key_returns_no_results", async () => {
+      mockRequest.query = { filter_key: "billingcycleplanname" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
+    });
+
+    test("🟢filter_key_appears_in_pagination_links", async () => {
+      mockRequest.query = { filter_key: "BillingCyclePlanName" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      const selfHref = responseData._links.self.href;
+      const selfUrl = new URL(selfHref, "http://example.test");
+      expect(selfUrl.searchParams.get("filter_key")).toBe(
+        "BillingCyclePlanName",
+      );
+    });
+
+    test("🟡non_matching_filter_key_returns_empty_results", async () => {
+      mockRequest.query = { filter_key: "NonExistent" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+      expect(responseData.results).toEqual([]);
     });
   });
 });

@@ -26,6 +26,7 @@ export interface ContractDataQueryConfig {
   sortDbField: SortDbField;
   sortDirection: SortDirection;
   sortField: SortField;
+  filterKey?: string;
 }
 
 const SELECT_COLUMNS =
@@ -53,6 +54,17 @@ function orderBy(
 }
 
 /**
+ * Builds an optional WHERE fragment for key_symbol filtering.
+ * Returns empty SQL when no filter is applied.
+ */
+function filterClause(filterKey?: string): Prisma.Sql {
+  if (!filterKey) {
+    return Prisma.empty;
+  }
+  return Prisma.sql`AND cd.key_symbol = ${filterKey}`;
+}
+
+/**
  * First-page contract data query (no cursor). Parameterized for $queryRaw.
  * @returns Prisma.Sql for a single SELECT from contract_data with `expired` column.
  */
@@ -63,6 +75,7 @@ function queryWithoutCursor(
   sortDbField: SortDbField,
   sortDirection: SortDirection,
   sortField: SortField,
+  filterKey?: string,
 ): Prisma.Sql {
   const orderByClause = orderBy(sortDirection, sortDbField, sortField, "cd.");
   return Prisma.sql`
@@ -70,6 +83,7 @@ function queryWithoutCursor(
       COALESCE(cd.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
     FROM contract_data cd
     WHERE cd.contract_id = ${contractId}
+    ${filterClause(filterKey)}
     ${Prisma.raw(orderByClause)}
     LIMIT ${limit}
   `;
@@ -93,6 +107,7 @@ function queryWithCursorSortField(
   cursorKeyHash: string,
   cursorSortValue: number | string | bigint,
   cursorType: "next" | "prev",
+  filterKey?: string,
 ): Prisma.Sql {
   const directionInCTE =
     cursorType === "next"
@@ -121,6 +136,7 @@ function queryWithCursorSortField(
       SELECT ${Prisma.raw(SELECT_COLUMNS)}
       FROM contract_data cd
       WHERE cd.contract_id = ${contractId}
+      ${filterClause(filterKey)}
         AND ${cursorCondition}
       ${Prisma.raw(orderByInCTE)}
       LIMIT ${limit}
@@ -148,6 +164,7 @@ function queryWithCursorKeyHash(
   sortField: SortField,
   cursorKeyHash: string,
   cursorType: "next" | "prev",
+  filterKey?: string,
 ): Prisma.Sql {
   const directionInCTE =
     cursorType === "next"
@@ -164,6 +181,7 @@ function queryWithCursorKeyHash(
       SELECT ${Prisma.raw(SELECT_COLUMNS)}
       FROM contract_data cd
       WHERE cd.contract_id = ${contractId}
+      ${filterClause(filterKey)}
         AND cd.key_hash ${Prisma.raw(op)} ${cursorKeyHash}
       ${Prisma.raw(orderByInCTE)}
       LIMIT ${limit}
@@ -187,6 +205,7 @@ export const buildContractDataQuery = (
   const {
     contractId,
     cursorData,
+    filterKey,
     latestLedgerSequence,
     limit,
     sortDbField,
@@ -205,6 +224,7 @@ export const buildContractDataQuery = (
       sortDbField,
       sortDirection,
       sortField,
+      filterKey,
     );
   }
 
@@ -225,6 +245,7 @@ export const buildContractDataQuery = (
       sortField,
       keyHash,
       cursorData.cursorType,
+      filterKey,
     );
   }
 
@@ -239,5 +260,6 @@ export const buildContractDataQuery = (
     keyHash,
     sortValue,
     cursorData.cursorType,
+    filterKey,
   );
 };

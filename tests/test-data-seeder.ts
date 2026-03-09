@@ -100,6 +100,52 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       closed_at: new Date("2025-10-04T15:00:36Z"),
       live_until_ledger_sequence: 61482904,
     },
+    // Three records sharing the same key_symbol for multi-page filter_key tests
+    {
+      key_hash:
+        "cc33333333333333333333333333333333333333333333333333333333333333",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      ledger_sequence: 59409310,
+      durability: "persistent",
+      key_symbol: "SharedEntry",
+      key: Buffer.from(
+        "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
+        "base64",
+      ),
+      val: Buffer.from("AAAAAwAAAAM=", "base64"),
+      closed_at: new Date("2025-10-05T15:00:36Z"),
+      live_until_ledger_sequence: 61482905,
+    },
+    {
+      key_hash:
+        "dd44444444444444444444444444444444444444444444444444444444444444",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      ledger_sequence: 59409310,
+      durability: "instance",
+      key_symbol: "SharedEntry",
+      key: Buffer.from(
+        "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
+        "base64",
+      ),
+      val: Buffer.from("AAAAAwAAAAQ=", "base64"),
+      closed_at: new Date("2025-10-06T15:00:36Z"),
+      live_until_ledger_sequence: 61482906,
+    },
+    {
+      key_hash:
+        "ee55555555555555555555555555555555555555555555555555555555555555",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      ledger_sequence: 59409310,
+      durability: "temporary",
+      key_symbol: "SharedEntry",
+      key: Buffer.from(
+        "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
+        "base64",
+      ),
+      val: Buffer.from("AAAAAwAAAAU=", "base64"),
+      closed_at: new Date("2025-10-07T15:00:36Z"),
+      live_until_ledger_sequence: 61482907,
+    },
   ];
 
   // Insert contract data using batch operation

@@ -51,6 +51,8 @@ export type CursorData = {
   cursorType: "next" | "prev";
   /** The field name used for sorting (e.g., 'key_hash', 'updated_at', 'durability', 'ttl') */
   sortField?: string;
+  /** The key symbol filter active when this cursor was generated (must match on reuse) */
+  filterKey?: string;
   /** Position information for pagination. Stores the `key_hash` and `sortValue` of the boundary record used for next/prev navigation */
   position: {
     /** Key hash of the boundary record for pagination, used as the primary key */
@@ -67,6 +69,7 @@ const cursorDataSchema = z
   .object({
     cursorType: z.enum(["next", "prev"]),
     sortField: z.string().optional(),
+    filterKey: z.string().optional(),
     position: z.object({
       keyHash: z.string(),
       sortValue: z.union([z.number(), z.string()]).optional(),
