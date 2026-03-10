@@ -184,6 +184,28 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(responseData).toHaveValidCursor("next");
   });
 
+  test("🟢x_forwarded_prefix_is_included_in_pagination_links", async () => {
+    mockRequest.query = { limit: "1" };
+    mockRequest.headers = { "x-forwarded-prefix": "/pubnet" };
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    expect(responseData).toHaveValidPaginationLinks({
+      contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      order: "desc",
+      limit: "1",
+      containsNext: true,
+      pathPrefix: "/pubnet",
+    });
+    expect(responseData).toHaveValidCursor("next");
+  });
+
   test("🟢sorting_by_durability", async () => {
     mockRequest.query = { sort_by: "durability", order: "asc" };
 

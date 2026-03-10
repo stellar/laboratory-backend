@@ -49,6 +49,7 @@ export type RequestParams = {
   sortField: SortField;
   sortDbField: SortDbField;
   filterKey?: string;
+  pathPrefix?: string;
 };
 
 /**

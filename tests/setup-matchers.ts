@@ -11,6 +11,7 @@ declare global {
         cursor?: string;
         containsNext?: boolean;
         containsPrev?: boolean;
+        pathPrefix?: string;
       }): R;
       toHaveValidCursor(cursorType: "next" | "prev"): R;
     }
@@ -37,8 +38,9 @@ export function setupCustomMatchers() {
         cursor,
         containsNext = false,
         containsPrev = false,
+        pathPrefix = "",
       } = expectedParams;
-      const basePath = `/api/contract/${contractId}/storage`;
+      const basePath = `${pathPrefix}/api/contract/${contractId}/storage`;
 
       /**
        * Validates a link object against expected parameters.
