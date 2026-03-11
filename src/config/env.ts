@@ -104,6 +104,10 @@ class Env {
       });
   }
 
+  static get pathPrefix(): string | undefined {
+    return this.optionalString("PATH_PREFIX");
+  }
+
   static get trustProxy(): string[] {
     const raw = this.optionalString("TRUST_PROXY");
     const defaultValue = "loopback,linklocal,uniquelocal";

@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Env } from "../config/env";
 import { CursorData, decodeCursor } from "../helpers/cursor";
 import { buildPaginationLinks } from "../pagination/contract_data";
 import {
@@ -93,7 +94,6 @@ const parseRequestParams = (req: Request): RequestParams => {
     }
   }
 
-  const forwardedPrefix = req.headers?.["x-forwarded-prefix"];
   return {
     contractId: contract_id,
     cursor: cursor as string | undefined,
@@ -103,9 +103,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     sortField,
     sortDbField: APIFieldToDBFieldMap[sortField],
     filterKey: filter_key ? (filter_key as string) : undefined,
-    pathPrefix: Array.isArray(forwardedPrefix)
-      ? forwardedPrefix[0]
-      : forwardedPrefix || undefined,
+    pathPrefix: Env.pathPrefix,
   };
 };
 

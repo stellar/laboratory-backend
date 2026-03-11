@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { encodeCursor } from "../../src/helpers/cursor";
 const getLatestLedgerMock = jest.fn();
 
+let mockPathPrefix: string | undefined = undefined;
+
 jest.mock("../../src/config/env", () => ({
   Env: {
     get networkPassphrase() {
@@ -15,6 +17,9 @@ jest.mock("../../src/config/env", () => ({
     },
     get logLevel() {
       return "silent";
+    },
+    get pathPrefix() {
+      return mockPathPrefix;
     },
   },
 }));
@@ -47,6 +52,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
   beforeEach(() => {
     getLatestLedgerMock.mockResolvedValue(700000);
+    mockPathPrefix = undefined;
 
     mockRequest = {
       params: {
@@ -184,9 +190,9 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(responseData).toHaveValidCursor("next");
   });
 
-  test("🟢x_forwarded_prefix_is_included_in_pagination_links", async () => {
+  test("🟢path_prefix_is_included_in_pagination_links", async () => {
     mockRequest.query = { limit: "1" };
-    mockRequest.headers = { "x-forwarded-prefix": "/pubnet" };
+    mockPathPrefix = "/pubnet";
 
     await getContractDataByContractId(
       mockRequest as Request,
