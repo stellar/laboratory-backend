@@ -344,6 +344,28 @@ describe("Env", () => {
     });
   });
 
+  describe("pathPrefix", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.PATH_PREFIX;
+      expect(Env.pathPrefix).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set", () => {
+      process.env.PATH_PREFIX = "/pubnet";
+      expect(Env.pathPrefix).toBe("/pubnet");
+    });
+
+    test("🟢trims_whitespace", () => {
+      process.env.PATH_PREFIX = "  /testnet  ";
+      expect(Env.pathPrefix).toBe("/testnet");
+    });
+
+    test("🟡returns_undefined_for_empty_string", () => {
+      process.env.PATH_PREFIX = "";
+      expect(Env.pathPrefix).toBeUndefined();
+    });
+  });
+
   describe("trustProxy", () => {
     test("🟢returns_defaults_when_not_set", () => {
       delete process.env.TRUST_PROXY;

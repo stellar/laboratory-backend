@@ -212,6 +212,48 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(responseData).toHaveValidCursor("next");
   });
 
+  test("🟢pagination_links_have_no_prefix_when_path_prefix_is_undefined", async () => {
+    mockPathPrefix = undefined;
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    // Self link path should start with /api (no prefix)
+    const selfUrl = new URL(
+      responseData._links.self.href,
+      "http://example.test",
+    );
+    expect(selfUrl.pathname).toBe(
+      "/api/contract/CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU/storage",
+    );
+  });
+
+  test("🟢different_path_prefix_values_are_reflected_in_links", async () => {
+    mockRequest.query = { limit: "1" };
+    mockPathPrefix = "/testnet";
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    expect(responseData).toHaveValidPaginationLinks({
+      contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      order: "desc",
+      limit: "1",
+      containsNext: true,
+      pathPrefix: "/testnet",
+    });
+  });
+
   test("🟢sorting_by_durability", async () => {
     mockRequest.query = { sort_by: "durability", order: "asc" };
 
