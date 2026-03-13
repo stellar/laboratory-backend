@@ -105,7 +105,13 @@ class Env {
   }
 
   static get pathPrefix(): string | undefined {
-    return this.optionalString("PATH_PREFIX");
+    const raw = this.optionalString("PATH_PREFIX");
+    if (!raw) {
+      return undefined;
+    }
+
+    const trimmed = raw.replace(/^\/+|\/+$/g, "");
+    return trimmed.length > 0 ? `/${trimmed}` : undefined;
   }
 
   static get trustProxy(): string[] {

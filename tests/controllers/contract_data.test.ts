@@ -19,7 +19,11 @@ jest.mock("../../src/config/env", () => ({
       return "silent";
     },
     get pathPrefix() {
-      return mockPathPrefix;
+      if (!mockPathPrefix) {
+        return undefined;
+      }
+      const trimmed = mockPathPrefix.replace(/^\/+|\/+$/g, "");
+      return trimmed.length > 0 ? `/${trimmed}` : undefined;
     },
   },
 }));

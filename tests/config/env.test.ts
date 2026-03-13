@@ -364,6 +364,21 @@ describe("Env", () => {
       process.env.PATH_PREFIX = "";
       expect(Env.pathPrefix).toBeUndefined();
     });
+
+    test("🟢normalizes_trailing_slash", () => {
+      process.env.PATH_PREFIX = "/pubnet/";
+      expect(Env.pathPrefix).toBe("/pubnet");
+    });
+
+    test("🟢normalizes_missing_leading_slash", () => {
+      process.env.PATH_PREFIX = "pubnet";
+      expect(Env.pathPrefix).toBe("/pubnet");
+    });
+
+    test("🟡returns_undefined_for_root_slash_only", () => {
+      process.env.PATH_PREFIX = "/";
+      expect(Env.pathPrefix).toBeUndefined();
+    });
   });
 
   describe("trustProxy", () => {
