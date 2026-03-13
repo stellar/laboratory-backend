@@ -254,6 +254,69 @@ describe("GET /api/contract/:contract_id/storage", () => {
     });
   });
 
+  test("🟢path_prefix_trailing_slash_is_normalized_in_links", async () => {
+    mockRequest.query = { limit: "1" };
+    mockPathPrefix = "/pubnet/";
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    const selfUrl = new URL(
+      responseData._links.self.href,
+      "http://example.test",
+    );
+    expect(selfUrl.pathname).toBe(
+      "/pubnet/api/contract/CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU/storage",
+    );
+  });
+
+  test("🟢path_prefix_without_leading_slash_is_normalized_in_links", async () => {
+    mockRequest.query = { limit: "1" };
+    mockPathPrefix = "pubnet";
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    const selfUrl = new URL(
+      responseData._links.self.href,
+      "http://example.test",
+    );
+    expect(selfUrl.pathname).toBe(
+      "/pubnet/api/contract/CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU/storage",
+    );
+  });
+
+  test("🟢root_path_prefix_is_treated_as_no_prefix", async () => {
+    mockRequest.query = { limit: "1" };
+    mockPathPrefix = "/";
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+
+    const selfUrl = new URL(
+      responseData._links.self.href,
+      "http://example.test",
+    );
+    expect(selfUrl.pathname).toBe(
+      "/api/contract/CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU/storage",
+    );
+  });
+
   test("🟢sorting_by_durability", async () => {
     mockRequest.query = { sort_by: "durability", order: "asc" };
 

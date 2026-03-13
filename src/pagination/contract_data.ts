@@ -74,7 +74,10 @@ export const buildPaginationLinks = (
     ...(cursor ? { cursor: cursor } : {}),
     ...(filterKey ? { filter_key: filterKey } : {}),
   };
-  const baseUrl = `${pathPrefix ?? ""}/api/contract/${contractId}/storage`;
+  // Normalize prefix so links always have a single slash separator.
+  const trimmedPrefix = (pathPrefix ?? "").replace(/^\/+|\/+$/g, "");
+  const normalizedPrefix = trimmedPrefix ? `/${trimmedPrefix}` : "";
+  const baseUrl = `${normalizedPrefix}/api/contract/${contractId}/storage`;
 
   // links.self:
   const links: PaginationLinks = {
