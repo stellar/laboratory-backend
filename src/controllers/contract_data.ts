@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { Env } from "../config/env";
 import { CursorData, decodeCursor } from "../helpers/cursor";
 import { buildPaginationLinks } from "../pagination/contract_data";
 import {
@@ -102,6 +103,7 @@ const parseRequestParams = (req: Request): RequestParams => {
     sortField,
     sortDbField: APIFieldToDBFieldMap[sortField],
     filterKey: filter_key ? (filter_key as string) : undefined,
+    pathPrefix: Env.pathPrefix,
   };
 };
 

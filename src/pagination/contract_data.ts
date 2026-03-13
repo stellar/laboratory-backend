@@ -61,6 +61,7 @@ export const buildPaginationLinks = (
     sortDirection,
     sortField,
     filterKey,
+    pathPrefix,
   } = requestParams;
 
   // Shared params for all links (self, next, prev)
@@ -73,7 +74,7 @@ export const buildPaginationLinks = (
     ...(cursor ? { cursor: cursor } : {}),
     ...(filterKey ? { filter_key: filterKey } : {}),
   };
-  const baseUrl = `/api/contract/${contractId}/storage`;
+  const baseUrl = `${pathPrefix ?? ""}/api/contract/${contractId}/storage`;
 
   // links.self:
   const links: PaginationLinks = {

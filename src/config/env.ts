@@ -104,6 +104,16 @@ class Env {
       });
   }
 
+  static get pathPrefix(): string | undefined {
+    const raw = this.optionalString("PATH_PREFIX");
+    if (!raw) {
+      return undefined;
+    }
+
+    const trimmed = raw.replace(/^\/+|\/+$/g, "");
+    return trimmed.length > 0 ? `/${trimmed}` : undefined;
+  }
+
   static get trustProxy(): string[] {
     const raw = this.optionalString("TRUST_PROXY");
     const defaultValue = "loopback,linklocal,uniquelocal";
