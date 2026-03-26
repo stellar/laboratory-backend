@@ -207,6 +207,7 @@ README, and refer to `Makefile` for the current target list.
 - ?sort_by=durability&order=desc - Sort by durability descending
 - ?sort_by=ttl&order=asc - Sort by TTL ascending
 - ?sort_by=updated_at&order=desc - Sort by updated timestamp descending
+- ?filter_key=Balance - Filter results by key symbol
 
 `curl http://localhost:3000/api/contract/{contract_id}/keys`
 
@@ -214,15 +215,24 @@ README, and refer to `Makefile` for the current target list.
 
 ```
 src/
-├── config/ # Environment configuration
-├── controllers/ # Route handlers
-├── routes/ # API routes
-├── utils/ # Utility functions
-└── index.ts # Main application entry
+├── config/          # Environment variable validation
+├── controllers/     # Route handlers and business logic
+├── helpers/         # Cursor encoding/decoding for pagination
+├── middleware/       # Express middleware
+├── pagination/      # Pagination link builders
+├── query-builders/  # Raw SQL query construction (Prisma.sql)
+├── routes/          # API route definitions with Zod validation
+├── serializers/     # DB result → API response transformation
+├── types/           # TypeScript types and enums
+├── utils/           # Prisma client, logger, Stellar SDK service
+├── index.ts         # Main application entry
+└── instrument.ts    # Sentry instrumentation
+
+tests/               # Jest tests (mirrors src/ structure)
 
 prisma/
-├── schema.prisma # Database schema
-└── migrations/ # Database migrations
+├── schema.prisma    # Database schema
+└── migrations/      # Database migrations
 ```
 
 ## Environment Variables
@@ -249,6 +259,10 @@ prisma/
 | `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                       |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
+
+## Deployment
+
+Merging to `main` does not automatically deploy changes. Production deployment is managed in a separate Kubernetes repository. After merging, the new commit must be updated in the Kubernetes configuration for changes to be reflected in production.
 
 ## Appendix: Prisma Utilities
 
