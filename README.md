@@ -218,7 +218,7 @@ src/
 ├── config/          # Environment variable validation
 ├── controllers/     # Route handlers and business logic
 ├── helpers/         # Cursor encoding/decoding for pagination
-├── middleware/       # Express middleware
+├── middleware/      # Express middleware
 ├── pagination/      # Pagination link builders
 ├── query-builders/  # Raw SQL query construction (Prisma.sql)
 ├── routes/          # API route definitions with Zod validation
