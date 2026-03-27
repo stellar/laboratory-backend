@@ -247,6 +247,7 @@ prisma/
 | `LOG_LEVEL`                      | No       | `info`                           | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                            |
 | `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                            |
 | `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                          |
+| `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                  |
 | `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase                                                                     |
 | `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                        |
 | `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                        |
