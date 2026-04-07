@@ -48,7 +48,10 @@ format: ## Format code
 typecheck: ## Type check the project
 	pnpm typecheck
 
-check: format lint typecheck test ## Run all checks (format, lint, typecheck, test)
+audit: ## Check dependencies for high/critical vulnerabilities
+	pnpm audit --audit-level high
+
+check: format lint typecheck test audit ## Run all checks (format, lint, typecheck, test, audit)
 
 build: ## Build the project
 	pnpm build
