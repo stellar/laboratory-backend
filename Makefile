@@ -29,8 +29,8 @@ clean: ## Clean build artifacts
 install: ## Install dependencies
 	pnpm install
 
-audit: ## Check for security vulnerabilities in dependencies
-	pnpm audit
+audit: ## Check dependencies for high/critical vulnerabilities
+	pnpm audit --audit-level high
 
 prisma-generate: ## Generate Prisma client
 	pnpm prisma db pull
@@ -47,9 +47,6 @@ format: ## Format code
 
 typecheck: ## Type check the project
 	pnpm typecheck
-
-audit: ## Check dependencies for high/critical vulnerabilities
-	pnpm audit --audit-level high
 
 check: format lint typecheck test audit ## Run all checks (format, lint, typecheck, test, audit)
 
