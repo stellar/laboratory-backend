@@ -46,6 +46,11 @@ function orderBy(
   sortField: SortField,
   tablePrefix: "" | "cd." | "pr.",
 ): string {
+  assertValidSortDbField(sortDbField);
+  if (direction !== SortDirection.ASC && direction !== SortDirection.DESC) {
+    throw new Error(`Invalid sort direction: ${direction}`);
+  }
+
   const p = tablePrefix;
   if (sortField === SortField.KEY_HASH) {
     return `ORDER BY ${p}key_hash ${direction}`;
