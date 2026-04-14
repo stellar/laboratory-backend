@@ -134,15 +134,20 @@ const cursorDataSchema = z
  * @returns Base64 encoded cursor string
  */
 export const encodeCursor = (cursorData: CursorData): string => {
-  if (cursorData.cursorType !== "prev") {
-    cursorData.cursorType = "next";
-  }
+  const data = {
+    ...cursorData,
+    cursorType:
+      cursorData.cursorType === "prev" ? ("prev" as const) : ("next" as const),
+    position: {
+      ...cursorData.position,
+      sortValue:
+        typeof cursorData.position.sortValue === "bigint"
+          ? cursorData.position.sortValue.toString()
+          : cursorData.position.sortValue,
+    },
+  };
 
-  if (typeof cursorData.position.sortValue === "bigint") {
-    cursorData.position.sortValue = cursorData.position.sortValue.toString();
-  }
-
-  return Buffer.from(JSON.stringify(cursorData)).toString("base64");
+  return Buffer.from(JSON.stringify(data)).toString("base64");
 };
 
 /**
