@@ -24,6 +24,7 @@ import { getStellarService, StellarService } from "../utils/stellar";
  * from the request, applying defaults and validation constraints.
  *
  * @param req - Express request object containing params and query parameters
+ * @param res - Express response; reads Zod-parsed query from res.locals when available
  * @returns RequestParams - Parsed and validated request parameters with type safety
  */
 const parseRequestParams = (req: Request, res: Response): RequestParams => {
@@ -36,12 +37,17 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
   order = (order as string).toLowerCase() as SortDirection;
 
   const parsedLimit = typeof limit === "number" ? limit : Number(limit);
-  if (!Number.isFinite(parsedLimit) || parsedLimit < 1 || parsedLimit > 200) {
+  if (
+    !Number.isFinite(parsedLimit) ||
+    !Number.isInteger(parsedLimit) ||
+    parsedLimit < 1 ||
+    parsedLimit > 200
+  ) {
     throw new Error(
       `Invalid limit=${limit}, must be an integer between 1 and 200`,
     );
   }
-  const limitNum = Math.min(Math.floor(parsedLimit), 200);
+  const limitNum = Math.min(parsedLimit, 200);
 
   // sort direction
   const sortDirection =
