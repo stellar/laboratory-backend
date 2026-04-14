@@ -250,6 +250,58 @@ describe("getLatestLedger", () => {
     );
   });
 
+  test("returns_stale_cache_when_fetch_fails_within_staleness_window", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(0);
+
+    const getLatestLedgerMock = jest
+      .fn()
+      .mockResolvedValueOnce({ sequence: 500 })
+      .mockRejectedValueOnce(new Error("RPC timeout"));
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
+
+    const service = new StellarService({
+      networkPassphrase: Networks.TESTNET,
+      rpcUrl: "https://rpc.testnet.example",
+    });
+
+    const first = await service.getLatestLedger();
+    expect(first).toBe(500);
+
+    jest.setSystemTime(6000);
+    const second = await service.getLatestLedger();
+    expect(second).toBe(500);
+
+    jest.useRealTimers();
+  });
+
+  test("throws_when_stale_cache_exceeds_max_staleness", async () => {
+    jest.useFakeTimers();
+    jest.setSystemTime(0);
+
+    const getLatestLedgerMock = jest
+      .fn()
+      .mockResolvedValueOnce({ sequence: 500 })
+      .mockRejectedValueOnce(new Error("RPC timeout"));
+    mockRpcServer.mockReturnValue(
+      mockServer({ getLatestLedger: getLatestLedgerMock }),
+    );
+
+    const service = new StellarService({
+      networkPassphrase: Networks.TESTNET,
+      rpcUrl: "https://rpc.testnet.example",
+    });
+
+    await service.getLatestLedger();
+
+    jest.setSystemTime(11_000);
+    await expect(service.getLatestLedger()).rejects.toThrow("RPC timeout");
+
+    jest.useRealTimers();
+  });
+
   test("🟢horizon_calls_are_cached", async () => {
     jest.useFakeTimers();
     jest.setSystemTime(0);

@@ -26,11 +26,12 @@ import { getStellarService, StellarService } from "../utils/stellar";
  * @param req - Express request object containing params and query parameters
  * @returns RequestParams - Parsed and validated request parameters with type safety
  */
-const parseRequestParams = (req: Request): RequestParams => {
+const parseRequestParams = (req: Request, res: Response): RequestParams => {
   const { contract_id } = req.params;
 
-  const { cursor, limit = 20, filter_key } = req.query;
-  let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
+  const query = res.locals?.parsedQuery ?? req.query;
+  const { cursor, limit = 20, filter_key } = query;
+  let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = query;
   sort_by = (sort_by as string).toLowerCase() as SortField;
   order = (order as string).toLowerCase() as SortDirection;
 
@@ -180,7 +181,7 @@ export const getContractDataByContractId = async (
 ): Promise<void | Response> => {
   let requestParams: RequestParams;
   try {
-    requestParams = parseRequestParams(req);
+    requestParams = parseRequestParams(req, res);
   } catch (e) {
     return res.status(400).json({ error: (e as Error).message });
   }
