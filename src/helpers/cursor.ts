@@ -47,11 +47,9 @@ const VALID_SORT_FIELDS: ReadonlySet<string> = new Set([
  * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
  */
 export type CursorData = {
-  /** The direction of sorting (ascending or descending) */
   cursorType: "next" | "prev";
-  /** The field name used for sorting (e.g., 'key_hash', 'updated_at', 'durability', 'ttl') */
   sortField?: string;
-  /** The key symbol filter active when this cursor was generated (must match on reuse) */
+  sortDirection?: string;
   filterKey?: string;
   /** Position information for pagination. Stores the `key_hash` and `sortValue` of the boundary record used for next/prev navigation */
   position: {
@@ -69,6 +67,7 @@ const cursorDataSchema = z
   .object({
     cursorType: z.enum(["next", "prev"]),
     sortField: z.string().optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
     filterKey: z.string().optional(),
     position: z.object({
       keyHash: z.string(),

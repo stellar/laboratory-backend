@@ -76,7 +76,17 @@ const parseRequestParams = (req: Request): RequestParams => {
       );
     }
 
-    // Validate filter_key is consistent with the cursor
+    if (
+      cursorData.sortDirection !== undefined &&
+      cursorData.sortDirection !== sortDirection
+    ) {
+      throw new CursorParameterMismatchError(
+        "order",
+        sortDirection,
+        cursorData.sortDirection,
+      );
+    }
+
     const cursorFilterKey = cursorData.filterKey ?? undefined;
     const requestFilterKey = filter_key ? (filter_key as string) : undefined;
     if (cursorFilterKey !== requestFilterKey) {

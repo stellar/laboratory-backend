@@ -513,6 +513,28 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
+    test("🔴cursor_order_mismatch_returns_400", async () => {
+      const cursor = encodeCursor({
+        cursorType: "next",
+        sortDirection: "asc",
+        position: {
+          keyHash:
+            "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
+        },
+      } as any);
+      mockRequest.query = { cursor, order: "desc" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: expect.stringContaining("order"),
+      });
+    });
+
     /**
      * Helper: executes a single page request and returns the parsed response.
      * Resets mock state before each call so callers don't have to.
