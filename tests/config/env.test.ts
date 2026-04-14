@@ -342,6 +342,24 @@ describe("Env", () => {
         'Invalid regex in CORS_ORIGINS: "/[invalid(/"',
       );
     });
+
+    test("warns_when_regex_is_not_anchored", () => {
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      process.env.CORS_ORIGINS = "/example\\.com/";
+      void Env.corsOrigins;
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining("not anchored"),
+      );
+      warnSpy.mockRestore();
+    });
+
+    test("does_not_warn_when_regex_is_properly_anchored", () => {
+      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      process.env.CORS_ORIGINS = "/^https:\\/\\/.*\\.example\\.com$/";
+      void Env.corsOrigins;
+      expect(warnSpy).not.toHaveBeenCalled();
+      warnSpy.mockRestore();
+    });
   });
 
   describe("pathPrefix", () => {
