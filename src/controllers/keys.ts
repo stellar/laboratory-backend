@@ -12,6 +12,7 @@ export const getAllKeysForContract = async (
     buildKeysQuery(contract_id),
   );
 
+  const MAX_KEYS = 10000;
   const keys = result
     .map(row => row.key_symbol)
     .filter(h => Boolean(h?.trim())) as string[];
@@ -19,6 +20,7 @@ export const getAllKeysForContract = async (
   return res.status(200).json({
     contract_id,
     total_keys: keys.length,
+    truncated: keys.length >= MAX_KEYS,
     keys,
   });
 };

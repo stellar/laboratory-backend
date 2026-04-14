@@ -48,6 +48,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(responseData).toEqual({
       contract_id: "NONEXISTENT_CONTRACT_ID",
       total_keys: 0,
+      truncated: false,
       keys: [],
     });
   });
@@ -67,6 +68,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(responseData).toEqual({
       contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       total_keys: 4,
+      truncated: false,
       keys: [
         "BillingCyclePlanName",
         "BillingCyclePrice",
@@ -95,6 +97,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(responseData).toEqual({
       contract_id: "CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA",
       total_keys: 2,
+      truncated: false,
       keys: ["Block", "Pail"],
     });
   });
