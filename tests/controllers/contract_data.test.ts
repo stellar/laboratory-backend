@@ -72,6 +72,19 @@ describe("GET /api/contract/:contract_id/storage", () => {
     };
   });
 
+  test("limit_1e2_is_treated_as_100_not_1", async () => {
+    mockRequest.query = { limit: "1e2" };
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(200);
+    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    expect(responseData.results).toHaveLength(9);
+  });
+
   test("🔴invalid_limit_returns_400", async () => {
     mockRequest.query = { limit: "invalid" };
 

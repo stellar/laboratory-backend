@@ -29,24 +29,18 @@ import { getStellarService, StellarService } from "../utils/stellar";
 const parseRequestParams = (req: Request): RequestParams => {
   const { contract_id } = req.params;
 
-  const { cursor, limit = "20", filter_key } = req.query;
+  const { cursor, limit = 20, filter_key } = req.query;
   let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
   sort_by = (sort_by as string).toLowerCase() as SortField;
   order = (order as string).toLowerCase() as SortDirection;
 
-  // limit validation
-  if (limit) {
-    if (
-      isNaN(parseInt(limit as string)) ||
-      parseInt(limit as string) < 1 ||
-      parseInt(limit as string) > 200
-    ) {
-      throw new Error(
-        `Invalid limit=${limit}, must be an integer between 1 and 200`,
-      );
-    }
+  const parsedLimit = typeof limit === "number" ? limit : Number(limit);
+  if (!Number.isFinite(parsedLimit) || parsedLimit < 1 || parsedLimit > 200) {
+    throw new Error(
+      `Invalid limit=${limit}, must be an integer between 1 and 200`,
+    );
   }
-  const limitNum = Math.min(parseInt(limit as string) || 10, 200); // Max 200 records
+  const limitNum = Math.min(Math.floor(parsedLimit), 200);
 
   // sort direction
   const sortDirection =

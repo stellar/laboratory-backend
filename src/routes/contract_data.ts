@@ -70,6 +70,11 @@ export const validateParamsMiddleware = (
         .status(400)
         .json(parseValidationError(parsed.error, paramType));
     }
+    if (paramType === "path") {
+      Object.assign(req.params, parsed.data);
+    } else {
+      req.query = parsed.data as any;
+    }
     return next();
   };
 };
