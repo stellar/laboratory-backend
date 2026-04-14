@@ -13,9 +13,9 @@ export const serializeContractDataResults = (
     durability: row.durability,
     expired: row.expired ?? null,
     key_hash: row.key_hash,
-    key: row.key ? Buffer.from(row.key).toString() : null,
+    key: row.key ? Buffer.from(row.key).toString("base64") : null,
     ttl: row.live_until_ledger_sequence,
     updated: Math.floor(row.closed_at.getTime() / 1000),
-    value: row.val ? Buffer.from(row.val).toString() : null,
+    value: row.val ? Buffer.from(row.val).toString("base64") : null,
   }));
 };
