@@ -22,7 +22,7 @@ function extractSortValue(
     return undefined;
   }
   if (raw instanceof Date) {
-    return Math.floor(raw.getTime() / 1000);
+    return raw.getTime() / 1000;
   }
   return raw;
 }
