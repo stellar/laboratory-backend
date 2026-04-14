@@ -52,10 +52,11 @@ function orderBy(
   }
 
   const p = tablePrefix;
+  const nulls = direction === SortDirection.ASC ? "NULLS LAST" : "NULLS FIRST";
   if (sortField === SortField.KEY_HASH) {
     return `ORDER BY ${p}key_hash ${direction}`;
   }
-  return `ORDER BY ${p}${sortDbField} ${direction}, ${p}key_hash ${direction}`;
+  return `ORDER BY ${p}${sortDbField} ${direction} ${nulls}, ${p}key_hash ${direction}`;
 }
 
 /**
@@ -131,10 +132,13 @@ function queryWithCursorSortField(
       ? Prisma.sql`to_timestamp(${cursorSortValue})`
       : Prisma.sql`${cursorSortValue}`;
 
-  // Row-value comparison: (col, key_hash) < (val, hash) is equivalent to
-  // col < val OR (col = val AND key_hash < hash), but PostgreSQL can
-  // optimize it into a single ordered index range scan instead of BitmapOr.
-  const cursorCondition = Prisma.sql`(${Prisma.raw(sortCol)}, cd.key_hash) ${Prisma.raw(op)} (${sqlVal}, ${cursorKeyHash})`;
+  const rowComparison = Prisma.sql`(${Prisma.raw(sortCol)}, cd.key_hash) ${Prisma.raw(op)} (${sqlVal}, ${cursorKeyHash})`;
+
+  // Row-value comparison returns NULL for NULL sort columns; include them explicitly for ASC (NULLS LAST)
+  const cursorCondition =
+    directionInCTE === SortDirection.ASC
+      ? Prisma.sql`(${rowComparison} OR ${Prisma.raw(sortCol)} IS NULL)`
+      : rowComparison;
 
   return Prisma.sql`
     WITH paginated_result AS (
@@ -198,6 +202,50 @@ function queryWithCursorKeyHash(
   `;
 }
 
+function queryWithCursorNullSortField(
+  contractId: string,
+  latestLedgerSequence: number,
+  limit: number,
+  sortDbField: SortDbField,
+  sortDirection: SortDirection,
+  sortField: SortField,
+  cursorKeyHash: string,
+  cursorType: "next" | "prev",
+  filterKey?: string,
+): Prisma.Sql {
+  const directionInCTE =
+    cursorType === "next"
+      ? sortDirection
+      : sortDirection === SortDirection.ASC
+        ? SortDirection.DESC
+        : SortDirection.ASC;
+  const keyOp = directionInCTE === SortDirection.DESC ? "<" : ">";
+  const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
+  const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
+  const sortCol = `cd.${sortDbField}`;
+
+  const cursorCondition =
+    directionInCTE === SortDirection.ASC
+      ? Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}`
+      : Prisma.sql`(${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}) OR ${Prisma.raw(sortCol)} IS NOT NULL`;
+
+  return Prisma.sql`
+    WITH paginated_result AS (
+      SELECT ${Prisma.raw(SELECT_COLUMNS)}
+      FROM contract_data cd
+      WHERE cd.contract_id = ${contractId}
+      ${filterClause(filterKey)}
+        AND (${cursorCondition})
+      ${Prisma.raw(orderByInCTE)}
+      LIMIT ${limit}
+    )
+    SELECT pr.*,
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
+    FROM paginated_result pr
+    ${Prisma.raw(orderByFinal)}
+  `;
+}
+
 /**
  * Builds the contract data query for the storage endpoint.
  * Chooses no-cursor, cursor-by-sort-field, or cursor-by-key-hash based on config.
@@ -236,12 +284,26 @@ export const buildContractDataQuery = (
   const { keyHash, sortValue } = cursorData.position;
   const hasCursorSortField =
     cursorData.sortField !== undefined &&
-    cursorData.sortField !== SortField.KEY_HASH &&
-    sortValue !== undefined;
+    cursorData.sortField !== SortField.KEY_HASH;
 
   if (!hasCursorSortField) {
     // Cursor-paginated query (simple cursor w/ `key_hash` only)
     return queryWithCursorKeyHash(
+      contractId,
+      latestLedgerSequence,
+      limit,
+      sortDbField,
+      sortDirection,
+      sortField,
+      keyHash,
+      cursorData.cursorType,
+      filterKey,
+    );
+  }
+
+  if (sortValue === undefined) {
+    // Cursor boundary record has a NULL sort column — use IS NULL + key_hash tiebreaker
+    return queryWithCursorNullSortField(
       contractId,
       latestLedgerSequence,
       limit,

@@ -146,6 +146,21 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       closed_at: new Date("2025-10-07T15:00:36Z"),
       live_until_ledger_sequence: 61482907,
     },
+    {
+      key_hash:
+        "ff66666666666666666666666666666666666666666666666666666666666666",
+      contract_id: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
+      ledger_sequence: 59409310,
+      durability: "temporary",
+      key_symbol: "NullTtlEntry",
+      key: Buffer.from(
+        "AAAAEAAAAAEAAAACAAAADwAAAAxOdWxsVHRsRW50cnkAAAADAAAAAQ==",
+        "base64",
+      ),
+      val: Buffer.from("AAAAAwAAAAY=", "base64"),
+      closed_at: new Date("2025-10-08T15:00:36Z"),
+      live_until_ledger_sequence: undefined,
+    },
   ];
 
   // Insert contract data using batch operation

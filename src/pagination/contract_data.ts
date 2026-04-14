@@ -18,6 +18,9 @@ function extractSortValue(
   sortDbField: SortDbField,
 ): CursorData["position"]["sortValue"] {
   const raw = (record as any)[sortDbField];
+  if (raw == null) {
+    return undefined;
+  }
   if (raw instanceof Date) {
     return Math.floor(raw.getTime() / 1000);
   }

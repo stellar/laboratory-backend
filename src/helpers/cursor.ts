@@ -93,13 +93,7 @@ const cursorDataSchema = z
       return;
     }
 
-    // Non-key_hash sort fields require a sortValue
     if (position.sortValue === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Sort field "${sortField}" requires a sortValue`,
-        path: ["position", "sortValue"],
-      });
       return;
     }
 

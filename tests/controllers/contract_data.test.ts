@@ -133,7 +133,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
     // Verify basic structure
-    expect(responseData.results).toHaveLength(8);
+    expect(responseData.results).toHaveLength(9);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       order: "desc",
@@ -147,7 +147,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
         expired: expect.any(Boolean),
         key_hash: expect.stringMatching(/^[0-9a-f]{64}$/),
         key: expect.any(String),
-        ttl: expect.any(Number),
+        ttl: item.ttl === null ? null : expect.any(Number),
         updated: expect.any(Number),
         value: expect.any(String),
       });
@@ -170,7 +170,6 @@ describe("GET /api/contract/:contract_id/storage", () => {
       value: expect.any(String),
     });
 
-    // key and value must be valid base64 that round-trips to the original bytes
     expect(() => Buffer.from(matchingItem.key, "base64")).not.toThrow();
     expect(() => Buffer.from(matchingItem.value, "base64")).not.toThrow();
   });
@@ -338,7 +337,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
-    expect(responseData.results.length).toEqual(8);
+    expect(responseData.results.length).toEqual(9);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
       sortBy: "durability",
@@ -404,12 +403,18 @@ describe("GET /api/contract/:contract_id/storage", () => {
       limit: "20",
     });
 
-    // Assert sorting order of ttl
+    // Assert sorting order of ttl (NULLs sort last with NULLS LAST)
     const ttlValues = responseData.results.map((r: any) => r.ttl);
+    const nonNullValues = ttlValues.filter((v: any) => v !== null);
+    const nullCount = ttlValues.length - nonNullValues.length;
 
-    // All values should be sorted in ascending order
-    for (let i = 1; i < ttlValues.length; i++) {
-      expect(ttlValues[i - 1]).toBeLessThanOrEqual(ttlValues[i]);
+    // Non-null values should be sorted ascending
+    for (let i = 1; i < nonNullValues.length; i++) {
+      expect(nonNullValues[i - 1]).toBeLessThanOrEqual(nonNullValues[i]);
+    }
+    // NULLs should appear at the end
+    for (let i = ttlValues.length - nullCount; i < ttlValues.length; i++) {
+      expect(ttlValues[i]).toBeNull();
     }
   });
 
@@ -541,7 +546,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     async function testPaginationTraversal(
       sortBy: string | undefined,
       order: string,
-      expectedRecordCount: number = 8,
+      expectedRecordCount: number = 9,
       filterKey?: string,
     ) {
       const CONTRACT_ID =
@@ -641,6 +646,10 @@ describe("GET /api/contract/:contract_id/storage", () => {
 
     test("🟢pagination_with_sort_by_durability_asc", async () => {
       await testPaginationTraversal("durability", "asc");
+    });
+
+    test("🟢pagination_with_null_ttl_record_traverses_all_pages", async () => {
+      await testPaginationTraversal("ttl", "asc");
     });
 
     test("🟢pagination_tiebreaker_with_duplicate_ttl_values", async () => {
@@ -778,7 +787,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
         });
       });
 
-      test("🔴missing_sortValue_for_non_key_hash_field_returns_400", async () => {
+      test("🟢missing_sortValue_for_non_key_hash_field_is_valid_null_boundary", async () => {
         const cursor = rawCursor({
           cursorType: "next",
           sortField: "ttl",
@@ -791,10 +800,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
           mockResponse as Response,
         );
 
-        expect(mockResponse.status).toHaveBeenCalledWith(400);
-        expect(mockResponse.json).toHaveBeenCalledWith({
-          error: expect.stringContaining("Invalid cursor:"),
-        });
+        expect(mockResponse.status).toHaveBeenCalledWith(200);
       });
 
       test("🟢bigint_sortValue_roundtrips_through_encode_decode", async () => {
@@ -865,7 +871,6 @@ describe("GET /api/contract/:contract_id/storage", () => {
       expect(responseData.results[0].key_hash).toBe(
         "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
       );
-      // key is now base64-encoded; verify it decodes to valid XDR containing the key symbol
       expect(() =>
         Buffer.from(responseData.results[0].key, "base64"),
       ).not.toThrow();
@@ -882,7 +887,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(200);
       const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
 
-      expect(responseData.results).toHaveLength(8);
+      expect(responseData.results).toHaveLength(9);
     });
 
     test("🟡case_mismatch_filter_key_returns_no_results", async () => {

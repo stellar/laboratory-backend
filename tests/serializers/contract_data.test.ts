@@ -3,7 +3,6 @@ import { ContractData } from "../../src/types/contract_data";
 
 describe("serializeContractDataResults", () => {
   test("key and value fields encode binary data as base64", () => {
-    // XDR data containing bytes 0x80-0xFF that are invalid standalone UTF-8
     const binaryData = Buffer.from([
       0x00, 0x00, 0x10, 0x80, 0xff, 0xfe, 0xab, 0xcd,
     ]);
@@ -20,12 +19,9 @@ describe("serializeContractDataResults", () => {
 
     const [result] = serializeContractDataResults([row]);
 
-    // The serialized value must be base64-encoded to preserve binary integrity
     const expectedBase64 = binaryData.toString("base64");
     expect(result.key).toBe(expectedBase64);
     expect(result.value).toBe(expectedBase64);
-
-    // Round-trip: decoding the base64 must yield the original bytes
     expect(Buffer.from(result.key!, "base64")).toEqual(binaryData);
     expect(Buffer.from(result.value!, "base64")).toEqual(binaryData);
   });
