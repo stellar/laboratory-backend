@@ -24,29 +24,30 @@ import { getStellarService, StellarService } from "../utils/stellar";
  * from the request, applying defaults and validation constraints.
  *
  * @param req - Express request object containing params and query parameters
+ * @param res - Express response; reads Zod-parsed query from res.locals when available
  * @returns RequestParams - Parsed and validated request parameters with type safety
  */
-const parseRequestParams = (req: Request): RequestParams => {
+const parseRequestParams = (req: Request, res: Response): RequestParams => {
   const { contract_id } = req.params;
 
-  const { cursor, limit = "20", filter_key } = req.query;
-  let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = req.query;
+  const query = res.locals?.parsedQuery ?? req.query;
+  const { cursor, limit = 20, filter_key } = query;
+  let { order = SortDirection.DESC, sort_by = SortField.KEY_HASH } = query;
   sort_by = (sort_by as string).toLowerCase() as SortField;
   order = (order as string).toLowerCase() as SortDirection;
 
-  // limit validation
-  if (limit) {
-    if (
-      isNaN(parseInt(limit as string)) ||
-      parseInt(limit as string) < 1 ||
-      parseInt(limit as string) > 200
-    ) {
-      throw new Error(
-        `Invalid limit=${limit}, must be an integer between 1 and 200`,
-      );
-    }
+  const parsedLimit = typeof limit === "number" ? limit : Number(limit);
+  if (
+    !Number.isFinite(parsedLimit) ||
+    !Number.isInteger(parsedLimit) ||
+    parsedLimit < 1 ||
+    parsedLimit > 200
+  ) {
+    throw new Error(
+      `Invalid limit=${limit}, must be an integer between 1 and 200`,
+    );
   }
-  const limitNum = Math.min(parseInt(limit as string) || 10, 200); // Max 200 records
+  const limitNum = Math.min(parsedLimit, 200);
 
   // sort direction
   const sortDirection =
@@ -82,7 +83,17 @@ const parseRequestParams = (req: Request): RequestParams => {
       );
     }
 
-    // Validate filter_key is consistent with the cursor
+    if (
+      cursorData.sortDirection !== undefined &&
+      cursorData.sortDirection !== sortDirection
+    ) {
+      throw new CursorParameterMismatchError(
+        "order",
+        sortDirection,
+        cursorData.sortDirection,
+      );
+    }
+
     const cursorFilterKey = cursorData.filterKey ?? undefined;
     const requestFilterKey = filter_key ? (filter_key as string) : undefined;
     if (cursorFilterKey !== requestFilterKey) {
@@ -176,7 +187,7 @@ export const getContractDataByContractId = async (
 ): Promise<void | Response> => {
   let requestParams: RequestParams;
   try {
-    requestParams = parseRequestParams(req);
+    requestParams = parseRequestParams(req, res);
   } catch (e) {
     return res.status(400).json({ error: (e as Error).message });
   }

@@ -94,7 +94,14 @@ class Env {
         const match = entry.match(/^\/(.+)\/([gimsuy]*)$/);
         if (!match) return entry;
         try {
-          return new RegExp(match[1], match[2]);
+          const pattern = match[1];
+          if (!pattern.startsWith("^") || !pattern.endsWith("$")) {
+            console.warn(
+              `CORS_ORIGINS regex "${entry}" is not anchored with ^ and $. ` +
+                `This may match unintended origins (e.g., "evil-example.com").`,
+            );
+          }
+          return new RegExp(pattern, match[2]);
         } catch (e) {
           throw new Error(
             `Invalid regex in CORS_ORIGINS: "${entry}". ${(e as Error).message}`,

@@ -47,11 +47,9 @@ const VALID_SORT_FIELDS: ReadonlySet<string> = new Set([
  * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
  */
 export type CursorData = {
-  /** The direction of sorting (ascending or descending) */
   cursorType: "next" | "prev";
-  /** The field name used for sorting (e.g., 'key_hash', 'updated_at', 'durability', 'ttl') */
   sortField?: string;
-  /** The key symbol filter active when this cursor was generated (must match on reuse) */
+  sortDirection?: string;
   filterKey?: string;
   /** Position information for pagination. Stores the `key_hash` and `sortValue` of the boundary record used for next/prev navigation */
   position: {
@@ -69,6 +67,7 @@ const cursorDataSchema = z
   .object({
     cursorType: z.enum(["next", "prev"]),
     sortField: z.string().optional(),
+    sortDirection: z.enum(["asc", "desc"]).optional(),
     filterKey: z.string().optional(),
     position: z.object({
       keyHash: z.string(),
@@ -93,13 +92,7 @@ const cursorDataSchema = z
       return;
     }
 
-    // Non-key_hash sort fields require a sortValue
     if (position.sortValue === undefined) {
-      ctx.addIssue({
-        code: "custom",
-        message: `Sort field "${sortField}" requires a sortValue`,
-        path: ["position", "sortValue"],
-      });
       return;
     }
 
@@ -141,15 +134,20 @@ const cursorDataSchema = z
  * @returns Base64 encoded cursor string
  */
 export const encodeCursor = (cursorData: CursorData): string => {
-  if (cursorData.cursorType !== "prev") {
-    cursorData.cursorType = "next";
-  }
+  const data = {
+    ...cursorData,
+    cursorType:
+      cursorData.cursorType === "prev" ? ("prev" as const) : ("next" as const),
+    position: {
+      ...cursorData.position,
+      sortValue:
+        typeof cursorData.position.sortValue === "bigint"
+          ? cursorData.position.sortValue.toString()
+          : cursorData.position.sortValue,
+    },
+  };
 
-  if (typeof cursorData.position.sortValue === "bigint") {
-    cursorData.position.sortValue = cursorData.position.sortValue.toString();
-  }
-
-  return Buffer.from(JSON.stringify(cursorData)).toString("base64");
+  return Buffer.from(JSON.stringify(data)).toString("base64");
 };
 
 /**

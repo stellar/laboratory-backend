@@ -6,6 +6,7 @@ const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
 const STELLAR_API_TIMEOUT_MS = 10_000;
+const STALE_CACHE_MAX_MS = 10_000;
 
 export type StellarServiceConfig = {
   networkPassphrase: string;
@@ -79,6 +80,23 @@ export class StellarService {
         this.cachedLatestLedgerSequence = latest;
         this.cachedLatestLedgerAtMs = Date.now();
         return latest;
+      })
+      .catch(err => {
+        const staleMs =
+          this.cachedLatestLedgerAtMs !== undefined
+            ? Date.now() - this.cachedLatestLedgerAtMs
+            : Infinity;
+        if (
+          this.cachedLatestLedgerSequence !== undefined &&
+          staleMs < STALE_CACHE_MAX_MS
+        ) {
+          logger.warn(
+            { err, staleMs },
+            "Failed to refresh latest ledger, using stale cache",
+          );
+          return this.cachedLatestLedgerSequence;
+        }
+        throw err;
       })
       .finally(() => {
         this.ongoingFetchLatestLedger = undefined;
