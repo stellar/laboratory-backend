@@ -177,14 +177,11 @@ describe("GET /api/contract/:contract_id/storage", () => {
       durability: "persistent",
       expired: expect.any(Boolean),
       key_hash: expectedKeyHash,
-      key: expect.any(String),
+      key: expect.stringContaining("BillingCyclePlanName"),
       ttl: 61482901,
       updated: Math.floor(new Date("2025-10-03T15:00:36Z").getTime() / 1000),
-      value: expect.any(String),
+      value: expect.stringContaining("invite"),
     });
-
-    expect(() => Buffer.from(matchingItem.key, "base64")).not.toThrow();
-    expect(() => Buffer.from(matchingItem.value, "base64")).not.toThrow();
   });
 
   test("🟢limit=1_returns_1_result", async () => {
