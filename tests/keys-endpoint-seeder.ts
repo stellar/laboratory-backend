@@ -26,9 +26,8 @@ export async function seedKeysEndpointData(
       key_symbol: "BillingCyclePlanName",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
-        "base64",
       ),
-      val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
+      val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA=="),
       closed_at: new Date("2025-10-03T15:00:36Z"),
     },
     {
@@ -40,9 +39,8 @@ export async function seedKeysEndpointData(
       key_symbol: "BillingCycleTimestamp",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
+      val: Buffer.from("AAAABQAAAABpQXQF"),
       closed_at: new Date("2025-10-02T15:00:36Z"),
     },
     {
@@ -54,9 +52,8 @@ export async function seedKeysEndpointData(
       key_symbol: "BillingCyclePrice",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
-        "base64",
       ),
-      val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
+      val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA="),
       closed_at: new Date("2025-10-01T15:00:36Z"),
     },
     {
@@ -68,9 +65,8 @@ export async function seedKeysEndpointData(
       key_symbol: "BillingPayment",
       key: Buffer.from(
         "AAAAEAAAAAEAAAACAAAADwAAAA5CaWxsaW5nUGF5bWVudAAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
+      val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA="),
       closed_at: new Date("2025-10-04T15:00:36Z"),
     },
     // Test data for second contract (CDL74RF5BLYR2YBLCCI7F5FB6TPSCLKEJUBSD2RSVWZ4YHF3VMFAIGWA)
@@ -82,11 +78,8 @@ export async function seedKeysEndpointData(
       ledger_sequence: 59409311,
       durability: "persistent",
       key_symbol: "Block",
-      key: Buffer.from(
-        "AAAAEAAAAAEAAAACAAAADwAAAAVCbG9jawAAAAAAAAMAAAAD",
-        "base64",
-      ),
-      val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
+      key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAAVCbG9jawAAAAAAAAMAAAAD"),
+      val: Buffer.from("AAAADwAAAARkYXRhAA=="),
       closed_at: new Date("2025-10-03T15:00:36Z"),
     },
     {
@@ -96,11 +89,8 @@ export async function seedKeysEndpointData(
       ledger_sequence: 59409311,
       durability: "persistent",
       key_symbol: "Pail",
-      key: Buffer.from(
-        "AAAAEAAAAAEAAAACAAAADwAAAARQYWlsAAAAAwAAAAM=",
-        "base64",
-      ),
-      val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
+      key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAARQYWlsAAAAAwAAAAM="),
+      val: Buffer.from("AAAADwAAAARkYXRhAA=="),
       closed_at: new Date("2025-10-03T15:00:36Z"),
     },
     {
@@ -110,8 +100,8 @@ export async function seedKeysEndpointData(
       ledger_sequence: 59409311,
       durability: "persistent",
       key_symbol: "", // Empty string - should be filtered out
-      key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAAA=", "base64"),
-      val: Buffer.from("AAAADwAAAARkYXRhAA==", "base64"),
+      key: Buffer.from("AAAAEAAAAAEAAAACAAAADwAAAAA="),
+      val: Buffer.from("AAAADwAAAARkYXRhAA=="),
       closed_at: new Date("2025-10-03T15:00:36Z"),
     },
   ];

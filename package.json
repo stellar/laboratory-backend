@@ -68,7 +68,8 @@
       "safer-buffer": "npm:buffer@^6.0.3",
       "js-yaml": "^4.1.1",
       "glob": "^13.0.0",
-      "axios": "^1.15.0"
+      "axios": "^1.15.0",
+      "protobufjs": ">=7.5.5"
     }
   },
   "lint-staged": {

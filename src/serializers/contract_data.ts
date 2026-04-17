@@ -13,9 +13,11 @@ export const serializeContractDataResults = (
     durability: row.durability,
     expired: row.expired ?? null,
     key_hash: row.key_hash,
-    key: row.key ? Buffer.from(row.key).toString("base64") : null,
+    // The DB stores key/val as UTF-8 bytes of base64-encoded XDR strings (e.g. "AAAAAwAAAAg=").
+    // Buffer.from() is needed because Prisma returns Bytes as Uint8Array, not Buffer.
+    key: row.key ? Buffer.from(row.key).toString("utf8") : null,
     ttl: row.live_until_ledger_sequence,
     updated: Math.floor(row.closed_at.getTime() / 1000),
-    value: row.val ? Buffer.from(row.val).toString("base64") : null,
+    value: row.val ? Buffer.from(row.val).toString("utf8") : null,
   }));
 };

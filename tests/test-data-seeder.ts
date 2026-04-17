@@ -12,6 +12,10 @@ export interface TestContractData {
   live_until_ledger_sequence?: number;
 }
 
+function asStoredXdrBase64Bytes(str: string): Buffer {
+  return Buffer.from(str, "utf8");
+}
+
 /**
  * Seeds the test database with basic contract data for testing
  */
@@ -32,11 +36,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "persistent",
       key_symbol: "BillingCyclePlanName",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
-        "base64",
       ),
-      val: Buffer.from("AAAADwAAAAZpbnZpdGUAAA==", "base64"),
+      val: asStoredXdrBase64Bytes("AAAADwAAAAZpbnZpdGUAAA=="),
       closed_at: new Date("2025-10-03T15:00:36Z"),
       live_until_ledger_sequence: 61482901,
     },
@@ -47,11 +50,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "instance",
       key_symbol: "BillingCycleTimestamp",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAABVCaWxsaW5nQ3ljbGVUaW1lc3RhbXAAAAAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAABQAAAABpQXQF", "base64"),
+      val: asStoredXdrBase64Bytes("AAAABQAAAABpQXQF"),
       closed_at: new Date("2025-10-02T15:00:36Z"),
       live_until_ledger_sequence: 61482902,
     },
@@ -62,11 +64,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "temporary",
       key_symbol: "BillingCyclePrice",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAABFCaWxsaW5nQ3ljbGVQcmljZQAAAAAAAAMAAAAC",
-        "base64",
       ),
-      val: Buffer.from("AAAACgAAAAAAAAAAAAAAAAAAAAA=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAACgAAAAAAAAAAAAAAAAAAAAA="),
       closed_at: new Date("2025-10-01T15:00:36Z"),
       live_until_ledger_sequence: 61482903,
     },
@@ -77,11 +78,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "temporary",
       key_symbol: "TtlEntry4",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAA1OdWxsVHRsRW50cnkxAAAAAAAAAwAAAAE=",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAE=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAE="),
       closed_at: new Date("2025-10-04T15:00:36Z"),
       live_until_ledger_sequence: 61482904,
     },
@@ -92,11 +92,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "temporary",
       key_symbol: "TtlEntry5",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAA1OdWxsVHRsRW50cnkyAAAAAAAAAwAAAAI=",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAI=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAI="),
       closed_at: new Date("2025-10-04T15:00:36Z"),
       live_until_ledger_sequence: 61482904,
     },
@@ -108,11 +107,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "persistent",
       key_symbol: "SharedEntry",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAM=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAM="),
       closed_at: new Date("2025-10-05T15:00:36Z"),
       live_until_ledger_sequence: 61482905,
     },
@@ -123,11 +121,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "instance",
       key_symbol: "SharedEntry",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAQ=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAQ="),
       closed_at: new Date("2025-10-06T15:00:36Z"),
       live_until_ledger_sequence: 61482906,
     },
@@ -138,11 +135,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "temporary",
       key_symbol: "SharedEntry",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAAtTaGFyZWRFbnRyeQAAAAADAAAAAw==",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAU=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAU="),
       closed_at: new Date("2025-10-07T15:00:36Z"),
       live_until_ledger_sequence: 61482907,
     },
@@ -153,11 +149,10 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "temporary",
       key_symbol: "NullTtlEntry",
-      key: Buffer.from(
+      key: asStoredXdrBase64Bytes(
         "AAAAEAAAAAEAAAACAAAADwAAAAxOdWxsVHRsRW50cnkAAAADAAAAAQ==",
-        "base64",
       ),
-      val: Buffer.from("AAAAAwAAAAY=", "base64"),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAY="),
       closed_at: new Date("2025-10-08T15:00:36Z"),
       live_until_ledger_sequence: undefined,
     },
@@ -168,8 +163,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "persistent",
       key_symbol: "SubSecondA",
-      key: Buffer.from("AAAAAwAAAAc=", "base64"),
-      val: Buffer.from("AAAAAwAAAAc=", "base64"),
+      key: asStoredXdrBase64Bytes("AAAAAwAAAAc="),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAc="),
       closed_at: new Date("2025-10-09T12:00:00.100Z"),
       live_until_ledger_sequence: 61483000,
     },
@@ -180,8 +175,8 @@ export async function seedTestData(prisma: PrismaClient): Promise<void> {
       ledger_sequence: 59409310,
       durability: "persistent",
       key_symbol: "SubSecondB",
-      key: Buffer.from("AAAAAwAAAAg=", "base64"),
-      val: Buffer.from("AAAAAwAAAAg=", "base64"),
+      key: asStoredXdrBase64Bytes("AAAAAwAAAAg="),
+      val: asStoredXdrBase64Bytes("AAAAAwAAAAg="),
       closed_at: new Date("2025-10-09T12:00:00.900Z"),
       live_until_ledger_sequence: 61483001,
     },
