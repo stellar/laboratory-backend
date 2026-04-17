@@ -5,7 +5,7 @@ describe("serializeContractDataResults", () => {
   test("key and value fields return the xdr string stored in the db", () => {
     const xdrBase64 =
       "AAAAEAAAAAEAAAADAAAADwAAAARQYWlsAAAAEgAAAAAAAAAAflCF8Q5CL8OfT0K0zb238NYyqOls+Dtwb0mG0GG+BC8AAAADAAHtOQ==";
-    const storedBytes = Buffer.from(xdrBase64);
+    const storedBytes = Buffer.from(xdrBase64, "utf8");
 
     const row: ContractData = {
       durability: "persistent",
