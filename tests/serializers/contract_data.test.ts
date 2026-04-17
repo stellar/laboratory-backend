@@ -2,16 +2,16 @@ import { serializeContractDataResults } from "../../src/serializers/contract_dat
 import { ContractData } from "../../src/types/contract_data";
 
 describe("serializeContractDataResults", () => {
-  test("key and value fields encode binary data as base64", () => {
-    const binaryData = Buffer.from([
-      0x00, 0x00, 0x10, 0x80, 0xff, 0xfe, 0xab, 0xcd,
-    ]);
+  test("key and value fields return the xdr string stored in the db", () => {
+    const xdrBase64 =
+      "AAAAEAAAAAEAAAADAAAADwAAAARQYWlsAAAAEgAAAAAAAAAAflCF8Q5CL8OfT0K0zb238NYyqOls+Dtwb0mG0GG+BC8AAAADAAHtOQ==";
+    const storedBytes = Buffer.from(xdrBase64);
 
     const row: ContractData = {
       durability: "persistent",
       key_hash: "abc123",
-      key: binaryData,
-      val: binaryData,
+      key: storedBytes,
+      val: storedBytes,
       closed_at: new Date("2025-01-01T00:00:00Z"),
       live_until_ledger_sequence: 100,
       expired: false,
@@ -19,11 +19,8 @@ describe("serializeContractDataResults", () => {
 
     const [result] = serializeContractDataResults([row]);
 
-    const expectedBase64 = binaryData.toString("base64");
-    expect(result.key).toBe(expectedBase64);
-    expect(result.value).toBe(expectedBase64);
-    expect(Buffer.from(result.key!, "base64")).toEqual(binaryData);
-    expect(Buffer.from(result.value!, "base64")).toEqual(binaryData);
+    expect(result.key).toBe(xdrBase64);
+    expect(result.value).toBe(xdrBase64);
   });
 
   test("null key and value remain null", () => {

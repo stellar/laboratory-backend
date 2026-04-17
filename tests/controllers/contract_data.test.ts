@@ -177,10 +177,10 @@ describe("GET /api/contract/:contract_id/storage", () => {
       durability: "persistent",
       expired: expect.any(Boolean),
       key_hash: expectedKeyHash,
-      key: expect.stringContaining("BillingCyclePlanName"),
+      key: "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
       ttl: 61482901,
       updated: Math.floor(new Date("2025-10-03T15:00:36Z").getTime() / 1000),
-      value: expect.stringContaining("invite"),
+      value: "AAAADwAAAAZpbnZpdGUAAA==",
     });
   });
 
@@ -903,9 +903,9 @@ describe("GET /api/contract/:contract_id/storage", () => {
       expect(responseData.results[0].key_hash).toBe(
         "058926d9c30491bf70498e4df7102e02c736fe2890e2465f9810eede1b42e6c6",
       );
-      expect(() =>
-        Buffer.from(responseData.results[0].key, "base64"),
-      ).not.toThrow();
+      expect(responseData.results[0].key).toBe(
+        "AAAAEAAAAAEAAAACAAAADwAAABRCaWxsaW5nQ3ljbGVQbGFuTmFtZQAAAAMAAAAD",
+      );
     });
 
     test("🟢no_filter_key_returns_all_rows", async () => {
