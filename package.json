@@ -69,7 +69,8 @@
       "js-yaml": "^4.1.1",
       "glob": "^13.0.0",
       "axios": "^1.15.0",
-      "protobufjs": ">=7.5.5"
+      "protobufjs": ">=7.5.5",
+      "dockerode": "^5.0.0"
     }
   },
   "lint-staged": {
