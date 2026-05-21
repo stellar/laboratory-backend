@@ -22,11 +22,11 @@ on:
   pull_request:
     types: [opened, ready_for_review, synchronize, reopened]
 
-# Group by PR + aspect so a new push cancels stale runs of the same
-# aspect, but parallel aspects on the same PR don't cancel each other.
-concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}-${{ github.job }}
-  cancel-in-progress: true
+# Concurrency is set per-(PR, matrix aspect) inside the job below.
+# A workflow-level concurrency group can't reference `matrix.*`, so it
+# would collapse all five matrix entries into one group and cancel
+# them. The job-level group below uses `matrix.id`, which is unique
+# per agent.
 
 permissions: {}
 
@@ -34,6 +34,13 @@ jobs:
   review:
     if: github.event.pull_request.draft == false
     runs-on: ubuntu-latest
+    # Per-(PR, aspect) so a new push cancels stale runs of the same
+    # aspect, but parallel aspects on the same PR don't cancel each
+    # other. Must live on the job (not workflow) because `matrix.*` is
+    # only resolvable here.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}-${{ matrix.id }}
+      cancel-in-progress: true
     permissions:
       contents: read
       pull-requests: write
@@ -113,7 +120,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@20c8abf165d5f85ab3fc970db9498436377dc9d1 # v1
         with:
           anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
           track_progress: true
