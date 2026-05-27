@@ -32,7 +32,7 @@
     "@stellar/stellar-sdk": "^15.0.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.2",
+    "express-rate-limit": "^8.5.2",
     "helmet": "^8.1.0",
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
@@ -68,9 +68,10 @@
       "safer-buffer": "npm:buffer@^6.0.3",
       "js-yaml": "^4.1.1",
       "glob": "^13.0.0",
-      "axios": "^1.15.0",
-      "protobufjs": ">=7.5.5",
-      "dockerode": "^5.0.0"
+      "axios": "^1.16.1",
+      "protobufjs": "^8.4.2",
+      "dockerode": "^5.0.0",
+      "brace-expansion": "^5.0.6"
     }
   },
   "lint-staged": {
