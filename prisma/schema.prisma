@@ -24,6 +24,8 @@ model contract_data {
   @@index([contract_id, closed_at(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_closed_at")
   @@index([contract_id, durability(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_durability")
   @@index([contract_id, live_until_ledger_sequence(sort: Desc), key_hash(sort: Desc)], map: "idx_contract_data_contract_id_live_until")
+  // DB index is partial (WHERE key_symbol IS NOT NULL); Prisma can't express the predicate, so db push creates it non-partial
+  @@index([contract_id, key_symbol], map: "idx_contract_data_contract_id_key_symbol")
 }
 
 model gorp_migrations {
