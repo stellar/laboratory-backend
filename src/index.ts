@@ -11,8 +11,11 @@ import proxyAddr from "proxy-addr";
 
 import packageJson from "../package.json";
 import { Env } from "./config/env";
+
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
+import networkLimitsRoutes from "./routes/network_limits";
+
 import { connect } from "./utils/connect";
 import { logger, pinoHttpOptions } from "./utils/logger";
 
@@ -67,6 +70,7 @@ app.get("/health", (_, res) => {
 
 app.use("/api", contractRoutes);
 app.use("/api", keysRoutes);
+app.use("/api", networkLimitsRoutes);
 
 // ── Error Handling ───────────────────────────────────────────────────
 
