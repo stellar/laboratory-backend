@@ -5,7 +5,7 @@ describe("Env", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
   });
 
@@ -344,7 +344,7 @@ describe("Env", () => {
     });
 
     test("warns_when_regex_is_not_anchored", () => {
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
       process.env.CORS_ORIGINS = "/example\\.com/";
       void Env.corsOrigins;
       expect(warnSpy).toHaveBeenCalledWith(
@@ -354,7 +354,7 @@ describe("Env", () => {
     });
 
     test("does_not_warn_when_regex_is_properly_anchored", () => {
-      const warnSpy = jest.spyOn(console, "warn").mockImplementation();
+      const warnSpy = vi.spyOn(console, "warn").mockImplementation();
       process.env.CORS_ORIGINS = "/^https:\\/\\/.*\\.example\\.com$/";
       void Env.corsOrigins;
       expect(warnSpy).not.toHaveBeenCalled();

@@ -16,12 +16,12 @@ let testContainer: StartedPostgreSqlContainer;
 
 const _mockPrisma: Record<string, unknown> = {};
 
-jest.mock("../src/utils/connect", () => ({
+vi.mock("../src/utils/connect", () => ({
   getPrisma: () => _mockPrisma,
 }));
 
 beforeAll(async () => {
-  // Setup custom Jest matchers
+  // Setup custom Vitest matchers
   setupCustomMatchers();
 
   console.log("Starting postgres using testcontainers...");
@@ -35,8 +35,11 @@ beforeAll(async () => {
   console.log("Test database URL:", testDbUrl);
 
   console.log("Updating database from Prisma schema...");
+  // --skip-generate: the client is already generated; without it, parallel
+  // test workers each rewrite generated/prisma concurrently and can corrupt
+  // the query engine binary.
   execSync(
-    `DATABASE_URL="${testDbUrl}" npx prisma db push --accept-data-loss`,
+    `DATABASE_URL="${testDbUrl}" npx prisma db push --accept-data-loss --skip-generate`,
     {
       stdio: "inherit",
       shell: "/bin/bash",

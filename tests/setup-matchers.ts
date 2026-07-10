@@ -1,21 +1,25 @@
-// Custom Jest matchers for pagination link testing
+// Custom Vitest matchers for pagination link testing
+import "vitest";
 
-declare global {
-  namespace jest {
-    interface Matchers<R> {
-      toHaveValidPaginationLinks(expectedParams: {
-        contractId: string;
-        sortBy?: string;
-        order?: string;
-        limit?: string;
-        cursor?: string;
-        containsNext?: boolean;
-        containsPrev?: boolean;
-        pathPrefix?: string;
-      }): R;
-      toHaveValidCursor(cursorType: "next" | "prev"): R;
-    }
-  }
+interface CustomMatchers<R = unknown> {
+  toHaveValidPaginationLinks(expectedParams: {
+    contractId: string;
+    sortBy?: string;
+    order?: string;
+    limit?: string;
+    cursor?: string;
+    containsNext?: boolean;
+    containsPrev?: boolean;
+    pathPrefix?: string;
+  }): R;
+  toHaveValidCursor(cursorType: "next" | "prev"): R;
+}
+
+declare module "vitest" {
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface Assertion<T = any> extends CustomMatchers<T> {}
+  // eslint-disable-next-line @typescript-eslint/no-empty-object-type
+  interface AsymmetricMatchersContaining extends CustomMatchers {}
 }
 
 export function setupCustomMatchers() {
