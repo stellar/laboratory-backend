@@ -29,7 +29,7 @@
   "dependencies": {
     "@google-cloud/cloud-sql-connector": "^1.9.0",
     "@sentry/node": "^10.39.0",
-    "@stellar/stellar-sdk": "^15.0.1",
+    "@stellar/stellar-sdk": "^16.0.1",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
@@ -71,7 +71,10 @@
       "axios": "^1.16.1",
       "protobufjs": "^8.4.2",
       "dockerode": "^5.0.0",
-      "brace-expansion": "^5.0.6"
+      "brace-expansion": "^5.0.6",
+      "form-data": "^4.0.6",
+      "@grpc/grpc-js": "^1.14.4",
+      "undici": "^7.28.0"
     }
   },
   "lint-staged": {
