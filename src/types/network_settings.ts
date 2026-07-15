@@ -1,4 +1,3 @@
-// ADD NETWORK SETTINGS TYPE
 export interface NetworkLimits {
   // Per-transaction limits
   tx_max_instructions: number;
