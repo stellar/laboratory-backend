@@ -43,3 +43,9 @@ jobs:
 
       - name: Build
         run: pnpm build
+
+      - name: Audit dependencies (OSV-Scanner)
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --lockfile=pnpm-lock.yaml
