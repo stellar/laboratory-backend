@@ -68,7 +68,8 @@
       "js-yaml": "^4.1.1",
       "glob": "^13.0.0",
       "axios": "^1.16.1",
-      "protobufjs": "^8.4.2",
+      "protobufjs": "^8.6.0",
+      "@opentelemetry/core": "^2.8.0",
       "dockerode": "^5.0.0"
     }
   },
