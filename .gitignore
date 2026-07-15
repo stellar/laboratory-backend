@@ -6,5 +6,6 @@ creds.json
 /dist
 /generated/prisma
 /db
+/coverage
 
 .DS_Store
