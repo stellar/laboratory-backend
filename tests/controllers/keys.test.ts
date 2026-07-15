@@ -1,3 +1,4 @@
+import type { Mock } from "vitest";
 import { Request, Response } from "express";
 import { PrismaClient } from "../../generated/prisma";
 import { getAllKeysForContract } from "../../src/controllers/keys";
@@ -27,9 +28,9 @@ describe("GET /api/contract/:contract_id/keys", () => {
     };
 
     mockResponse = {
-      json: jest.fn().mockReturnThis(),
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
     };
   });
 
@@ -44,7 +45,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
     expect(responseData).toEqual({
       contract_id: "NONEXISTENT_CONTRACT_ID",
       total_keys: 0,
@@ -62,7 +63,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     // Verify basic structure
     expect(responseData).toEqual({
@@ -91,7 +92,7 @@ describe("GET /api/contract/:contract_id/keys", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     // Verify basic structure
     expect(responseData).toEqual({

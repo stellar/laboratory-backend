@@ -1,10 +1,11 @@
+import type { Mock } from "vitest";
 import { Request, Response } from "express";
 import { encodeCursor } from "../../src/helpers/cursor";
-const getLatestLedgerMock = jest.fn();
+const getLatestLedgerMock = vi.fn();
 
 let mockPathPrefix: string | undefined = undefined;
 
-jest.mock("../../src/config/env", () => ({
+vi.mock("../../src/config/env", () => ({
   Env: {
     get networkPassphrase() {
       return "Test SDF Network ; September 2015";
@@ -28,8 +29,8 @@ jest.mock("../../src/config/env", () => ({
   },
 }));
 
-jest.mock("../../src/utils/stellar", () => ({
-  getStellarService: jest.fn().mockImplementation(() => ({
+vi.mock("../../src/utils/stellar", () => ({
+  getStellarService: vi.fn().mockImplementation(() => ({
     getLatestLedger: getLatestLedgerMock,
   })),
 }));
@@ -66,9 +67,9 @@ describe("GET /api/contract/:contract_id/storage", () => {
     };
 
     mockResponse = {
-      json: jest.fn().mockReturnThis(),
-      status: jest.fn().mockReturnThis(),
-      send: jest.fn().mockReturnThis(),
+      json: vi.fn().mockReturnThis(),
+      status: vi.fn().mockReturnThis(),
+      send: vi.fn().mockReturnThis(),
     };
   });
 
@@ -81,7 +82,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
     expect(responseData.results).toHaveLength(11);
   });
 
@@ -125,7 +126,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
     expect(responseData.results).toEqual([]);
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "NONEXISTENT_CONTRACT_ID",
@@ -143,7 +144,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     // Verify basic structure
     expect(responseData.results).toHaveLength(11);
@@ -195,7 +196,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData.results).toHaveLength(1);
     expect(responseData).toHaveValidPaginationLinks({
@@ -217,7 +218,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
@@ -238,7 +239,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     // Self link path should start with /api (no prefix)
     const selfUrl = new URL(
@@ -260,7 +261,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData).toHaveValidPaginationLinks({
       contractId: "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CPU",
@@ -281,7 +282,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     const selfUrl = new URL(
       responseData._links.self.href,
@@ -302,7 +303,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     const selfUrl = new URL(
       responseData._links.self.href,
@@ -323,7 +324,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     );
 
     expect(mockResponse.status).toHaveBeenCalledWith(200);
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     const selfUrl = new URL(
       responseData._links.self.href,
@@ -345,7 +346,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData.results.length).toEqual(11);
     expect(responseData).toHaveValidPaginationLinks({
@@ -374,7 +375,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData.results.length).toBeGreaterThan(0);
     expect(responseData).toHaveValidPaginationLinks({
@@ -403,7 +404,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
     expect(mockResponse.status).toHaveBeenCalledWith(200);
     expect(mockResponse.json).toHaveBeenCalledTimes(1);
 
-    const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+    const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
     expect(responseData.results.length).toBeGreaterThan(0);
     expect(responseData).toHaveValidPaginationLinks({
@@ -539,8 +540,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
     async function fetchPage(
       query: Record<string, string>,
     ): Promise<{ results: any[]; _links: any }> {
-      (mockResponse.json as jest.Mock).mockClear();
-      (mockResponse.status as jest.Mock).mockClear();
+      (mockResponse.json as Mock).mockClear();
+      (mockResponse.status as Mock).mockClear();
 
       mockRequest.query = query;
       await getContractDataByContractId(
@@ -549,7 +550,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      return (mockResponse.json as jest.Mock).mock.calls[0][0];
+      return (mockResponse.json as Mock).mock.calls[0][0];
     }
 
     /**
@@ -732,8 +733,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
         });
         mockRequest.query = { cursor, sort_by: "ttl" };
 
-        (mockResponse.json as jest.Mock).mockClear();
-        (mockResponse.status as jest.Mock).mockClear();
+        (mockResponse.json as Mock).mockClear();
+        (mockResponse.status as Mock).mockClear();
 
         await getContractDataByContractId(
           mockRequest as Request,
@@ -751,8 +752,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
         });
         mockRequest.query = { cursor, sort_by: "updated_at" };
 
-        (mockResponse.json as jest.Mock).mockClear();
-        (mockResponse.status as jest.Mock).mockClear();
+        (mockResponse.json as Mock).mockClear();
+        (mockResponse.status as Mock).mockClear();
 
         await getContractDataByContractId(
           mockRequest as Request,
@@ -853,8 +854,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
         // Use this cursor in a real request — it should succeed, not 400
         mockRequest.query = { cursor, sort_by: "ttl", order: "asc" };
 
-        (mockResponse.json as jest.Mock).mockClear();
-        (mockResponse.status as jest.Mock).mockClear();
+        (mockResponse.json as Mock).mockClear();
+        (mockResponse.status as Mock).mockClear();
 
         await getContractDataByContractId(
           mockRequest as Request,
@@ -897,7 +898,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
       expect(responseData.results).toHaveLength(1);
       expect(responseData.results[0].key_hash).toBe(
@@ -917,7 +918,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
       expect(responseData.results).toHaveLength(11);
     });
@@ -931,7 +932,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
       expect(responseData.results).toEqual([]);
     });
@@ -945,7 +946,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
       const selfHref = responseData._links.self.href;
       const selfUrl = new URL(selfHref, "http://example.test");
@@ -963,7 +964,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
 
       expect(mockResponse.status).toHaveBeenCalledWith(200);
-      const responseData = (mockResponse.json as jest.Mock).mock.calls[0][0];
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
 
       expect(responseData.results).toEqual([]);
     });

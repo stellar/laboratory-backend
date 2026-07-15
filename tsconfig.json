@@ -17,7 +17,8 @@
     "sourceRoot": "/",
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
-    "moduleResolution": "nodenext"
+    "moduleResolution": "nodenext",
+    "types": ["vitest/globals"]
   },
   "include": [
     "src/**/*"
