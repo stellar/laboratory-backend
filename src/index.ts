@@ -34,7 +34,7 @@ app.use(pinoHttp(pinoHttpOptions)); // HTTP request logger
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    limit: 1000,
     skip: req => req.path === "/health",
     message: {
       error: "Too Many Requests",

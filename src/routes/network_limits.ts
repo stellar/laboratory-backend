@@ -13,7 +13,7 @@ const router: Router = express.Router();
 
 const networkLiimitsRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 10,
+  limit: 10,
   message: {
     error: "Too Many Requests",
     message: "Too many requests from this IP, please try again later.",
