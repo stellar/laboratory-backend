@@ -6,7 +6,9 @@ import { getNetworkLimits } from "../controllers/network_limits";
 import { validateParamsMiddleware } from "./contract_data";
 
 const requestQuerySchema = z.object({
-  rpc_url: z.url({ protocol: /^https$/ }),
+  rpc_url: z
+    .url({ protocol: /^https$/ })
+    .max(2048, "rpc_url must be at most 2048 characters long"),
 });
 
 const router: Router = express.Router();

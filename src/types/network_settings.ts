@@ -27,9 +27,9 @@ export interface NetworkLimits {
 
   // Resource fees (in stroops)
   fee_rate_per_instructions_increment: number;
-  fee_read_ledger_entry: string;
+  fee_disk_read_ledger_entry: string;
   fee_write_ledger_entry: string;
-  fee_read_1kb: string;
+  fee_disk_read_1kb: string;
   fee_write_1kb: string;
   fee_tx_size_1kb: string;
   fee_historical_1kb: string;
