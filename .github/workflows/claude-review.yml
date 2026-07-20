@@ -1,0 +1,178 @@
+# Claude Multi-Agent Review
+#
+# Runs a swarm of specialized Claude review agents on each PR, one per
+# concern (PostgreSQL, TypeScript, Docker, security, documentation).
+# Each agent runs in parallel under its own job and posts inline +
+# summary comments on the PR. All agents run on `claude-haiku-4-5` to
+# keep cost low.
+#
+# Security model is borrowed from stellar/actions PR #103
+# (https://github.com/stellar/actions/pull/103). This repo doesn't accept
+# fork-based contributions, so we use the safer `pull_request` trigger.
+# Switch to `pull_request_target` only if that changes — and re-read the
+# threat model in that PR first.
+#
+# To add or change an aspect, edit the `matrix.include` list below. Each
+# entry needs `id` (kebab-case, used in concurrency + comment headers),
+# `title` (shown to humans), and `focus` (the prompt body for that
+# agent).
+name: Claude Multi-Agent Review
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, synchronize, reopened]
+
+# Concurrency is set per-(PR, matrix aspect) inside the job below.
+# A workflow-level concurrency group can't reference `matrix.*`, so it
+# would collapse all five matrix entries into one group and cancel
+# them. The job-level group below uses `matrix.id`, which is unique
+# per agent.
+
+permissions: {}
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    # Per-(PR, aspect) so a new push cancels stale runs of the same
+    # aspect, but parallel aspects on the same PR don't cancel each
+    # other. Must live on the job (not workflow) because `matrix.*` is
+    # only resolvable here.
+    concurrency:
+      group: claude-review-${{ github.event.pull_request.number }}-${{ matrix.id }}
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: postgres
+            title: "PostgreSQL & Prisma"
+            skills: "postgres-optimization, database-migrations"
+            focus: |
+              Review the PR strictly for database concerns. Ignore everything else.
+              - Prisma schema design, indexes, relations, cascade rules
+              - Query patterns: N+1, missing `select`/`include` scoping, unbounded `findMany`
+              - Migration safety: backfills, nullability changes, locking on large tables
+              - Transaction boundaries, isolation, race conditions
+              - Connection pooling (Cloud SQL connector usage), prepared statements
+              - Pagination correctness (cursor vs offset)
+              Skip findings about formatting, naming, or non-DB code.
+          - id: typescript
+            title: "TypeScript Best Practices"
+            skills: "productionalize-node"
+            focus: |
+              Review the PR strictly for TypeScript and Node/Express idioms.
+              - Type narrowing, `any`/`unknown` use, unsafe casts, missing return types on exported fns
+              - Zod schema correctness and parse vs safeParse usage
+              - Async/await: unhandled promises, missing error handling at boundaries
+              - Express 5 patterns: route handler signatures, middleware order, error middleware
+              - Module boundaries, barrel-file abuse, circular imports
+              - Idiomatic Node 22+ usage (no legacy callback patterns where async exists)
+              Do not flag style/format issues handled by prettier/eslint.
+          - id: docker
+            title: "Docker & Bundle Size"
+            skills: "docker-patterns"
+            focus: |
+              Review the PR strictly for container image size and build hygiene.
+              Look at `Dockerfile`, `.dockerignore`, `Makefile`, and any added deps.
+              - Multi-stage layering: are dev deps leaking into the runtime stage?
+              - `node_modules` size: any heavy deps added that have lighter alternatives?
+              - Cache-friendliness of layer ordering (lockfile copy before source)
+              - `.dockerignore` coverage (tests, docs, .env, creds)
+              - Use of `alpine` base, `--ignore-scripts` for prod install, `USER node`
+              - Unused files copied into the runtime image
+              Skip non-container concerns.
+          - id: security
+            title: "Security Review"
+            skills: "security-audit"
+            focus: |
+              Review the PR strictly for security concerns.
+              - Secrets/credentials: hardcoded values, leaked env vars, `creds.json` handling
+              - Input validation: missing zod parsing at HTTP boundaries, SQL/NoSQL injection
+              - AuthN/AuthZ gaps, missing rate-limit / helmet config changes
+              - SSRF, open redirects, prototype pollution
+              - Dep additions: known CVEs, abandoned packages, supply-chain risk
+              - Logging of sensitive data (PII, tokens) via pino
+              - CORS / proxy-addr / trust-proxy misconfig
+              Cite OWASP categories where relevant. Skip non-security issues.
+          - id: docs
+            title: "Documentation Freshness"
+            skills: ""
+            focus: |
+              Review the PR strictly for documentation drift.
+              - Does `README.md` still reflect the changed behavior, env vars, scripts, endpoints?
+              - Are new env vars added to `.env.example`?
+              - Are new pnpm scripts or Makefile targets documented?
+              - Are JSDoc/TSDoc blocks on changed exported functions still accurate?
+              - Does `docs/` need updates for changed routes/serializers/pagination?
+              Do not propose new documentation pages — only flag drift introduced by this PR.
+    steps:
+      # Trusted base ref. We use `pull_request` (not `_target`), so this
+      # is effectively the same as the PR head from a permissions
+      # standpoint — secrets are only available for same-repo PRs. We
+      # still check out at the workspace root so tool/config files are
+      # picked up cleanly. Fetch full history for `git log` / `git blame`.
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: anthropics/claude-code-action@20c8abf165d5f85ab3fc970db9498436377dc9d1 # v1
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          track_progress: true
+          prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+            REVIEW ASPECT: ${{ matrix.title }} (${{ matrix.id }})
+
+            You are one of several specialist review agents running in
+            parallel on this PR. Stay strictly in your lane — other
+            agents cover other concerns. If something is outside your
+            scope, do not comment on it.
+
+            ## Required: load your skill(s) first
+
+            Before reading any PR code, invoke the Skill tool for each
+            of these skills (committed at `.claude/skills/<name>/SKILL.md`):
+            **${{ matrix.skills }}**
+
+            If that field is empty, skip this step. Treat the skill
+            content as authoritative guidance for your review — your
+            findings should reflect the checks it prescribes.
+
+            ## Your focus
+
+            ${{ matrix.focus }}
+
+            ## How to deliver findings
+
+            1. Inline comments for concrete issues. Prefix the body with
+               `[${{ matrix.title }}]` so reviewers can tell which agent
+               raised it.
+            2. ONE summary PR comment at the end via
+               `gh pr comment ${{ github.event.pull_request.number }} --body "..."`.
+               Start it with `## ${{ matrix.title }} Review` so all five
+               agents' summaries form a coherent thread.
+            3. If nothing notable, post a single one-line summary saying
+               "No ${{ matrix.title }} issues found." Do not post inline
+               comments in that case.
+
+            ## Rules
+
+            - Do not duplicate findings between inline and summary —
+              summary should reference inline counts, not repeat them.
+            - Cite file:line for every claim. No vague advice.
+            - Use `gh pr diff ${{ github.event.pull_request.number }}` /
+              `gh pr view ${{ github.event.pull_request.number }}` to
+              read the PR — pass the PR number explicitly, don't rely on
+              cwd.
+            - Be concise. This is one of five reviews — reviewers will
+              be reading them stacked.
+          claude_args: |
+            --model claude-haiku-4-5
+            --max-turns 25
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment ${{ github.event.pull_request.number }}:*),Bash(gh pr diff ${{ github.event.pull_request.number }}:*),Bash(gh pr view ${{ github.event.pull_request.number }}:*),Bash(git log:*),Bash(git blame:*),Bash(git show:*),Bash(rg:*),Bash(cat:*),Bash(ls:*),Bash(find:*)"
