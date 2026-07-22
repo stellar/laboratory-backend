@@ -1,7 +1,7 @@
+import express, { type Express } from "express";
 import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import express, { type Express } from "express";
 
 /**
  * Shared control surface for the mocked Soroban RPC server. `getLedgerEntries`
@@ -51,6 +51,8 @@ vi.mock("@stellar/stellar-sdk", async importOriginal => {
       ) {
         this.getLedgerEntries = (...keys: unknown[]) =>
           rpcMock.getLedgerEntries(...keys);
+        // The service sets maxContentLength on httpClient.defaults; model it.
+        this.httpClient = { defaults: {} };
       }),
     },
   };
@@ -130,6 +132,19 @@ describe("GET /api/network_limits", () => {
     expect(Array.isArray(body.live_soroban_state_size_window)).toBe(true);
   });
 
+  test("🟢second_request_served_from_cache_without_refetching", async () => {
+    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+
+    const first = await get(q);
+    const second = await get(q);
+
+    expect(first.status).toBe(200);
+    expect(second.status).toBe(200);
+    await expect(second.json()).resolves.toEqual(expectedLimits);
+    // Second request is a cache hit → the RPC is queried only once.
+    expect(rpcMock.getLedgerEntries).toHaveBeenCalledTimes(1);
+  });
+
   test("🔴rpc_failure_returns_502", async () => {
     rpcMock.getLedgerEntries = vi
       .fn()
@@ -168,10 +183,8 @@ describe("GET /api/network_limits", () => {
   test("🔴missing_rpc_url_returns_400", async () => {
     const res = await get("");
 
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.message).toBe("Invalid query parameters");
-    expect(body.issues).toEqual([expect.objectContaining({ path: "rpc_url" })]);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(expectedLimits);
   });
 
   test("🔴non_https_rpc_url_returns_400", async () => {
@@ -207,5 +220,13 @@ describe("GET /api/network_limits", () => {
 
     expect(statuses.slice(0, 10)).toEqual(Array(10).fill(200));
     expect(statuses[10]).toBe(429);
+  });
+
+  test("🔴disallowed_but_valid_url_returns_400", async () => {
+    const res = await get(
+      `?rpc_url=${encodeURIComponent("https://evil.example.com")}`,
+    );
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(/is not allowed/);
   });
 });

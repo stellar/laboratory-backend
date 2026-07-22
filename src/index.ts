@@ -125,6 +125,13 @@ async function startServer() {
     server = app.listen(Env.port, () => {
       logger.info({ port: Env.port }, "Server is running");
     });
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        logger.fatal({ port: Env.port }, `Port ${Env.port} is already in use`);
+        process.exit(1);
+      }
+      throw err;
+    });
     server.requestTimeout = 60_000;
     server.headersTimeout = 65_000;
   } catch (error) {
