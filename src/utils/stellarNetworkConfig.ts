@@ -46,16 +46,16 @@ export type StellarNetworkConfig = {
  */
 export const PUBLIC_RPC_URLS: Record<string, string[]> = {
   [Networks.PUBLIC]: [
-    "https://soroban-rpc.mainnet.stellar.gateway.fm", // Gateway
     "https://mainnet.sorobanrpc.com", // sorobanrpc.com
+    "https://soroban-rpc.mainnet.stellar.gateway.fm", // Gateway
     "https://stellar.api.onfinality.io/public", // OnFinality
     "https://rpc.lightsail.network/", // Lightsail Network - Quasar
     "https://archive-rpc.lightsail.network/", // Lightsail - Quasar (Archive)
     "https://rpc.ankr.com/stellar_soroban", // Ankr (Archive)
   ],
   [Networks.TESTNET]: [
-    "https://soroban-rpc.testnet.stellar.gateway.fm", // Gateway
     "https://soroban-testnet.stellar.org", // SDF
+    "https://soroban-rpc.testnet.stellar.gateway.fm", // Gateway
   ],
   [Networks.FUTURENET]: [
     "https://rpc-futurenet.stellar.org", // SDF
