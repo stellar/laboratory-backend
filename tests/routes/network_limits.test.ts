@@ -180,7 +180,7 @@ describe("GET /api/network_limits", () => {
     expect(body.message).toMatch(/Missing config setting entry/);
   });
 
-  test("🔴missing_rpc_url_returns_400", async () => {
+  test("🟢missing_rpc_url_uses_network_default_and_returns_200", async () => {
     const res = await get("");
 
     expect(res.status).toBe(200);
