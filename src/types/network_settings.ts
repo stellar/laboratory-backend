@@ -1,6 +1,6 @@
 export interface NetworkLimits {
   // Per-transaction limits
-  tx_max_instructions: number;
+  tx_max_instructions: string;
   tx_memory_limit: number;
   tx_max_footprint_entries: number;
   tx_max_disk_read_entries: number;
@@ -12,7 +12,7 @@ export interface NetworkLimits {
   contract_max_size_bytes: number;
 
   // Ledger-wide limits
-  ledger_max_instructions: number;
+  ledger_max_instructions: string;
   ledger_max_disk_read_entries: number;
   ledger_max_disk_read_bytes: number;
   ledger_max_write_ledger_entries: number;
@@ -26,7 +26,7 @@ export interface NetworkLimits {
   min_persistent_ttl: number;
 
   // Resource fees (in stroops)
-  fee_rate_per_instructions_increment: number;
+  fee_rate_per_instructions_increment: string;
   fee_disk_read_ledger_entry: string;
   fee_write_ledger_entry: string;
   fee_disk_read_1kb: string;

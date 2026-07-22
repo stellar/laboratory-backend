@@ -246,7 +246,7 @@ export class StellarNetworkConfigService {
 
     return {
       // Per-transaction limits
-      tx_max_instructions: Number(compute.txMaxInstructions()),
+      tx_max_instructions: compute.txMaxInstructions().toString(),
       tx_memory_limit: compute.txMemoryLimit(),
       tx_max_footprint_entries: ledgerCostExt.txMaxFootprintEntries(),
       tx_max_disk_read_entries: ledgerCost.txMaxDiskReadEntries(),
@@ -258,7 +258,7 @@ export class StellarNetworkConfigService {
       contract_max_size_bytes: maxSizeBytes,
 
       // Ledger-wide limits
-      ledger_max_instructions: Number(compute.ledgerMaxInstructions()),
+      ledger_max_instructions: compute.ledgerMaxInstructions().toString(),
       ledger_max_disk_read_entries: ledgerCost.ledgerMaxDiskReadEntries(),
       ledger_max_disk_read_bytes: ledgerCost.ledgerMaxDiskReadBytes(),
       ledger_max_write_ledger_entries: ledgerCost.ledgerMaxWriteLedgerEntries(),
@@ -274,9 +274,9 @@ export class StellarNetworkConfigService {
 
       // Resource fees (in stroops). 64-bit values are returned as strings to
       // avoid precision loss beyond Number.MAX_SAFE_INTEGER.
-      fee_rate_per_instructions_increment: Number(
-        compute.feeRatePerInstructionsIncrement(),
-      ),
+      fee_rate_per_instructions_increment: compute
+        .feeRatePerInstructionsIncrement()
+        .toString(),
       fee_disk_read_ledger_entry: ledgerCost
         .feeDiskReadLedgerEntry()
         .toString(),

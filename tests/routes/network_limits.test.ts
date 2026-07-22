@@ -125,7 +125,11 @@ describe("GET /api/network_limits", () => {
     );
     const body = await res.json();
 
-    expect(typeof body.tx_max_instructions).toBe("number");
+    // 64-bit (i64) fields are serialized as decimal strings to avoid precision
+    // loss; genuinely 32-bit fields stay numbers.
+    expect(typeof body.tx_max_instructions).toBe("string");
+    expect(typeof body.ledger_max_instructions).toBe("string");
+    expect(typeof body.fee_rate_per_instructions_increment).toBe("string");
     expect(typeof body.contract_max_size_bytes).toBe("number");
     expect(typeof body.fee_disk_read_ledger_entry).toBe("string");
     expect(typeof body.fee_disk_read_1kb).toBe("string");
