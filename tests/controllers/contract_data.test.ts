@@ -1,5 +1,5 @@
-import type { Mock } from "vitest";
 import { Request, Response } from "express";
+import type { Mock } from "vitest";
 import { encodeCursor } from "../../src/helpers/cursor";
 const getLatestLedgerMock = vi.fn();
 
@@ -29,8 +29,8 @@ vi.mock("../../src/config/env", () => ({
   },
 }));
 
-vi.mock("../../src/utils/stellar", () => ({
-  getStellarService: vi.fn().mockImplementation(() => ({
+vi.mock("../../src/utils/stellarLedger", () => ({
+  getLedgerSequenceService: vi.fn().mockImplementation(() => ({
     getLatestLedger: getLatestLedgerMock,
   })),
 }));

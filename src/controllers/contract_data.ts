@@ -16,7 +16,10 @@ import {
   SortField,
 } from "../types/contract_data";
 import { getPrisma } from "../utils/connect";
-import { getStellarService, StellarService } from "../utils/stellar";
+import {
+  getLedgerSequenceService,
+  LedgerSequenceService,
+} from "../utils/stellarLedger";
 
 /**
  * Parses and validates request parameters for contract data queries.
@@ -126,7 +129,7 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
  */
 const getContractData = async (
   requestParams: RequestParams,
-  ledgerService: StellarService = getStellarService(),
+  ledgerService: LedgerSequenceService = getLedgerSequenceService(),
 ): Promise<ContractData[]> => {
   const {
     contractId,

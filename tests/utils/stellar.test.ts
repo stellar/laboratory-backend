@@ -1,7 +1,7 @@
-import type { Mock } from "vitest";
 import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
+import type { Mock } from "vitest";
 import { logger } from "../../src/utils/logger";
-import { StellarService } from "../../src/utils/stellar";
+import { LedgerSequenceService } from "../../src/utils/stellarLedger";
 
 vi.mock("@stellar/stellar-sdk", () => ({
   rpc: {
@@ -25,7 +25,7 @@ const mockLoggerWarn = logger.warn as Mock;
 const mockRpcServer = rpc.Server as Mock;
 const mockHorizonServer = Horizon.Server as Mock;
 
-/** Builds a mock server instance with the httpClient.defaults stub required by StellarService. */
+/** Builds a mock server instance with the httpClient.defaults stub required by LedgerSequenceService. */
 const mockServer = (methods: Record<string, Mock>) => ({
   ...methods,
   httpClient: { defaults: {} },
@@ -42,7 +42,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -62,7 +62,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
     });
     const latest = await service.getLatestLedger();
@@ -82,7 +82,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.PUBLIC,
       rpcUrl: "https://rpc.pubnet.example",
     });
@@ -103,7 +103,7 @@ describe("getLatestLedger", () => {
       return mockServer({ root: rootMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.PUBLIC,
       horizonUrl: "https://horizon.custom.example",
     });
@@ -126,7 +126,7 @@ describe("getLatestLedger", () => {
       return mockServer({ root: rootMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.PUBLIC,
     });
     const latest = await service.getLatestLedger();
@@ -151,7 +151,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -175,7 +175,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -200,7 +200,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -224,7 +224,7 @@ describe("getLatestLedger", () => {
       });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -242,7 +242,7 @@ describe("getLatestLedger", () => {
       });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.PUBLIC,
     });
 
@@ -263,7 +263,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -290,7 +290,7 @@ describe("getLatestLedger", () => {
       return mockServer({ getLatestLedger: getLatestLedgerMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.TESTNET,
       rpcUrl: "https://rpc.testnet.example",
     });
@@ -312,7 +312,7 @@ describe("getLatestLedger", () => {
       return mockServer({ root: rootMock });
     });
 
-    const service = new StellarService({
+    const service = new LedgerSequenceService({
       networkPassphrase: Networks.PUBLIC,
     });
 

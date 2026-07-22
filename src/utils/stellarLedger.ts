@@ -2,25 +2,30 @@ import { Horizon, Networks, rpc } from "@stellar/stellar-sdk";
 import { Env } from "../config/env";
 import { logger } from "./logger";
 
-const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
+export const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 const DEFAULT_PUBNET_HORIZON_URL = "https://horizon.stellar.org";
+
+export const STELLAR_API_TIMEOUT_MS = 10_000;
 const LATEST_LEDGER_CACHE_TTL_MS = 5000;
-const STELLAR_API_TIMEOUT_MS = 10_000;
 const STALE_CACHE_MAX_MS = 10_000;
 
-export type StellarServiceConfig = {
+export type LedgerSequenceServiceConfig = {
   networkPassphrase: string;
   rpcUrl?: string;
   horizonUrl?: string;
 };
 
-export class StellarService {
+export class LedgerSequenceService {
   private readonly fetchLatestLedger: () => Promise<number>;
   private cachedLatestLedgerSequence: number | undefined;
   private cachedLatestLedgerAtMs: number | undefined;
   private ongoingFetchLatestLedger: Promise<number> | undefined;
 
-  constructor({ networkPassphrase, rpcUrl, horizonUrl }: StellarServiceConfig) {
+  constructor({
+    networkPassphrase,
+    rpcUrl,
+    horizonUrl,
+  }: LedgerSequenceServiceConfig) {
     const isTestnet = networkPassphrase === Networks.TESTNET;
 
     if (isTestnet) {
@@ -107,21 +112,21 @@ export class StellarService {
 }
 
 /**
- * Singleton instance of StellarService.
+ * Singleton instance of LedgerSequenceService.
  */
-let _stellarService: StellarService | undefined;
+let _ledgerSequenceService: LedgerSequenceService | undefined;
 
 /**
- * Returns a lazily-initialized singleton instance of StellarService.
+ * Returns a lazily-initialized singleton instance of LedgerSequenceService.
  * The service is configured using environment variables (NETWORK_PASSPHRASE, RPC_URL, HORIZON_URL).
  */
-export const getStellarService = (): StellarService => {
-  if (!_stellarService) {
-    _stellarService = new StellarService({
+export const getLedgerSequenceService = (): LedgerSequenceService => {
+  if (!_ledgerSequenceService) {
+    _ledgerSequenceService = new LedgerSequenceService({
       networkPassphrase: Env.networkPassphrase,
       rpcUrl: Env.rpcUrl,
       horizonUrl: Env.horizonUrl,
     });
   }
-  return _stellarService;
+  return _ledgerSequenceService;
 };

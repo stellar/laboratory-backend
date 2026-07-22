@@ -8,12 +8,13 @@ import { validateParamsMiddleware } from "./contract_data";
 const requestQuerySchema = z.object({
   rpc_url: z
     .url({ protocol: /^https$/ })
-    .max(2048, "rpc_url must be at most 2048 characters long"),
+    .max(2048, "rpc_url must be at most 2048 characters long")
+    .optional(),
 });
 
 const router: Router = express.Router();
 
-const networkLiimitsRateLimiter = rateLimit({
+const networkLimitsRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   limit: 10,
   message: {
@@ -26,7 +27,7 @@ const networkLiimitsRateLimiter = rateLimit({
 
 router.get(
   "/network_limits",
-  networkLiimitsRateLimiter,
+  networkLimitsRateLimiter,
   validateParamsMiddleware(requestQuerySchema, "query"),
   getNetworkLimits,
 );
