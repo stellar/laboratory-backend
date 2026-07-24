@@ -160,8 +160,7 @@ describe("GET /api/network_limits", () => {
 
     expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body.error).toBe("Failed to fetch ledger entries");
-    expect(body.message).toBe("upstream RPC unreachable");
+    expect(body.error).toBe("Failed to fetch network limits");
   });
 
   test("🔴missing_config_entry_returns_502", async () => {
@@ -180,8 +179,7 @@ describe("GET /api/network_limits", () => {
 
     expect(res.status).toBe(502);
     const body = await res.json();
-    expect(body.error).toBe("Failed to fetch ledger entries");
-    expect(body.message).toMatch(/Missing config setting entry/);
+    expect(body.error).toBe("Failed to fetch network limits");
   });
 
   test("🟢missing_rpc_url_uses_network_default_and_returns_200", async () => {

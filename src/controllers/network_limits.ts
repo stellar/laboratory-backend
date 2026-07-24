@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { Env } from "../config/env";
 import { HttpError } from "../utils/error";
+import { logger } from "../utils/logger";
 import { StellarNetworkConfigService } from "../utils/stellarNetworkConfig";
 
 export const getNetworkLimits = async (
@@ -23,9 +24,9 @@ export const getNetworkLimits = async (
         error: error.message,
       });
     }
+    logger.warn({ err: error }, "⚠️ Failed to fetch network limits");
     return res.status(502).json({
-      error: "Failed to fetch ledger entries",
-      message: error instanceof Error ? error.message : String(error),
+      error: "Failed to fetch network limits",
     });
   }
 };

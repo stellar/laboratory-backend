@@ -1,5 +1,6 @@
 import { Networks, rpc, xdr } from "@stellar/stellar-sdk";
 
+import { normalizeHttpsUrl } from "../helpers/normalizeHttpsUrl";
 import { NetworkLimits } from "../types/network_settings";
 import { HttpError } from "./error";
 import { logger } from "./logger";
@@ -49,8 +50,8 @@ export const PUBLIC_RPC_URLS: Record<string, string[]> = {
     "https://mainnet.sorobanrpc.com", // sorobanrpc.com
     "https://soroban-rpc.mainnet.stellar.gateway.fm", // Gateway
     "https://stellar.api.onfinality.io/public", // OnFinality
-    "https://rpc.lightsail.network/", // Lightsail Network - Quasar
-    "https://archive-rpc.lightsail.network/", // Lightsail - Quasar (Archive)
+    "https://rpc.lightsail.network", // Lightsail Network - Quasar
+    "https://archive-rpc.lightsail.network", // Lightsail - Quasar (Archive)
     "https://rpc.ankr.com/stellar_soroban", // Ankr (Archive)
   ],
   [Networks.TESTNET]: [
@@ -61,6 +62,12 @@ export const PUBLIC_RPC_URLS: Record<string, string[]> = {
     "https://rpc-futurenet.stellar.org", // SDF
   ],
 };
+
+// The allowlist entries, canonicalized once so membership tests are
+// trailing-slash-safe even if an entry above is later written with one.
+const VETTED_RPC_URLS: readonly string[] = Object.values(PUBLIC_RPC_URLS)
+  .flat()
+  .map(normalizeHttpsUrl);
 
 const NETWORK_LIMITS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const NETWORK_LIMITS_STALE_MAX_MS = 10 * 60 * 1000; // serve stale up to 10 min on refresh failure
@@ -100,20 +107,21 @@ export class StellarNetworkConfigService {
       // If no RPC URL is provided, use the default for the network
       const defaultUrl = PUBLIC_RPC_URLS[networkPassphrase]?.[0];
       if (!defaultUrl) {
-        throw new Error(`Unsupported network passphrase: ${networkPassphrase}`);
+        throw new Error(`Unsupported RPC url: ${rpcUrl}`);
       }
       this.rpcUrl = defaultUrl;
     } else {
-      this.rpcUrl = rpcUrl;
+      // Normalize (enforces https + strips trailing slash) before the allowlist
+      // check so the stored value is canonical and shared as the cache key.
+      this.rpcUrl = normalizeHttpsUrl(rpcUrl);
       this.checkRpcUrlAllowed();
     }
   }
 
   private checkRpcUrlAllowed(): void {
-    const allVettedUrls = Object.values(PUBLIC_RPC_URLS).flat();
-    if (!allVettedUrls.includes(this.rpcUrl)) {
+    if (!VETTED_RPC_URLS.includes(this.rpcUrl)) {
       throw new HttpError(
-        `RPC URL "${this.rpcUrl}" is not allowed. Allowed URLs: ${allVettedUrls.join(
+        `RPC URL "${this.rpcUrl}" is not allowed. Allowed URLs: ${VETTED_RPC_URLS.join(
           ", ",
         )}`,
         400,
