@@ -11,8 +11,11 @@ import proxyAddr from "proxy-addr";
 
 import packageJson from "../package.json";
 import { Env } from "./config/env";
+
 import contractRoutes from "./routes/contract_data";
 import keysRoutes from "./routes/keys";
+import networkLimitsRoutes from "./routes/network_limits";
+
 import { connect } from "./utils/connect";
 import { logger, pinoHttpOptions } from "./utils/logger";
 
@@ -31,7 +34,7 @@ app.use(pinoHttp(pinoHttpOptions)); // HTTP request logger
 app.use(
   rateLimit({
     windowMs: 15 * 60 * 1000,
-    max: 1000,
+    limit: 1000,
     skip: req => req.path === "/health",
     message: {
       error: "Too Many Requests",
@@ -67,6 +70,7 @@ app.get("/health", (_, res) => {
 
 app.use("/api", contractRoutes);
 app.use("/api", keysRoutes);
+app.use("/api", networkLimitsRoutes);
 
 // ── Error Handling ───────────────────────────────────────────────────
 
@@ -120,6 +124,13 @@ async function startServer() {
 
     server = app.listen(Env.port, () => {
       logger.info({ port: Env.port }, "Server is running");
+    });
+    server.on("error", (err: NodeJS.ErrnoException) => {
+      if (err.code === "EADDRINUSE") {
+        logger.fatal({ port: Env.port }, `Port ${Env.port} is already in use`);
+        process.exit(1);
+      }
+      throw err;
     });
     server.requestTimeout = 60_000;
     server.headersTimeout = 65_000;
