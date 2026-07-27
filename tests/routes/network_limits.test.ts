@@ -3,6 +3,11 @@ import { readFileSync } from "node:fs";
 import type { Server } from "node:http";
 import type { AddressInfo } from "node:net";
 
+import {
+  NETWORK_LIMITS_CACHE_TTL_MS,
+  NETWORK_LIMITS_STALE_MAX_MS,
+} from "../../src/utils/stellarNetworkConfig";
+
 /**
  * Shared control surface for the mocked Soroban RPC server. `getLedgerEntries`
  * is swapped per test so we can exercise both success and failure paths without
@@ -105,6 +110,8 @@ describe("GET /api/network_limits", () => {
   });
 
   afterEach(async () => {
+    // Some tests fake Date to drive the cache TTL/stale window; always restore.
+    vi.useRealTimers();
     await new Promise<void>(resolve => server.close(() => resolve()));
   });
 
@@ -158,6 +165,54 @@ describe("GET /api/network_limits", () => {
       `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
+    expect(res.status).toBe(502);
+    const body = await res.json();
+    expect(body.error).toBe("Failed to fetch network limits");
+  });
+
+  test("🟡stale_cache_served_200_when_refresh_fails_within_stale_window", async () => {
+    // Fake only Date so the cache staleness is controllable; leave the real
+    // timers in place for the live HTTP server / sockets.
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+
+    // Warm the cache.
+    expect((await get(q)).status).toBe(200);
+
+    // Past the TTL but within the stale window, with the RPC now failing.
+    vi.setSystemTime(
+      new Date(Date.now() + NETWORK_LIMITS_CACHE_TTL_MS + 60_000),
+    );
+    rpcMock.getLedgerEntries = vi
+      .fn()
+      .mockRejectedValue(new Error("upstream RPC unreachable"));
+
+    const res = await get(q);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(expectedLimits);
+  });
+
+  test("🔴returns_502_once_cached_value_is_older_than_stale_window", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
+
+    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+
+    // Warm the cache.
+    expect((await get(q)).status).toBe(200);
+
+    // Beyond the stale window: the cached value is too old to serve, so a
+    // failed refresh surfaces as a 502.
+    vi.setSystemTime(
+      new Date(Date.now() + NETWORK_LIMITS_STALE_MAX_MS + 60_000),
+    );
+    rpcMock.getLedgerEntries = vi
+      .fn()
+      .mockRejectedValue(new Error("upstream RPC unreachable"));
+
+    const res = await get(q);
     expect(res.status).toBe(502);
     const body = await res.json();
     expect(body.error).toBe("Failed to fetch network limits");

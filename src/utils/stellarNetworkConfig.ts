@@ -69,8 +69,10 @@ const VETTED_RPC_URLS: readonly string[] = Object.values(PUBLIC_RPC_URLS)
   .flat()
   .map(normalizeHttpsUrl);
 
-const NETWORK_LIMITS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const NETWORK_LIMITS_STALE_MAX_MS = 10 * 60 * 1000; // serve stale up to 10 min on refresh failure
+// Exported so tests reference the single source of truth rather than
+// re-hardcoding the durations (and to make the cache window discoverable).
+export const NETWORK_LIMITS_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+export const NETWORK_LIMITS_STALE_MAX_MS = 10 * 60 * 1000; // serve stale up to 10 min on refresh failure
 
 // Total request-duration cap for the RPC call. Benchmarking the allowlisted
 // providers showed successful getLedgerEntries responses at ~150–840ms; 5s
