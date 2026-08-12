@@ -74,7 +74,6 @@ const expectedLimits: NetworkLimits = JSON.parse(
 );
 
 const RPC_URL = "https://mainnet.sorobanrpc.com"; // allowlisted
-const PUBLIC_PASSPHRASE = "Public Global Stellar Network ; September 2015";
 
 // Re-import the service against a fresh module registry so its module-level
 // cache starts cold for every test.
@@ -82,10 +81,7 @@ async function freshService(rpcUrl = RPC_URL): Promise<ServiceType> {
   vi.resetModules();
   const { StellarNetworkConfigService } =
     await import("../../src/utils/stellarNetworkConfig");
-  return new StellarNetworkConfigService({
-    networkPassphrase: PUBLIC_PASSPHRASE,
-    rpcUrl,
-  });
+  return new StellarNetworkConfigService({ network: "mainnet", rpcUrl });
 }
 
 describe("StellarNetworkConfigService caching", () => {

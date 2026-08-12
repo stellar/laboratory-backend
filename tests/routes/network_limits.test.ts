@@ -70,6 +70,16 @@ const expectedLimits = JSON.parse(
   ),
 );
 
+const PUBNET_PASSPHRASE = "Public Global Stellar Network ; September 2015";
+const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
+
+// The fixture was captured from a pubnet provider, so a successful response for
+// a pubnet `rpc_url` is the limits plus the resolved network.
+const expectedBody = {
+  ...expectedLimits,
+  network_passphrase: PUBNET_PASSPHRASE,
+};
+
 /**
  * Boots the network_limits router on an ephemeral port and returns a base URL.
  *
@@ -97,8 +107,14 @@ async function startTestServer(): Promise<{ server: Server; baseUrl: string }> {
 describe("GET /api/network_limits", () => {
   let server: Server;
   let baseUrl: string;
+  const originalPassphrase = process.env.NETWORK_PASSPHRASE;
 
   beforeEach(async () => {
+    // Deliberately set to the "wrong" network for the pubnet providers these
+    // tests exercise: the endpoint resolves the network from the allowlisted
+    // `rpc_url`, so NETWORK_PASSPHRASE must not affect any assertion below.
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
     // Default: RPC succeeds with the captured fixture. Read mockResponse
     // lazily — it is populated when the mock factory first loads the fixture,
     // which happens during startTestServer's dynamic import below. Individual
@@ -115,20 +131,30 @@ describe("GET /api/network_limits", () => {
     await new Promise<void>(resolve => server.close(() => resolve()));
   });
 
+  afterAll(() => {
+    if (originalPassphrase === undefined) {
+      delete process.env.NETWORK_PASSPHRASE;
+    } else {
+      process.env.NETWORK_PASSPHRASE = originalPassphrase;
+    }
+  });
+
   const get = (query: string) => fetch(`${baseUrl}/api/network_limits${query}`);
 
   test("🟢valid_https_rpc_url_returns_200_with_parsed_network_limits", async () => {
     const rpcUrl = "https://mainnet.sorobanrpc.com";
 
-    const res = await get(`?rpc_url=${encodeURIComponent(rpcUrl)}`);
+    const res = await get(
+      `?network=mainnet&rpc_url=${encodeURIComponent(rpcUrl)}`,
+    );
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual(expectedLimits);
+    await expect(res.json()).resolves.toEqual(expectedBody);
   });
 
   test("🟢numeric_fields_are_numbers_and_64bit_fees_are_strings", async () => {
     const res = await get(
-      `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
     const body = await res.json();
 
@@ -144,14 +170,14 @@ describe("GET /api/network_limits", () => {
   });
 
   test("🟢second_request_served_from_cache_without_refetching", async () => {
-    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+    const q = `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
 
     const first = await get(q);
     const second = await get(q);
 
     expect(first.status).toBe(200);
     expect(second.status).toBe(200);
-    await expect(second.json()).resolves.toEqual(expectedLimits);
+    await expect(second.json()).resolves.toEqual(expectedBody);
     // Second request is a cache hit → the RPC is queried only once.
     expect(rpcMock.getLedgerEntries).toHaveBeenCalledTimes(1);
   });
@@ -162,7 +188,7 @@ describe("GET /api/network_limits", () => {
       .mockRejectedValue(new Error("upstream RPC unreachable"));
 
     const res = await get(
-      `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
     expect(res.status).toBe(502);
@@ -176,7 +202,7 @@ describe("GET /api/network_limits", () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
-    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+    const q = `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
 
     // Warm the cache.
     expect((await get(q)).status).toBe(200);
@@ -191,14 +217,14 @@ describe("GET /api/network_limits", () => {
 
     const res = await get(q);
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual(expectedLimits);
+    await expect(res.json()).resolves.toEqual(expectedBody);
   });
 
   test("🔴returns_502_once_cached_value_is_older_than_stale_window", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
     vi.setSystemTime(new Date("2026-01-01T00:00:00.000Z"));
 
-    const q = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+    const q = `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
 
     // Warm the cache.
     expect((await get(q)).status).toBe(200);
@@ -229,7 +255,7 @@ describe("GET /api/network_limits", () => {
     rpcMock.getLedgerEntries = vi.fn().mockResolvedValue(partial);
 
     const res = await get(
-      `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
     expect(res.status).toBe(502);
@@ -237,16 +263,101 @@ describe("GET /api/network_limits", () => {
     expect(body.error).toBe("Failed to fetch network limits");
   });
 
-  test("🟢missing_rpc_url_uses_network_default_and_returns_200", async () => {
-    const res = await get("");
+  test("🔴missing_rpc_url_returns_400", async () => {
+    const res = await get("?network=mainnet");
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toBe("Invalid query parameters");
+    expect(body.issues[0].path).toBe("rpc_url");
+    expect(body.issues[0].message).toBe("rpc_url is required");
+  });
+
+  test("🔴empty_rpc_url_returns_400", async () => {
+    const res = await get("?network=mainnet&rpc_url=");
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).issues[0].path).toBe("rpc_url");
+  });
+
+  test("🔴missing_network_returns_400", async () => {
+    const res = await get(
+      `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toBe("Invalid query parameters");
+    expect(body.issues[0].path).toBe("network");
+    expect(body.issues[0].message).toBe("network is required");
+  });
+
+  test("🔴unrecognized_network_returns_400", async () => {
+    // "pubnet" is the passphrase-level name; the API's vocabulary is the
+    // toggle's, so it must be rejected rather than guessed at.
+    const res = await get(
+      `?network=pubnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+    );
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.issues[0].path).toBe("network");
+    expect(body.issues[0].message).toBe(
+      "network must be one of: mainnet, testnet, futurenet",
+    );
+  });
+
+  test("🟢matching_testnet_pair_returns_200_with_the_testnet_passphrase", async () => {
+    const res = await get(
+      `?network=testnet&rpc_url=${encodeURIComponent("https://soroban-testnet.stellar.org")}`,
+    );
 
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual(expectedLimits);
+    expect((await res.json()).network_passphrase).toBe(TESTNET_PASSPHRASE);
+  });
+
+  test("🔴mainnet_rpc_url_while_on_testnet_returns_400", async () => {
+    // The mistake the UI makes possible: Testnet is selected in the toggle but
+    // a Mainnet RPC URL is pasted into the dialog.
+    const res = await get(
+      `?network=testnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+    );
+
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toMatch(/serves mainnet, but network=testnet was requested/);
+    // The message names a URL the caller can actually use instead.
+    expect(error).toContain("https://soroban-testnet.stellar.org");
+  });
+
+  test("🔴testnet_rpc_url_while_on_mainnet_returns_400", async () => {
+    const res = await get(
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://soroban-testnet.stellar.org")}`,
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(
+      /serves testnet, but network=mainnet was requested/,
+    );
+  });
+
+  test("🟢unset_network_passphrase_still_serves_the_requested_network", async () => {
+    // The regression this guards: a deployment whose NETWORK_PASSPHRASE is
+    // unset or wrong used to reject pubnet URLs with a 400 that blamed the
+    // caller for an operator's misconfiguration.
+    delete process.env.NETWORK_PASSPHRASE;
+
+    const res = await get(
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+    );
+
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(expectedBody);
   });
 
   test("🔴non_https_rpc_url_returns_400", async () => {
     const res = await get(
-      `?rpc_url=${encodeURIComponent("http://mainnet.sorobanrpc.com")}`,
+      `?network=mainnet&rpc_url=${encodeURIComponent("http://mainnet.sorobanrpc.com")}`,
     );
 
     expect(res.status).toBe(400);
@@ -256,7 +367,9 @@ describe("GET /api/network_limits", () => {
   });
 
   test("🔴malformed_rpc_url_returns_400", async () => {
-    const res = await get(`?rpc_url=${encodeURIComponent("not-a-url")}`);
+    const res = await get(
+      `?network=mainnet&rpc_url=${encodeURIComponent("not-a-url")}`,
+    );
 
     expect(res.status).toBe(400);
     const body = await res.json();
@@ -264,7 +377,7 @@ describe("GET /api/network_limits", () => {
   });
 
   test("🔴exceeding_rate_limit_returns_429", async () => {
-    const path = `?rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
+    const path = `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`;
 
     // The limiter allows 10 requests/min; the 11th must be throttled.
     const statuses: number[] = [];
@@ -281,9 +394,9 @@ describe("GET /api/network_limits", () => {
 
   test("🔴disallowed_but_valid_url_returns_400", async () => {
     const res = await get(
-      `?rpc_url=${encodeURIComponent("https://evil.example.com")}`,
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://evil.example.com")}`,
     );
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(/is not allowed/);
+    expect((await res.json()).error).toMatch(/is not on the allowlist/);
   });
 });

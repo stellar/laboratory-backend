@@ -195,12 +195,13 @@ README, and refer to `Makefile` for the current target list.
 
 ## API Endpoints
 
-| Method | Endpoint                    | Description                         |
-| ------ | --------------------------- | ----------------------------------- |
-| GET    | `/api/contract/:id/storage` | Get contract data by ID             |
-| GET    | `/api/contract/:id/keys`    | Get keys associated with data by ID |
-| GET    | `/health`                   | Health check                        |
-| GET    | `/`                         | Redirects to `/health`              |
+| Method | Endpoint                    | Description                                 |
+| ------ | --------------------------- | ------------------------------------------- |
+| GET    | `/api/contract/:id/storage` | Get contract data by ID                     |
+| GET    | `/api/contract/:id/keys`    | Get keys associated with data by ID         |
+| GET    | `/api/network_limits`       | Get Soroban network limits and fees via RPC |
+| GET    | `/health`                   | Health check                                |
+| GET    | `/`                         | Redirects to `/health`                      |
 
 `curl http://localhost:3000/api/contract/{contract_id}/storage`
 
@@ -210,6 +211,27 @@ README, and refer to `Makefile` for the current target list.
 - ?filter_key=Balance - Filter results by key symbol
 
 `curl http://localhost:3000/api/contract/{contract_id}/keys`
+
+`curl "http://localhost:3000/api/network_limits?network=mainnet&rpc_url=https://mainnet.sorobanrpc.com"`
+
+- `network` is **required**: `mainnet`, `testnet`, or `futurenet` — the network
+  the caller has selected (in the Laboratory UI, the network toggle).
+- `rpc_url` is **required**, and must be one of the vetted public RPC providers
+  in `PUBLIC_RPC_URLS` (`src/utils/stellarNetworkConfig.ts`).
+- **The two must agree.** Each allowlisted URL belongs to exactly one network, so
+  a Mainnet `rpc_url` sent with `network=testnet` is rejected with a `400` naming
+  both networks and listing the usable Testnet URLs — rather than being answered
+  with Mainnet's limits. Neither param has a default: with no `network`, a
+  mismatch could not be detected; with no `rpc_url`, the response could silently
+  describe a different network than intended.
+- Both come **from the request, not from `NETWORK_PASSPHRASE`**. Unlike the
+  contract-data endpoints — whose network is implicit in which instance you hit
+  — this endpoint reads live from the caller's RPC, so it behaves identically on
+  every deployment regardless of how each instance's env is configured.
+- The response echoes the agreed network as `network_passphrase`, so a caller
+  confirms which network the numbers describe instead of inferring it.
+- Results are cached per RPC URL for 5 minutes, with a stale fallback for up to
+  10 minutes if a refresh fails. Rate limited to 10 requests/minute per IP.
 
 ## Project Structure
 
@@ -237,27 +259,27 @@ prisma/
 
 ## Environment Variables
 
-| Variable                         | Required | Default                          | Description                                                                                    |
-| -------------------------------- | -------- | -------------------------------- | ---------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                       | No       | -                                | Node/Express ecosystem convention is to set it to `production` when deploying the application. |
-| `ENVIRONMENT`                    | No       | `development`                    | Deployment environment (e.g. `dev-testnet`, `prd-testnet`)                                     |
-| `DEBUG`                          | No       | -                                | Set to `true`, `1`, or `yes` to enable debug output (e.g. table listing)                       |
-| `PORT`                           | No       | `3000`                           | HTTP server port (1-65535)                                                                     |
-| `GIT_COMMIT`                     | No       | -                                | Git commit SHA for release tracking (set at build/deploy time)                                 |
-| `LOG_LEVEL`                      | No       | `info`                           | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                            |
-| `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                            |
-| `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                          |
-| `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                  |
-| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase                                                                     |
-| `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                        |
-| `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                        |
-| `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                             |
-| `DB_NAME`                        | Mode B   | -                                | PostgreSQL database name                                                                       |
-| `POSTGRES_CONNECTION_NAME`       | Mode B   | -                                | Cloud SQL instance connection name                                                             |
-| `POSTGRES_IAM_USER`              | Mode B   | -                                | IAM database user email                                                                        |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -                                | Path to service account credentials file                                                       |
-| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                               |
-| `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                       |
+| Variable                         | Required | Default                          | Description                                                                                               |
+| -------------------------------- | -------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                       | No       | -                                | Node/Express ecosystem convention is to set it to `production` when deploying the application.            |
+| `ENVIRONMENT`                    | No       | `development`                    | Deployment environment (e.g. `dev-testnet`, `prd-testnet`)                                                |
+| `DEBUG`                          | No       | -                                | Set to `true`, `1`, or `yes` to enable debug output (e.g. table listing)                                  |
+| `PORT`                           | No       | `3000`                           | HTTP server port (1-65535)                                                                                |
+| `GIT_COMMIT`                     | No       | -                                | Git commit SHA for release tracking (set at build/deploy time)                                            |
+| `LOG_LEVEL`                      | No       | `info`                           | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                                       |
+| `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                                       |
+| `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                                     |
+| `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                             |
+| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. Not used by `/api/network_limits`, which resolves the network from `rpc_url`. |
+| `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                                   |
+| `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                                   |
+| `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |
+| `DB_NAME`                        | Mode B   | -                                | PostgreSQL database name                                                                                  |
+| `POSTGRES_CONNECTION_NAME`       | Mode B   | -                                | Cloud SQL instance connection name                                                                        |
+| `POSTGRES_IAM_USER`              | Mode B   | -                                | IAM database user email                                                                                   |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -                                | Path to service account credentials file                                                                  |
+| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                                          |
+| `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                                  |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 
