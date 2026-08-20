@@ -72,6 +72,7 @@ const expectedLimits = JSON.parse(
 
 const PUBNET_PASSPHRASE = "Public Global Stellar Network ; September 2015";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
+const FUTURENET_PASSPHRASE = "Test SDF Future Network ; October 2022";
 
 // The fixture was captured from a pubnet provider, so a successful response for
 // a pubnet `rpc_url` is the limits plus the resolved network.
@@ -339,6 +340,40 @@ describe("GET /api/network_limits", () => {
     expect((await res.json()).error).toMatch(
       /serves testnet, but network=mainnet was requested/,
     );
+  });
+
+  test("🟢matching_futurenet_pair_returns_200_with_the_futurenet_passphrase", async () => {
+    const res = await get(
+      `?network=futurenet&rpc_url=${encodeURIComponent("https://rpc-futurenet.stellar.org")}`,
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).network_passphrase).toBe(FUTURENET_PASSPHRASE);
+  });
+
+  test("🔴futurenet_rpc_url_while_on_mainnet_returns_400", async () => {
+    const res = await get(
+      `?network=mainnet&rpc_url=${encodeURIComponent("https://rpc-futurenet.stellar.org")}`,
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toMatch(
+      /serves futurenet, but network=mainnet was requested/,
+    );
+  });
+
+  test("🔴mainnet_rpc_url_while_on_futurenet_returns_400", async () => {
+    const res = await get(
+      `?network=futurenet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
+    );
+
+    expect(res.status).toBe(400);
+    const { error } = await res.json();
+    expect(error).toMatch(
+      /serves mainnet, but network=futurenet was requested/,
+    );
+    // The message names a URL the caller can actually use instead.
+    expect(error).toContain("https://rpc-futurenet.stellar.org");
   });
 
   test("🟢unset_network_passphrase_still_serves_the_requested_network", async () => {

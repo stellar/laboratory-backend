@@ -29,8 +29,22 @@ const LEDGER_ENTRY_KEYS: xdr.LedgerKey[] = LEDGER_ENTRY_KEY_XDRS.map(k =>
   xdr.LedgerKey.fromXDR(k, "base64"),
 );
 
+export const PASSPHRASE_BY_NETWORK_NAME = {
+  mainnet: Networks.PUBLIC,
+  testnet: Networks.TESTNET,
+  futurenet: Networks.FUTURENET,
+} as const;
+
 /** The network the caller believes it is on, as named in the request. */
-export type NetworkName = "mainnet" | "testnet" | "futurenet";
+export type NetworkName = keyof typeof PASSPHRASE_BY_NETWORK_NAME;
+
+/** The passphrase of a network this API serves — one of exactly three. */
+export type NetworkPassphrase =
+  (typeof PASSPHRASE_BY_NETWORK_NAME)[NetworkName];
+
+export const NETWORK_NAMES = Object.keys(
+  PASSPHRASE_BY_NETWORK_NAME,
+) as NetworkName[];
 
 export type StellarNetworkConfig = {
   /**
@@ -64,7 +78,7 @@ export type StellarNetworkConfig = {
  * docs when updating. The Liquify URLs embed a shared API key as published in
  * those docs.
  */
-export const PUBLIC_RPC_URLS: Record<string, string[]> = {
+export const PUBLIC_RPC_URLS: Record<NetworkPassphrase, string[]> = {
   [Networks.PUBLIC]: [
     "https://mainnet.sorobanrpc.com", // sorobanrpc.com
     "https://soroban-rpc.mainnet.stellar.gateway.fm", // Gateway
@@ -82,37 +96,23 @@ export const PUBLIC_RPC_URLS: Record<string, string[]> = {
   ],
 };
 
-/**
- * The short network names the API accepts, mapped to their passphrases. These
- * are the request's vocabulary — the frontend's network toggle speaks in
- * "testnet"/"mainnet", not in passphrase strings.
- */
-export const PASSPHRASE_BY_NETWORK_NAME: Record<NetworkName, string> = {
-  mainnet: Networks.PUBLIC,
-  testnet: Networks.TESTNET,
-  futurenet: Networks.FUTURENET,
-};
-
-export const NETWORK_NAMES = Object.keys(
-  PASSPHRASE_BY_NETWORK_NAME,
-) as NetworkName[];
-
-const NETWORK_NAME_BY_PASSPHRASE: Record<string, NetworkName> =
-  Object.fromEntries(
-    Object.entries(PASSPHRASE_BY_NETWORK_NAME).map(([name, passphrase]) => [
-      passphrase,
-      name as NetworkName,
-    ]),
-  );
+const NETWORK_NAME_BY_PASSPHRASE = Object.fromEntries(
+  Object.entries(PASSPHRASE_BY_NETWORK_NAME).map(([name, passphrase]) => [
+    passphrase,
+    name as NetworkName,
+  ]),
+) as Record<NetworkPassphrase, NetworkName>;
 
 // The allowlist entries, canonicalized once so membership tests are
 // trailing-slash-safe even if an entry above is later written with one.
-const VETTED_RPC_URLS: Record<string, readonly string[]> = Object.fromEntries(
-  Object.entries(PUBLIC_RPC_URLS).map(([passphrase, urls]) => [
-    passphrase,
-    urls.map(normalizeHttpsUrl),
-  ]),
-);
+const VETTED_RPC_URLS = Object.fromEntries(
+  Object.entries(PUBLIC_RPC_URLS).map(
+    ([passphrase, urls]): [NetworkPassphrase, readonly string[]] => [
+      passphrase as NetworkPassphrase,
+      urls.map(normalizeHttpsUrl),
+    ],
+  ),
+) as Record<NetworkPassphrase, readonly string[]>;
 
 /**
  * Reverse index of the allowlist: canonical RPC URL -> the network passphrase
@@ -120,9 +120,12 @@ const VETTED_RPC_URLS: Record<string, readonly string[]> = Object.fromEntries(
  * two networks would be caught — the mapping has to stay one-to-one for a URL
  * to pin down the network it belongs to.
  */
-const NETWORK_BY_RPC_URL: ReadonlyMap<string, string> = (() => {
-  const index = new Map<string, string>();
-  for (const [passphrase, urls] of Object.entries(VETTED_RPC_URLS)) {
+const NETWORK_BY_RPC_URL: ReadonlyMap<string, NetworkPassphrase> = (() => {
+  const index = new Map<string, NetworkPassphrase>();
+  for (const [passphrase, urls] of Object.entries(VETTED_RPC_URLS) as [
+    NetworkPassphrase,
+    readonly string[],
+  ][]) {
     for (const url of urls) {
       const existing = index.get(url);
       if (existing !== undefined && existing !== passphrase) {
@@ -177,7 +180,7 @@ export class StellarNetworkConfigService {
    * asked for, since a mismatch is rejected in the constructor. Echoed in the
    * response so the caller can confirm which network the numbers describe.
    */
-  readonly networkPassphrase: string;
+  readonly networkPassphrase: NetworkPassphrase;
 
   constructor({ network, rpcUrl }: StellarNetworkConfig) {
     // The route validates both with Zod; these are defense-in-depth for any
@@ -213,9 +216,9 @@ export class StellarNetworkConfigService {
    */
   private checkRpcUrlServesNetwork(
     network: NetworkName,
-    expected: string,
+    expected: NetworkPassphrase,
   ): void {
-    const allowedForNetwork = VETTED_RPC_URLS[expected] ?? [];
+    const allowedForNetwork = VETTED_RPC_URLS[expected];
     const actual = NETWORK_BY_RPC_URL.get(this.rpcUrl);
 
     if (actual === undefined) {
