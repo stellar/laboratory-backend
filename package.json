@@ -63,17 +63,13 @@
   },
   "pnpm": {
     "overrides": {
-      "test-exclude": "7.0.0",
       "safer-buffer": "npm:buffer@^6.0.3",
-      "js-yaml": "^4.1.1",
       "glob": "^13.0.0",
       "axios": "^1.18.1",
-      "body-parser": "^2.3.0",
       "brace-expansion": "^5.0.8",
       "protobufjs": "^8.6.0",
       "@opentelemetry/core": "^2.8.0",
-      "dockerode": "^5.0.0",
-      "postcss": "^8.5.18"
+      "deepmerge-ts": "^8.0.1"
     }
   },
   "lint-staged": {
