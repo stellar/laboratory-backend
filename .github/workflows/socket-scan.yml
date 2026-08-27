@@ -27,7 +27,7 @@ name: Socket reachability scan
 
 on:
   schedule:
-    - cron: '0 16 * * 6'
+    - cron: "0 16 * * 6"
   workflow_dispatch:
 
 permissions:
