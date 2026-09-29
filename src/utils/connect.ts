@@ -83,6 +83,30 @@ export type ConnectionResult = {
 };
 
 /**
+ * Per-connection statement_timeout (ms) on every Prisma connection, so a
+ * single expensive query is cancelled instead of holding a pooled connection.
+ * ~2x headroom over the slowest known-legitimate query (~1.5s).
+ */
+export const STATEMENT_TIMEOUT_MS = 3000;
+
+/**
+ * Returns the datasource URL with statement_timeout applied. It rides on the
+ * `options` startup parameter (not a native Prisma URL param) and merges with
+ * any existing query string (e.g. the Cloud SQL connector's `?host=...`).
+ */
+export function withStatementTimeout(databaseUrl: string): string {
+  const url = new URL(databaseUrl);
+  const existingOptions = url.searchParams.get("options");
+  url.searchParams.set(
+    "options",
+    [existingOptions, `-c statement_timeout=${STATEMENT_TIMEOUT_MS}`]
+      .filter(Boolean)
+      .join(" "),
+  );
+  return url.toString();
+}
+
+/**
  * Creates a Prisma connection using a direct DATABASE_URL string.
  * @param databaseUrl - Fully qualified Prisma database URL.
  * @returns A PrismaClient instance and a close function.
@@ -90,7 +114,9 @@ export type ConnectionResult = {
 const connectWithDatabaseUrl = async (
   databaseUrl: string,
 ): Promise<ConnectionResult> => {
-  _prisma = new PrismaClient({ datasourceUrl: databaseUrl });
+  _prisma = new PrismaClient({
+    datasourceUrl: withStatementTimeout(databaseUrl),
+  });
 
   return {
     prisma: _prisma,
@@ -127,7 +153,9 @@ const connectWithCloudSqlConnector = async ({
     listenOptions: { path: gCloudSqlSocketPath },
   });
 
-  const datasourceUrl = `postgresql://${user}@localhost/${database}?host=${gCloudSqlSocketDir}`;
+  const datasourceUrl = withStatementTimeout(
+    `postgresql://${user}@localhost/${database}?host=${gCloudSqlSocketDir}`,
+  );
 
   _prisma = new PrismaClient({ datasourceUrl });
 
