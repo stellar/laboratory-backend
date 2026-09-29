@@ -52,6 +52,20 @@ class Env {
     return this.optionalString("DATABASE_URL");
   }
 
+  /**
+   * Secret for signing pagination cursors. Unset: cursors are issued unsigned.
+   * Set: must be at least 32 bytes, otherwise throws.
+   */
+  static get cursorSigningKey(): string | undefined {
+    const key = this.optionalString("CURSOR_SIGNING_KEY");
+    if (key !== undefined && Buffer.byteLength(key, "utf8") < 32) {
+      throw new Error(
+        `Invalid CURSOR_SIGNING_KEY: expected at least 32 bytes, got ${Buffer.byteLength(key, "utf8")}.`,
+      );
+    }
+    return key;
+  }
+
   static get networkPassphrase() {
     return this.optionalString("NETWORK_PASSPHRASE") ?? Networks.TESTNET;
   }

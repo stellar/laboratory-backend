@@ -1,13 +1,19 @@
 /**
  * Cursor-based pagination helpers for efficient API pagination
  *
- * Encodes/decodes opaque cursor strings (base64 JSON) used for
- * keyset pagination. Includes Zod-based runtime validation that
- * ensures both structural correctness and type consistency between
- * sortField and sortValue.
+ * Encodes/decodes opaque cursor strings used for keyset pagination.
+ * Includes Zod-based runtime validation that ensures both structural
+ * correctness and type consistency between sortField and sortValue.
+ *
+ * When CURSOR_SIGNING_KEY is set, cursors carry an HMAC-SHA256 signature
+ * (`<payload>.<signature>`, base64url) that also binds the cursor to the
+ * contract it was issued for, so the server only accepts cursors it issued for
+ * that contract. Without a key, the unsigned base64(JSON) form is used.
  */
 
+import { createHmac, timingSafeEqual } from "node:crypto";
 import { z } from "zod";
+import { Env } from "../config/env";
 import { logger } from "../utils/logger";
 
 /**
@@ -42,6 +48,28 @@ const VALID_SORT_FIELDS: ReadonlySet<string> = new Set([
   "ttl",
   "updated_at",
 ]);
+
+// Bounds keep numeric cursor values within the sort column's storable range.
+// ttl: live_until_ledger_sequence is a non-negative int4 column.
+const TTL_MIN = 0;
+const TTL_MAX = 2_147_483_647;
+// updated_at: Unix epoch seconds, within to_timestamp()'s range. Fractions
+// (sub-second precision) are allowed.
+const UPDATED_AT_MAX = 8_210_266_876_799;
+
+/**
+ * Computes the HMAC-SHA256 signature of a cursor payload, binding it to the
+ * contract it was issued for. `contractId` is base32 (never contains "."), so
+ * the "." separator keeps the signed input unambiguous.
+ */
+const signCursorPayload = (
+  payload: string,
+  key: string,
+  contractId = "",
+): string =>
+  createHmac("sha256", key)
+    .update(`${contractId}.${payload}`)
+    .digest("base64url");
 
 /**
  * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
@@ -108,6 +136,38 @@ const cursorDataSchema = z
       }
     }
 
+    // Per-field range checks, applied after the string coercion above so
+    // coerced values are bounded too.
+    if (sortField === "ttl") {
+      const v = position.sortValue;
+      if (
+        typeof v !== "number" ||
+        !Number.isInteger(v) ||
+        v < TTL_MIN ||
+        v > TTL_MAX
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Sort field "ttl" requires an integer sortValue between ${TTL_MIN} and ${TTL_MAX}`,
+          path: ["position", "sortValue"],
+        });
+      }
+    } else if (sortField === "updated_at") {
+      const v = position.sortValue;
+      if (
+        typeof v !== "number" ||
+        !Number.isFinite(v) ||
+        v < 0 ||
+        v > UPDATED_AT_MAX
+      ) {
+        ctx.addIssue({
+          code: "custom",
+          message: `Sort field "updated_at" requires a finite sortValue between 0 and ${UPDATED_AT_MAX}`,
+          path: ["position", "sortValue"],
+        });
+      }
+    }
+
     const actualType = typeof position.sortValue;
 
     if (NUMERIC_SORT_FIELDS.has(sortField) && actualType !== "number") {
@@ -131,9 +191,17 @@ const cursorDataSchema = z
  * Creates a pagination cursor from record data
  *
  * @param cursorData - Cursor data to encode
- * @returns Base64 encoded cursor string
+ * @param contractId - Contract to bind a signed cursor to. It is folded into
+ *   the signature rather than stored in the payload, and ignored when unsigned.
+ * @param key - Signing key (defaults to Env.cursorSigningKey). When set, emits
+ *   `<payload>.<signature>` (base64url); otherwise the unsigned base64(JSON) form.
+ * @returns Encoded cursor string
  */
-export const encodeCursor = (cursorData: CursorData): string => {
+export const encodeCursor = (
+  cursorData: CursorData,
+  contractId?: string,
+  key: string | undefined = Env.cursorSigningKey,
+): string => {
   const data = {
     ...cursorData,
     cursorType:
@@ -147,22 +215,69 @@ export const encodeCursor = (cursorData: CursorData): string => {
     },
   };
 
-  return Buffer.from(JSON.stringify(data)).toString("base64");
+  const json = JSON.stringify(data);
+
+  if (!key) {
+    return Buffer.from(json).toString("base64");
+  }
+
+  const payload = Buffer.from(json).toString("base64url");
+  return `${payload}.${signCursorPayload(payload, key, contractId)}`;
 };
 
 /**
- * Decodes and validates a pagination cursor from API requests.
- * Validates both structure and type consistency (e.g. numeric sortValue
- * for ttl/updated_at, string sortValue for durability).
+ * Decodes and validates a pagination cursor: structure, type consistency
+ * (numeric sortValue for ttl/updated_at, string for durability), and numeric
+ * values within the sort column's range.
  *
- * @param cursor - Base64 encoded cursor string
+ * @param cursor - Encoded cursor string
+ * @param contractId - Contract the request is for. A signed cursor only
+ *   verifies against the contract it was issued for; ignored when unsigned.
+ * @param key - Signing key (defaults to Env.cursorSigningKey). When set, a
+ *   valid signature is required; unsigned, malformed, or tampered cursors are
+ *   rejected.
  * @returns Validated CursorData
  * @throws InvalidCursorError on any decoding or validation failure
  */
-export const decodeCursor = (cursor: string): CursorData => {
+export const decodeCursor = (
+  cursor: string,
+  contractId?: string,
+  key: string | undefined = Env.cursorSigningKey,
+): CursorData => {
+  let encoded = cursor;
+
+  if (key) {
+    // Signed cursors are exactly `<payload>.<signature>` — exactly one
+    // separator and neither part empty.
+    const dot = cursor.indexOf(".");
+    if (
+      dot <= 0 ||
+      dot !== cursor.lastIndexOf(".") ||
+      dot === cursor.length - 1
+    ) {
+      logger.warn({ cursor }, "Invalid cursor: malformed signature");
+      throw new InvalidCursorError(cursor);
+    }
+    const payload = cursor.slice(0, dot);
+    const provided = Buffer.from(cursor.slice(dot + 1), "utf8");
+    const expected = Buffer.from(
+      signCursorPayload(payload, key, contractId),
+      "utf8",
+    );
+    if (
+      provided.length !== expected.length ||
+      !timingSafeEqual(provided, expected)
+    ) {
+      logger.warn({ cursor }, "Invalid cursor: bad signature");
+      throw new InvalidCursorError(cursor);
+    }
+    // base64url payloads are accepted by Buffer.from(..., "base64").
+    encoded = payload;
+  }
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(Buffer.from(cursor, "base64").toString());
+    parsed = JSON.parse(Buffer.from(encoded, "base64").toString());
   } catch (err: unknown) {
     logger.warn({ cursor, err }, "Invalid cursor: not valid base64 JSON");
     throw new InvalidCursorError(cursor, err);

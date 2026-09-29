@@ -120,6 +120,14 @@ let server: ReturnType<typeof app.listen> | null = null;
 
 async function startServer() {
   try {
+    // Reading the key fails fast if it's set but invalid (the getter throws).
+    // Warn when it's absent so operators and metrics can see cursors are unsigned.
+    if (!Env.cursorSigningKey) {
+      logger.warn(
+        "⚠️ CURSOR_SIGNING_KEY is not set — pagination cursors are unsigned",
+      );
+    }
+
     await initializeDatabase();
 
     server = app.listen(Env.port, () => {

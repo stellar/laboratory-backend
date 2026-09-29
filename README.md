@@ -280,6 +280,7 @@ prisma/
 | `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -                                | Path to service account credentials file                                                                  |
 | `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                                          |
 | `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                                  |
+| `CURSOR_SIGNING_KEY`             | No       | -                                | HMAC-SHA256 key (min 32 bytes) for signing pagination cursors; unset issues unsigned cursors              |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 
