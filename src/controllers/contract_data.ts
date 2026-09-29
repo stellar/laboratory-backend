@@ -75,7 +75,7 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
   // cursor data
   let cursorData: CursorData | undefined = undefined;
   if (cursor) {
-    cursorData = decodeCursor(cursor as string);
+    cursorData = decodeCursor(cursor as string, contract_id);
 
     // Validate cursor parameters match request parameters
     if ((cursorData.sortField ?? SortField.KEY_HASH) !== sortField) {
@@ -106,6 +106,10 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
         cursorFilterKey,
       );
     }
+
+    // Signed cursors are bound to their contract by the signature itself
+    // (decodeCursor verifies against contract_id above), so a cursor minted
+    // for another contract fails to decode and never reaches this point.
   }
 
   return {
