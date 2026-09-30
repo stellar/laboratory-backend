@@ -181,6 +181,29 @@ describe("signed cursors", () => {
       InvalidCursorError,
     );
   });
+
+  test.each([undefined, ""])(
+    "🔴encoding_without_a_contract_id_(%j)_throws_when_a_key_is_configured",
+    contractId => {
+      expect(() =>
+        encodeCursor(sampleCursor(), contractId, SIGNING_KEY),
+      ).toThrow("contractId is required when cursor signing is enabled");
+    },
+  );
+
+  test.each([undefined, ""])(
+    "🔴decoding_without_a_contract_id_(%j)_throws_when_a_key_is_configured",
+    contractId => {
+      const cursor = encodeCursor(sampleCursor(), CONTRACT_ID, SIGNING_KEY);
+
+      const decode = () => decodeCursor(cursor, contractId, SIGNING_KEY);
+      expect(decode).toThrow(
+        "contractId is required when cursor signing is enabled",
+      );
+      // A missing binding is a server bug, not a bad client cursor.
+      expect(decode).not.toThrow(InvalidCursorError);
+    },
+  );
 });
 
 describe("unsigned cursors (no key configured)", () => {
@@ -226,6 +249,13 @@ describe("unsigned cursors (no key configured)", () => {
       sortDirection: "asc",
       position: { keyHash: "abc123", sortValue: 61482901 },
     });
+  });
+
+  test("🟢contract_id_is_optional_when_no_key_is_configured", () => {
+    const cursor = encodeCursor(sampleCursor(), undefined, undefined);
+
+    expect(cursor).not.toContain(".");
+    expect(decodeCursor(cursor, undefined, undefined)).toEqual(sampleCursor());
   });
 
   test("🟢legacy_unsigned_cursor_still_decodes", () => {

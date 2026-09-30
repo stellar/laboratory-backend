@@ -65,11 +65,23 @@ const UPDATED_AT_MAX = 8_210_266_876_799;
 const signCursorPayload = (
   payload: string,
   key: string,
-  contractId = "",
+  contractId: string,
 ): string =>
   createHmac("sha256", key)
     .update(`${contractId}.${payload}`)
     .digest("base64url");
+
+/**
+ * A signed cursor is only meaningful when bound to a contract. Calling the
+ * signing path without one is a server bug, not a client error, so it is not
+ * reported as an InvalidCursorError.
+ */
+const requireContractId = (contractId: string | undefined): string => {
+  if (!contractId) {
+    throw new Error("contractId is required when cursor signing is enabled");
+  }
+  return contractId;
+};
 
 /**
  * Cursor data object for pagination, used to encode and decode the cursor string for next/prev navigation
@@ -193,9 +205,11 @@ const cursorDataSchema = z
  * @param cursorData - Cursor data to encode
  * @param contractId - Contract to bind a signed cursor to. It is folded into
  *   the signature rather than stored in the payload, and ignored when unsigned.
+ *   Required when a signing key is in effect.
  * @param key - Signing key (defaults to Env.cursorSigningKey). When set, emits
  *   `<payload>.<signature>` (base64url); otherwise the unsigned base64(JSON) form.
  * @returns Encoded cursor string
+ * @throws Error when signing is enabled and no contractId is given
  */
 export const encodeCursor = (
   cursorData: CursorData,
@@ -222,7 +236,12 @@ export const encodeCursor = (
   }
 
   const payload = Buffer.from(json).toString("base64url");
-  return `${payload}.${signCursorPayload(payload, key, contractId)}`;
+  const signature = signCursorPayload(
+    payload,
+    key,
+    requireContractId(contractId),
+  );
+  return `${payload}.${signature}`;
 };
 
 /**
@@ -233,11 +252,13 @@ export const encodeCursor = (
  * @param cursor - Encoded cursor string
  * @param contractId - Contract the request is for. A signed cursor only
  *   verifies against the contract it was issued for; ignored when unsigned.
+ *   Required when a signing key is in effect.
  * @param key - Signing key (defaults to Env.cursorSigningKey). When set, a
  *   valid signature is required; unsigned, malformed, or tampered cursors are
  *   rejected.
  * @returns Validated CursorData
  * @throws InvalidCursorError on any decoding or validation failure
+ * @throws Error when signing is enabled and no contractId is given
  */
 export const decodeCursor = (
   cursor: string,
@@ -247,6 +268,8 @@ export const decodeCursor = (
   let encoded = cursor;
 
   if (key) {
+    const boundContractId = requireContractId(contractId);
+
     // Signed cursors are exactly `<payload>.<signature>` — exactly one
     // separator and neither part empty.
     const dot = cursor.indexOf(".");
@@ -261,7 +284,7 @@ export const decodeCursor = (
     const payload = cursor.slice(0, dot);
     const provided = Buffer.from(cursor.slice(dot + 1), "utf8");
     const expected = Buffer.from(
-      signCursorPayload(payload, key, contractId),
+      signCursorPayload(payload, key, boundContractId),
       "utf8",
     );
     if (
