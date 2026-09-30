@@ -75,7 +75,13 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
   // cursor data
   let cursorData: CursorData | undefined = undefined;
   if (cursor) {
-    cursorData = decodeCursor(cursor as string, contract_id);
+    // req.query values can arrive as arrays or objects (e.g. ?cursor=a&cursor=b);
+    // a cursor is always a single opaque string, so reject anything else before
+    // decoding it.
+    if (typeof cursor !== "string") {
+      throw new Error(`Invalid cursor=${cursor}, must be a single value`);
+    }
+    cursorData = decodeCursor(cursor, contract_id);
 
     // Validate cursor parameters match request parameters
     if ((cursorData.sortField ?? SortField.KEY_HASH) !== sortField) {

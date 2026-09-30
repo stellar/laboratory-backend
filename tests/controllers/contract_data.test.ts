@@ -450,6 +450,22 @@ describe("GET /api/contract/:contract_id/storage", () => {
       });
     });
 
+    test("🔴array_cursor_returns_400", async () => {
+      // Express parses ?cursor=a&cursor=b into an array; a cursor must be a
+      // single string, so it is rejected before any decoding.
+      mockRequest.query = { cursor: ["a", "b"] };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: "Invalid cursor=a,b, must be a single value",
+      });
+    });
+
     test("🔴cursor_valid_base64_but_wrong_shape_returns_400", async () => {
       // "e30=" decodes to "{}", which is valid JSON but not a CursorData object
       mockRequest.query = { cursor: "e30=" };
