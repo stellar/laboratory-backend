@@ -939,6 +939,8 @@ describe("GET /api/contract/:contract_id/storage", () => {
     test.each([
       1e19,
       1e300,
+      -1e19,
+      9e18,
       -1,
       2147483648,
       1000.5,

@@ -327,7 +327,7 @@ describe("sortValue range validation", () => {
       position: { keyHash: "abc", sortValue },
     });
 
-  test.each([1e19, 1e300, -1, 2147483648, 1000.5])(
+  test.each([1e19, 1e300, -1e19, 9e18, -1, 2147483648, 1000.5])(
     "🔴ttl_sortValue_%s_outside_the_int4_domain_is_rejected",
     sortValue => {
       const cursor = ttlCursor(sortValue);
