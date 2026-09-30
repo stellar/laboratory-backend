@@ -138,14 +138,15 @@ const cursorDataSchema = z
 
     // encodeCursor converts bigint → string (JSON has no bigint type).
     // Coerce stringified numbers back to numbers for numeric sort fields.
+    // Only plain digit strings are coerced; Number() would otherwise turn
+    // "", "  ", "0x10" or "1e3" into numbers. Anything else stays a string
+    // and fails the numeric type check below.
     if (
       NUMERIC_SORT_FIELDS.has(sortField) &&
-      typeof position.sortValue === "string"
+      typeof position.sortValue === "string" &&
+      /^\d+$/.test(position.sortValue)
     ) {
-      const parsed = Number(position.sortValue);
-      if (!Number.isNaN(parsed) && Number.isFinite(parsed)) {
-        position.sortValue = parsed;
-      }
+      position.sortValue = Number(position.sortValue);
     }
 
     // Per-field range checks, applied after the string coercion above so

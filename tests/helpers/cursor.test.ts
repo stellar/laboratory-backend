@@ -350,6 +350,30 @@ describe("sortValue range validation", () => {
     },
   );
 
+  test.each(["", "  ", "0x10", "1e3", "-0", " 42"])(
+    "🔴ttl_non_decimal_string_sortValue_%j_is_rejected_instead_of_coerced",
+    sortValue => {
+      const cursor = ttlCursor(sortValue);
+      expect(() => decodeCursor(cursor, undefined, undefined)).toThrow(
+        InvalidCursorError,
+      );
+    },
+  );
+
+  test.each(["", "  ", "0x10"])(
+    "🔴updated_at_non_decimal_string_sortValue_%j_is_rejected_instead_of_coerced",
+    sortValue => {
+      const cursor = unsignedCursor({
+        cursorType: "next",
+        sortField: "updated_at",
+        position: { keyHash: "abc", sortValue },
+      });
+      expect(() => decodeCursor(cursor, undefined, undefined)).toThrow(
+        InvalidCursorError,
+      );
+    },
+  );
+
   test.each([0, 2147483647, 61482901])(
     "🟢ttl_sortValue_%s_within_the_int4_domain_is_accepted",
     sortValue => {
