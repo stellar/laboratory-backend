@@ -123,6 +123,76 @@ function previousContractDataQuery(args: {
   `;
 }
 
+/**
+ * The previous form of the NULL-boundary cursor query, reproduced verbatim
+ * (DESC as a single `(IS NULL AND key_hash < ?) OR IS NOT NULL` predicate)
+ * so the restructured query can be checked row-for-row against it.
+ */
+function previousNullBoundaryQuery(args: {
+  contractId: string;
+  latestLedgerSequence: number;
+  limit: number;
+  sortDbField: SortDbField;
+  sortDirection: SortDirection;
+  sortField: SortField;
+  cursorKeyHash: string;
+  cursorType: "next" | "prev";
+  filterKey?: string;
+}): Prisma.Sql {
+  const {
+    contractId,
+    latestLedgerSequence,
+    limit,
+    sortDbField,
+    sortDirection,
+    sortField,
+    cursorKeyHash,
+    cursorType,
+    filterKey,
+  } = args;
+
+  const directionInCTE =
+    cursorType === "next"
+      ? sortDirection
+      : sortDirection === SortDirection.ASC
+        ? SortDirection.DESC
+        : SortDirection.ASC;
+  const keyOp = directionInCTE === SortDirection.DESC ? "<" : ">";
+  const nulls =
+    directionInCTE === SortDirection.ASC ? "NULLS LAST" : "NULLS FIRST";
+  const orderByInCTE = `ORDER BY cd.${sortDbField} ${directionInCTE} ${nulls}, cd.key_hash ${directionInCTE}`;
+  const finalNulls =
+    sortDirection === SortDirection.ASC ? "NULLS LAST" : "NULLS FIRST";
+  const orderByFinal = `ORDER BY ${sortDbField} ${sortDirection} ${finalNulls}, key_hash ${sortDirection}`;
+  const sortCol = `cd.${sortDbField}`;
+  void sortField;
+
+  const cursorCondition =
+    directionInCTE === SortDirection.ASC
+      ? Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}`
+      : Prisma.sql`(${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}) OR ${Prisma.raw(sortCol)} IS NOT NULL`;
+
+  const filter = filterKey
+    ? Prisma.sql`AND cd.key_symbol = ${filterKey}`
+    : Prisma.empty;
+
+  return Prisma.sql`
+    WITH paginated_result AS (
+      SELECT ${Prisma.raw(SELECT_COLUMNS)}
+      FROM contract_data cd
+      WHERE cd.contract_id = ${contractId}
+      ${filter}
+        AND (${cursorCondition})
+      ${Prisma.raw(orderByInCTE)}
+      LIMIT ${limit}
+    )
+    SELECT pr.*,
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
+    FROM paginated_result pr
+    ${Prisma.raw(orderByFinal)}
+  `;
+}
+
 /** Order-sensitive row fingerprint for parity assertions. */
 const fingerprint = (rows: any[]) =>
   rows.map(r => ({
@@ -446,6 +516,123 @@ describe("buildContractDataQuery", () => {
               ]
             : [],
         );
+      }
+    });
+  });
+  describe("NULL-boundary restructure", () => {
+    // The NULL-ttl seed row (ff66...) is the only NULL boundary in the seed
+    // data, so ttl is the sort field under test.
+    const NULL_TTL_KEY_HASH =
+      "ff66666666666666666666666666666666666666666666666666666666666666";
+
+    const nullCursor = (
+      sortDirection: SortDirection,
+      cursorType: "next" | "prev",
+      filterKey?: string,
+    ): CursorData => ({
+      cursorType,
+      sortField: SortField.TTL,
+      sortDirection,
+      filterKey,
+      position: { keyHash: NULL_TTL_KEY_HASH },
+    });
+
+    test("🟢pages_from_a_null_boundary_match_the_previous_form_row_for_row", async () => {
+      let comparisons = 0;
+
+      for (const sortDirection of [SortDirection.ASC, SortDirection.DESC]) {
+        for (const cursorType of ["next", "prev"] as const) {
+          for (const limit of [1, 3, 20]) {
+            const current = buildContractDataQuery(
+              configFor({
+                limit,
+                sortDirection,
+                cursorData: nullCursor(sortDirection, cursorType),
+              }),
+            );
+            const previous = previousNullBoundaryQuery({
+              contractId: CONTRACT_ID,
+              latestLedgerSequence: LATEST_LEDGER,
+              limit,
+              sortDbField: "live_until_ledger_sequence",
+              sortDirection,
+              sortField: SortField.TTL,
+              cursorKeyHash: NULL_TTL_KEY_HASH,
+              cursorType,
+            });
+
+            const [currentRows, previousRows] = await Promise.all([
+              prisma.$queryRaw<any[]>(current),
+              prisma.$queryRaw<any[]>(previous),
+            ]);
+
+            expect(fingerprint(currentRows)).toEqual(fingerprint(previousRows));
+            comparisons++;
+          }
+        }
+      }
+
+      expect(comparisons).toBe(2 * 2 * 3);
+    });
+
+    test("🟢desc_next_from_the_null_boundary_returns_the_non_null_rows_in_order", async () => {
+      // DESC puts NULLs first, so "next" from the only NULL row is every
+      // non-NULL row, ordered by ttl DESC then key_hash DESC.
+      const rows = await prisma.$queryRaw<any[]>(
+        buildContractDataQuery(
+          configFor({
+            limit: 20,
+            sortDirection: SortDirection.DESC,
+            cursorData: nullCursor(SortDirection.DESC, "next"),
+          }),
+        ),
+      );
+
+      expect(rows).toHaveLength(10);
+      expect(rows.every(r => r.live_until_ledger_sequence !== null)).toBe(true);
+      const order = rows.map(r => [r.live_until_ledger_sequence, r.key_hash]);
+      const sorted = [...order].sort(([ttlA, khA], [ttlB, khB]) =>
+        ttlA !== ttlB ? ttlB - ttlA : khB.localeCompare(khA),
+      );
+      expect(order).toEqual(sorted);
+    });
+
+    test("🟢filter_key_inside_the_restructured_null_query_matches_the_previous_form", async () => {
+      for (const sortDirection of [SortDirection.ASC, SortDirection.DESC]) {
+        for (const cursorType of ["next", "prev"] as const) {
+          const current = buildContractDataQuery(
+            configFor({
+              limit: 20,
+              sortDirection,
+              filterKey: "SharedEntry",
+              cursorData: nullCursor(sortDirection, cursorType, "SharedEntry"),
+            }),
+          );
+          const previous = previousNullBoundaryQuery({
+            contractId: CONTRACT_ID,
+            latestLedgerSequence: LATEST_LEDGER,
+            limit: 20,
+            sortDbField: "live_until_ledger_sequence",
+            sortDirection,
+            sortField: SortField.TTL,
+            cursorKeyHash: NULL_TTL_KEY_HASH,
+            cursorType,
+            filterKey: "SharedEntry",
+          });
+
+          const [currentRows, previousRows] = await Promise.all([
+            prisma.$queryRaw<any[]>(current),
+            prisma.$queryRaw<any[]>(previous),
+          ]);
+
+          expect(fingerprint(currentRows)).toEqual(fingerprint(previousRows));
+          // The three SharedEntry rows all have a ttl, so they follow the NULL
+          // region in DESC order and precede it in ASC order.
+          const expectFull =
+            (sortDirection === SortDirection.DESC && cursorType === "next") ||
+            (sortDirection === SortDirection.ASC && cursorType === "prev");
+          expect(currentRows).toHaveLength(expectFull ? 3 : 0);
+        }
       }
     });
   });
