@@ -10,6 +10,7 @@ import { setupCustomMatchers } from "./setup-matchers";
 // Global type declaration
 declare global {
   var testPrismaClient: PrismaClient;
+  var testDatabaseUrl: string;
 }
 
 let testContainer: StartedPostgreSqlContainer;
@@ -33,6 +34,7 @@ beforeAll(async () => {
     .start();
   const testDbUrl = testContainer.getConnectionUri();
   console.log("Test database URL:", testDbUrl);
+  global.testDatabaseUrl = testDbUrl;
 
   console.log("Updating database from Prisma schema...");
   // --skip-generate: the client is already generated; without it, parallel

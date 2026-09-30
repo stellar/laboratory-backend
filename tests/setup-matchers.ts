@@ -178,9 +178,15 @@ export function setupCustomMatchers() {
         };
       }
 
-      // Basic cursor validation (should be base64 encoded)
+      // Basic cursor validation. Cursors are either unsigned base64 JSON or,
+      // when cursor signing is enabled, `<payload>.<signature>` where the
+      // payload is base64url JSON. (base64/base64url never contain ".", so
+      // the first segment is always the payload.)
       try {
-        const decoded = Buffer.from(cursor, "base64").toString("utf-8");
+        const payload = cursor.includes(".")
+          ? cursor.slice(0, cursor.indexOf("."))
+          : cursor;
+        const decoded = Buffer.from(payload, "base64").toString("utf-8");
         const parsed = JSON.parse(decoded);
 
         if (!parsed.position || !parsed.position.keyHash) {

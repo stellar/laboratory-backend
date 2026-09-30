@@ -124,31 +124,47 @@ function queryWithCursorSortField(
   const op: ">" | "<" = directionInCTE === SortDirection.DESC ? "<" : ">";
   const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
   const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
+  // ORDER BY for the UNION result (ASC only); union columns have no alias prefix.
+  const orderByUnion = orderBy(directionInCTE, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
 
-  // Convert Unix timestamp back to timestamptz for closed_at comparisons
+  // Cast bound values to match column types (closed_at via to_timestamp,
+  // live_until_ledger_sequence as int4) so comparisons stay index-safe.
   const sqlVal =
     sortDbField === "closed_at" && typeof cursorSortValue === "number"
       ? Prisma.sql`to_timestamp(${cursorSortValue})`
-      : Prisma.sql`${cursorSortValue}`;
+      : sortDbField === "live_until_ledger_sequence"
+        ? Prisma.sql`${cursorSortValue}::int`
+        : Prisma.sql`${cursorSortValue}`;
 
   const rowComparison = Prisma.sql`(${Prisma.raw(sortCol)}, cd.key_hash) ${Prisma.raw(op)} (${sqlVal}, ${cursorKeyHash})`;
 
-  // Row-value comparison returns NULL for NULL sort columns; include them explicitly for ASC (NULLS LAST)
-  const cursorCondition =
+  // Build a CTE SELECT branch.
+  const cteBranch = (predicate: Prisma.Sql): Prisma.Sql => Prisma.sql`
+    SELECT ${Prisma.raw(SELECT_COLUMNS)}
+    FROM contract_data cd
+    WHERE cd.contract_id = ${contractId}
+    ${filterClause(filterKey)}
+      AND ${predicate}
+    ${Prisma.raw(orderByInCTE)}
+    LIMIT ${limit}`;
+
+  // ASC (NULLS LAST) needs the NULL region too. Split it into two indexable
+  // branches — non-NULL rows and the NULL region — each pre-limited; the outer
+  // ORDER BY/LIMIT then keeps the first `limit` rows of the union.
+  const cteBody =
     directionInCTE === SortDirection.ASC
-      ? Prisma.sql`(${rowComparison} OR ${Prisma.raw(sortCol)} IS NULL)`
-      : rowComparison;
+      ? Prisma.sql`
+      (${cteBranch(rowComparison)})
+      UNION ALL
+      (${cteBranch(Prisma.sql`${Prisma.raw(sortCol)} IS NULL`)})
+      ${Prisma.raw(orderByUnion)}
+      LIMIT ${limit}`
+      : cteBranch(rowComparison);
 
   return Prisma.sql`
     WITH paginated_result AS (
-      SELECT ${Prisma.raw(SELECT_COLUMNS)}
-      FROM contract_data cd
-      WHERE cd.contract_id = ${contractId}
-      ${filterClause(filterKey)}
-        AND ${cursorCondition}
-      ${Prisma.raw(orderByInCTE)}
-      LIMIT ${limit}
+      ${cteBody}
     )
     SELECT pr.*,
       COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
@@ -222,22 +238,39 @@ function queryWithCursorNullSortField(
   const keyOp = directionInCTE === SortDirection.DESC ? "<" : ">";
   const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
   const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
+  const orderByUnion = orderBy(directionInCTE, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
 
-  const cursorCondition =
+  // Rows after the boundary inside the NULL region: same NULL sort value,
+  // ordered by key_hash alone.
+  const nullRegion = Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}`;
+
+  const cteBranch = (predicate: Prisma.Sql): Prisma.Sql => Prisma.sql`
+    SELECT ${Prisma.raw(SELECT_COLUMNS)}
+    FROM contract_data cd
+    WHERE cd.contract_id = ${contractId}
+    ${filterClause(filterKey)}
+      AND ${predicate}
+    ${Prisma.raw(orderByInCTE)}
+    LIMIT ${limit}`;
+
+  // ASC (NULLS LAST): nothing follows the NULL region, so one branch suffices.
+  // DESC (NULLS FIRST): every non-NULL row follows it. Keep the two regions as
+  // separate indexable branches, each pre-limited, instead of one OR predicate
+  // that would be applied as a per-row filter.
+  const cteBody =
     directionInCTE === SortDirection.ASC
-      ? Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}`
-      : Prisma.sql`(${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}) OR ${Prisma.raw(sortCol)} IS NOT NULL`;
+      ? cteBranch(nullRegion)
+      : Prisma.sql`
+      (${cteBranch(nullRegion)})
+      UNION ALL
+      (${cteBranch(Prisma.sql`${Prisma.raw(sortCol)} IS NOT NULL`)})
+      ${Prisma.raw(orderByUnion)}
+      LIMIT ${limit}`;
 
   return Prisma.sql`
     WITH paginated_result AS (
-      SELECT ${Prisma.raw(SELECT_COLUMNS)}
-      FROM contract_data cd
-      WHERE cd.contract_id = ${contractId}
-      ${filterClause(filterKey)}
-        AND (${cursorCondition})
-      ${Prisma.raw(orderByInCTE)}
-      LIMIT ${limit}
+      ${cteBody}
     )
     SELECT pr.*,
       COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
