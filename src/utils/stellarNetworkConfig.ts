@@ -49,23 +49,28 @@ export const NETWORK_NAMES = Object.keys(
 export type StellarNetworkConfig = {
   /**
    * Required — the network the caller has selected (in the Laboratory UI, the
-   * Testnet/Mainnet toggle). Checked against the network `rpcUrl` actually
-   * serves so a mismatched pair is rejected rather than silently answered with
-   * the other network's limits.
-   *
-   * This comes from the request, deliberately not from the deployment's
-   * `NETWORK_PASSPHRASE`: the caller's selected network is the one that matters,
-   * and depending on deployment env made the endpoint's behavior vary with how
-   * each instance happened to be configured.
+   * Testnet/Mainnet toggle). Each deployment serves exactly one network, so
+   * this is checked against the deployment's own `NETWORK_PASSPHRASE` first,
+   * then against the network `rpcUrl` actually serves — a mismatched pair is
+   * rejected rather than silently answered with the other network's limits.
    */
   network: NetworkName;
   /**
-   * Required — the caller names the RPC explicitly. There is deliberately no
-   * default: a fallback let the server answer with some other network's limits
+   * The RPC endpoint to read the limits from. Optional for testnet only,
+   * which falls back to DEFAULT_TESTNET_RPC_URL when it is missing or not on
+   * the testnet allowlist. Mainnet requires it explicitly: a
+   * fallback there let the server answer with some other network's limits
    * and a 200, which no caller can distinguish from a correct response.
    */
-  rpcUrl: string;
+  rpcUrl?: string;
 };
+
+/**
+ * The RPC URL a testnet request falls back to when `rpc_url` is missing or
+ * names no allowlisted testnet host. Also the first testnet entry in
+ * PUBLIC_RPC_URLS below — the fallback must itself be allowlisted.
+ */
+export const DEFAULT_TESTNET_RPC_URL = "https://soroban-testnet.stellar.org";
 
 /**
  * Vetted, publicly accessible Stellar RPC URLs, keyed by network passphrase.
@@ -88,7 +93,7 @@ export const PUBLIC_RPC_URLS: Record<NetworkPassphrase, string[]> = {
     "https://rpc.ankr.com/stellar_soroban", // Ankr (Archive)
   ],
   [Networks.TESTNET]: [
-    "https://soroban-testnet.stellar.org", // SDF
+    DEFAULT_TESTNET_RPC_URL, // SDF
     "https://soroban-rpc.testnet.stellar.gateway.fm", // Gateway
   ],
   [Networks.FUTURENET]: [
@@ -173,7 +178,12 @@ type NetworkLimitsCacheEntry = {
 const networkLimitsCache = new Map<string, NetworkLimitsCacheEntry>();
 
 export class StellarNetworkConfigService {
-  private readonly rpcUrl: string;
+  /**
+   * The RPC URL the limits are read from — after testnet fallback resolution,
+   * so it is always the URL actually used. Echoed in the response so the
+   * caller can see which endpoint answered.
+   */
+  readonly rpcUrl: string;
 
   /**
    * The passphrase of the network that answered — always the one the caller
@@ -197,15 +207,92 @@ export class StellarNetworkConfigService {
       );
     }
 
-    if (!rpcUrl) {
-      throw new HttpError("rpc_url is required", 400);
+    // Strict path check, before anything rpc_url-related: each deployment
+    // serves exactly one network and must refuse requests that name another.
+    this.checkDeploymentServesNetwork(network, expected);
+
+    if (network === "testnet") {
+      this.rpcUrl = this.resolveTestnetRpcUrl(rpcUrl);
+    } else {
+      // Mainnet have no fallback — the caller names the RPC.
+      if (!rpcUrl) {
+        throw new HttpError("rpc_url is required", 400);
+      }
+      // Normalize (enforces https + strips trailing slash) before the
+      // allowlist check so the stored value is canonical and shared as the
+      // cache key.
+      this.rpcUrl = normalizeHttpsUrl(rpcUrl);
+      this.checkRpcUrlServesNetwork(network, expected);
     }
 
-    // Normalize (enforces https + strips trailing slash) before the allowlist
-    // check so the stored value is canonical and shared as the cache key.
-    this.rpcUrl = normalizeHttpsUrl(rpcUrl);
-    this.checkRpcUrlServesNetwork(network, expected);
     this.networkPassphrase = expected;
+  }
+
+  /**
+   * The deployment serves exactly one network, named by its own
+   * NETWORK_PASSPHRASE env var (a testnet deployment and a mainnet deployment
+   * are separate instances behind different path prefixes). A request naming
+   * any other network reached the wrong instance and is a caller mistake
+   * worth surfacing — never silently answered.
+   */
+  private checkDeploymentServesNetwork(
+    network: NetworkName,
+    expected: NetworkPassphrase,
+  ): void {
+    const deploymentPassphrase = process.env.NETWORK_PASSPHRASE;
+    if (!deploymentPassphrase) {
+      throw new HttpError(
+        "NETWORK_PASSPHRASE is not set; this deployment is misconfigured",
+        500,
+      );
+    }
+
+    if (deploymentPassphrase !== expected) {
+      const serving =
+        NETWORK_NAME_BY_PASSPHRASE[deploymentPassphrase as NetworkPassphrase];
+      throw new HttpError(
+        `This deployment serves ${serving ?? `an unrecognized network ("${deploymentPassphrase}")`}, ` +
+          `but network=${network} was requested.`,
+        400,
+      );
+    }
+  }
+
+  /**
+   * Testnet is lenient about rpc_url: a missing value, a non-https URL, or an
+   * https URL on no allowlist all resolve to DEFAULT_TESTNET_RPC_URL. The one
+   * thing still rejected is a URL allowlisted for *another* network — pasting
+   * a mainnet RPC while on testnet is a caller mistake worth surfacing
+   */
+  private resolveTestnetRpcUrl(rpcUrl: string | undefined): string {
+    if (!rpcUrl) {
+      return DEFAULT_TESTNET_RPC_URL;
+    }
+
+    let normalized: string;
+    try {
+      normalized = normalizeHttpsUrl(rpcUrl);
+    } catch {
+      // Not a valid https URL (e.g. http://) — it cannot be on any allowlist,
+      // so fall back rather than reject.
+      return DEFAULT_TESTNET_RPC_URL;
+    }
+
+    const actual = NETWORK_BY_RPC_URL.get(normalized);
+    if (actual === undefined) {
+      return DEFAULT_TESTNET_RPC_URL;
+    }
+
+    if (actual !== Networks.TESTNET) {
+      throw new HttpError(
+        `RPC URL "${normalized}" serves ${NETWORK_NAME_BY_PASSPHRASE[actual]}, ` +
+          `but network=testnet was requested. ` +
+          `Allowed testnet URLs: ${VETTED_RPC_URLS[Networks.TESTNET].join(", ")}`,
+        400,
+      );
+    }
+
+    return normalized;
   }
 
   /**
@@ -358,6 +445,9 @@ export class StellarNetworkConfigService {
     const dataKeySizeBytes = mustGet(
       "configSettingContractDataKeySizeBytes",
     ).contractDataKeySizeBytes();
+    const dataEntrySizeBytes = mustGet(
+      "configSettingContractDataEntrySizeBytes",
+    ).contractDataEntrySizeBytes();
     const liveStateSizeWindow = mustGet(
       "configSettingLiveSorobanStateSizeWindow",
     ).liveSorobanStateSizeWindow();
@@ -371,8 +461,10 @@ export class StellarNetworkConfigService {
       tx_max_write_ledger_entries: ledgerCost.txMaxWriteLedgerEntries(),
       tx_max_disk_read_bytes: ledgerCost.txMaxDiskReadBytes(),
       tx_max_write_bytes: ledgerCost.txMaxWriteBytes(),
+      tx_max_size_bytes: bandwidth.txMaxSizeBytes(),
       tx_max_contract_events_size_bytes: events.txMaxContractEventsSizeBytes(),
       contract_data_key_size_bytes: dataKeySizeBytes,
+      contract_data_entry_size_bytes: dataEntrySizeBytes,
       contract_max_size_bytes: maxSizeBytes,
 
       // Ledger-wide limits

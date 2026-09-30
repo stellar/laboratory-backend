@@ -72,13 +72,13 @@ const expectedLimits = JSON.parse(
 
 const PUBNET_PASSPHRASE = "Public Global Stellar Network ; September 2015";
 const TESTNET_PASSPHRASE = "Test SDF Network ; September 2015";
-const FUTURENET_PASSPHRASE = "Test SDF Future Network ; October 2022";
 
-// The fixture was captured from a pubnet provider, so a successful response for
-// a pubnet `rpc_url` is the limits plus the resolved network.
+const MAINNET_RPC_URL = "https://mainnet.sorobanrpc.com";
+const TESTNET_DEFAULT_RPC_URL = "https://soroban-testnet.stellar.org";
 const expectedBody = {
   ...expectedLimits,
   network_passphrase: PUBNET_PASSPHRASE,
+  rpc_url: MAINNET_RPC_URL,
 };
 
 /**
@@ -111,10 +111,10 @@ describe("GET /api/network_limits", () => {
   const originalPassphrase = process.env.NETWORK_PASSPHRASE;
 
   beforeEach(async () => {
-    // Deliberately set to the "wrong" network for the pubnet providers these
-    // tests exercise: the endpoint resolves the network from the allowlisted
-    // `rpc_url`, so NETWORK_PASSPHRASE must not affect any assertion below.
-    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+    // The endpoint now checks the requested network against the deployment's
+    // own NETWORK_PASSPHRASE. Most tests exercise the pubnet providers, so the
+    // default deployment is mainnet; tests for other networks override this.
+    process.env.NETWORK_PASSPHRASE = PUBNET_PASSPHRASE;
 
     // Default: RPC succeeds with the captured fixture. Read mockResponse
     // lazily — it is populated when the mock factory first loads the fixture,
@@ -165,6 +165,8 @@ describe("GET /api/network_limits", () => {
     expect(typeof body.ledger_max_instructions).toBe("string");
     expect(typeof body.fee_rate_per_instructions_increment).toBe("string");
     expect(typeof body.contract_max_size_bytes).toBe("number");
+    expect(typeof body.contract_data_entry_size_bytes).toBe("number");
+    expect(typeof body.tx_max_size_bytes).toBe("number");
     expect(typeof body.fee_disk_read_ledger_entry).toBe("string");
     expect(typeof body.fee_disk_read_1kb).toBe("string");
     expect(Array.isArray(body.live_soroban_state_size_window)).toBe(true);
@@ -309,17 +311,24 @@ describe("GET /api/network_limits", () => {
   });
 
   test("🟢matching_testnet_pair_returns_200_with_the_testnet_passphrase", async () => {
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
     const res = await get(
       `?network=testnet&rpc_url=${encodeURIComponent("https://soroban-testnet.stellar.org")}`,
     );
 
     expect(res.status).toBe(200);
-    expect((await res.json()).network_passphrase).toBe(TESTNET_PASSPHRASE);
+    const body = await res.json();
+    expect(body.network_passphrase).toBe(TESTNET_PASSPHRASE);
+    expect(body.rpc_url).toBe("https://soroban-testnet.stellar.org");
   });
 
   test("🔴mainnet_rpc_url_while_on_testnet_returns_400", async () => {
     // The mistake the UI makes possible: Testnet is selected in the toggle but
-    // a Mainnet RPC URL is pasted into the dialog.
+    // a Mainnet RPC URL is pasted into the dialog. The deployment must be a
+    // testnet one, or the strict deployment check rejects the request first.
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
     const res = await get(
       `?network=testnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
@@ -342,13 +351,16 @@ describe("GET /api/network_limits", () => {
     );
   });
 
-  test("🟢matching_futurenet_pair_returns_200_with_the_futurenet_passphrase", async () => {
+  // There is no futurenet deployment, so futurenet requests are always rejected.
+  test("🔴futurenet_request_on_mainnet_deployment_returns_400", async () => {
     const res = await get(
       `?network=futurenet&rpc_url=${encodeURIComponent("https://rpc-futurenet.stellar.org")}`,
     );
 
-    expect(res.status).toBe(200);
-    expect((await res.json()).network_passphrase).toBe(FUTURENET_PASSPHRASE);
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe(
+      "This deployment serves mainnet, but network=futurenet was requested.",
+    );
   });
 
   test("🔴futurenet_rpc_url_while_on_mainnet_returns_400", async () => {
@@ -362,32 +374,77 @@ describe("GET /api/network_limits", () => {
     );
   });
 
-  test("🔴mainnet_rpc_url_while_on_futurenet_returns_400", async () => {
-    const res = await get(
-      `?network=futurenet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
-    );
-
-    expect(res.status).toBe(400);
-    const { error } = await res.json();
-    expect(error).toMatch(
-      /serves mainnet, but network=futurenet was requested/,
-    );
-    // The message names a URL the caller can actually use instead.
-    expect(error).toContain("https://rpc-futurenet.stellar.org");
-  });
-
-  test("🟢unset_network_passphrase_still_serves_the_requested_network", async () => {
-    // The regression this guards: a deployment whose NETWORK_PASSPHRASE is
-    // unset or wrong used to reject pubnet URLs with a 400 that blamed the
-    // caller for an operator's misconfiguration.
+  test("🔴unset_network_passphrase_returns_500_misconfiguration", async () => {
+    // The env var is read with no default: a deployment that doesn't set it
+    // fails loudly (logged as a misconfiguration) instead of quietly acting
+    // as whichever network a fallback would have picked.
     delete process.env.NETWORK_PASSPHRASE;
 
     const res = await get(
       `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toMatch(/NETWORK_PASSPHRASE is not set/);
+  });
+
+  test("🔴request_for_another_network_than_the_deployment_returns_400", async () => {
+    // The deployment is mainnet (beforeEach default); a request naming
+    // testnet reached the wrong instance and is rejected before any
+    // rpc_url handling — no fallback.
+    const res = await get(
+      `?network=testnet&rpc_url=${encodeURIComponent("https://soroban-testnet.stellar.org")}`,
+    );
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe(
+      "This deployment serves mainnet, but network=testnet was requested.",
+    );
+  });
+
+  test("🔴deployment_check_runs_before_the_testnet_fallback", async () => {
+    // A mainnet deployment must not serve the testnet fallback: the strict
+    // check fires first even though rpc_url is absent.
+    const res = await get(`?network=testnet`);
+
+    expect(res.status).toBe(400);
+    expect((await res.json()).error).toBe(
+      "This deployment serves mainnet, but network=testnet was requested.",
+    );
+  });
+
+  test("🟢testnet_without_rpc_url_falls_back_to_the_sdf_rpc", async () => {
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
+    const res = await get(`?network=testnet`);
+
     expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual(expectedBody);
+    const body = await res.json();
+    expect(body.network_passphrase).toBe(TESTNET_PASSPHRASE);
+    expect(body.rpc_url).toBe(TESTNET_DEFAULT_RPC_URL);
+  });
+
+  test("🟢testnet_with_an_http_rpc_url_falls_back_to_the_sdf_rpc", async () => {
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
+    const res = await get(
+      `?network=testnet&rpc_url=${encodeURIComponent("http://soroban-testnet.stellar.org")}`,
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).rpc_url).toBe(TESTNET_DEFAULT_RPC_URL);
+  });
+
+  test("🟢testnet_with_a_non_allowlisted_https_url_falls_back_to_the_sdf_rpc", async () => {
+    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
+
+    const res = await get(
+      `?network=testnet&rpc_url=${encodeURIComponent("https://evil.example.com")}`,
+    );
+
+    expect(res.status).toBe(200);
+    expect((await res.json()).rpc_url).toBe(TESTNET_DEFAULT_RPC_URL);
   });
 
   test("🔴non_https_rpc_url_returns_400", async () => {

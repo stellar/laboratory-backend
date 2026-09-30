@@ -19,6 +19,7 @@ export const getNetworkLimits = async (
     return res.status(200).json({
       ...limits,
       network_passphrase: service.networkPassphrase,
+      rpc_url: service.rpcUrl,
     });
   } catch (error) {
     if (error instanceof HttpError) {
