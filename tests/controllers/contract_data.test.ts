@@ -1306,6 +1306,36 @@ describe("GET /api/contract/:contract_id/storage", () => {
       );
     });
 
+    test.each(["durability", "ttl"])(
+      "🔴filter_key_with_sort_by_%s_returns_400",
+      async sortBy => {
+        mockRequest.query = { filter_key: "SharedEntry", sort_by: sortBy };
+
+        await getContractDataByContractId(
+          mockRequest as Request,
+          mockResponse as Response,
+        );
+
+        expect(mockResponse.status).toHaveBeenCalledWith(400);
+        expect(mockResponse.json).toHaveBeenCalledWith({
+          error: `Invalid sort_by parameter ${sortBy} with filter_key, must be one of key_hash, updated_at`,
+        });
+      },
+    );
+
+    test("🟢filter_key_with_sort_by_updated_at_returns_matching_rows", async () => {
+      mockRequest.query = { filter_key: "SharedEntry", sort_by: "updated_at" };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const responseData = (mockResponse.json as Mock).mock.calls[0][0];
+      expect(responseData.results).toHaveLength(3);
+    });
+
     test("🟡non_matching_filter_key_returns_empty_results", async () => {
       mockRequest.query = { filter_key: "NonExistent" };
 

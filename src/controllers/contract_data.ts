@@ -72,6 +72,17 @@ const parseRequestParams = (req: Request, res: Response): RequestParams => {
   }
   const sortField = sort_by ? (sort_by as SortField) : SortField.KEY_HASH;
 
+  // Filtered queries are only indexed for these sorts; others would scan
+  // every row matching the key.
+  const filteredSortFields = [SortField.KEY_HASH, SortField.UPDATED_AT];
+  if (filter_key && !filteredSortFields.includes(sortField)) {
+    throw new Error(
+      `Invalid sort_by parameter ${sortField} with filter_key, must be one of ${filteredSortFields.join(
+        ", ",
+      )}`,
+    );
+  }
+
   // cursor data
   let cursorData: CursorData | undefined = undefined;
   if (cursor) {
