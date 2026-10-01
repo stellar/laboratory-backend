@@ -636,4 +636,126 @@ describe("buildContractDataQuery", () => {
       }
     });
   });
+
+  describe("filtered updated_at narrow page", () => {
+    const FILTER_KEY = "SharedEntry";
+
+    // fingerprint plus the wide columns the narrow page joins back.
+    const fullRows = (rows: any[]) =>
+      fingerprint(rows).map((f, i) => ({
+        ...f,
+        key: rows[i].key,
+        val: rows[i].val,
+      }));
+
+    test("🟢pages_on_key_hash_and_closed_at_then_joins_the_full_rows", () => {
+      const query = buildContractDataQuery(
+        configFor({
+          filterKey: FILTER_KEY,
+          sortField: SortField.UPDATED_AT,
+          sortDbField: "closed_at",
+        }),
+      );
+
+      expect(query.sql).toContain("SELECT cd.key_hash, cd.closed_at");
+      expect(query.sql).toContain(
+        "JOIN contract_data cd ON cd.key_hash = pr.key_hash",
+      );
+    });
+
+    test("🟢unfiltered_updated_at_keeps_the_single_select", () => {
+      const query = buildContractDataQuery(
+        configFor({
+          sortField: SortField.UPDATED_AT,
+          sortDbField: "closed_at",
+        }),
+      );
+
+      expect(query.sql).not.toContain("JOIN");
+      expect(query.sql).not.toContain("WITH paginated_result");
+    });
+
+    test("🟢pages_match_the_wide_form_row_for_row", async () => {
+      const boundaries = await prisma.$queryRaw<
+        { key_hash: string; closed_at: Date }[]
+      >`
+        SELECT key_hash, closed_at
+        FROM contract_data
+        WHERE contract_id = ${CONTRACT_ID} AND key_symbol = ${FILTER_KEY}
+      `;
+      expect(boundaries).toHaveLength(3);
+      let comparisons = 0;
+
+      for (const sortDirection of [SortDirection.ASC, SortDirection.DESC]) {
+        for (const limit of [1, 3, 20]) {
+          const firstPage = buildContractDataQuery(
+            configFor({
+              limit,
+              sortDirection,
+              filterKey: FILTER_KEY,
+              sortField: SortField.UPDATED_AT,
+              sortDbField: "closed_at",
+            }),
+          );
+          const nulls =
+            sortDirection === SortDirection.ASC ? "NULLS LAST" : "NULLS FIRST";
+          const wideFirstPage = Prisma.sql`
+            SELECT ${Prisma.raw(SELECT_COLUMNS)},
+              COALESCE(cd.live_until_ledger_sequence < ${LATEST_LEDGER}, false) AS expired
+            FROM contract_data cd
+            WHERE cd.contract_id = ${CONTRACT_ID} AND cd.key_symbol = ${FILTER_KEY}
+            ORDER BY cd.closed_at ${Prisma.raw(sortDirection)} ${Prisma.raw(nulls)}, cd.key_hash ${Prisma.raw(sortDirection)}
+            LIMIT ${limit}
+          `;
+          const [rows, wideRows] = await Promise.all([
+            prisma.$queryRaw<any[]>(firstPage),
+            prisma.$queryRaw<any[]>(wideFirstPage),
+          ]);
+          expect(fullRows(rows)).toEqual(fullRows(wideRows));
+          comparisons++;
+
+          for (const boundary of boundaries) {
+            const sortValue = boundary.closed_at.getTime() / 1000;
+            for (const cursorType of ["next", "prev"] as const) {
+              const current = buildContractDataQuery(
+                configFor({
+                  limit,
+                  sortDirection,
+                  filterKey: FILTER_KEY,
+                  sortField: SortField.UPDATED_AT,
+                  sortDbField: "closed_at",
+                  cursorData: cursorAt(
+                    SortField.UPDATED_AT,
+                    sortDirection,
+                    boundary.key_hash,
+                    sortValue,
+                    cursorType,
+                  ),
+                }),
+              );
+              const previous = previousContractDataQuery({
+                contractId: CONTRACT_ID,
+                latestLedgerSequence: LATEST_LEDGER,
+                limit,
+                sortDbField: "closed_at",
+                sortDirection,
+                cursorKeyHash: boundary.key_hash,
+                cursorSortValue: sortValue,
+                cursorType,
+                filterKey: FILTER_KEY,
+              });
+              const [currentRows, previousRows] = await Promise.all([
+                prisma.$queryRaw<any[]>(current),
+                prisma.$queryRaw<any[]>(previous),
+              ]);
+              expect(fullRows(currentRows)).toEqual(fullRows(previousRows));
+              comparisons++;
+            }
+          }
+        }
+      }
+
+      expect(comparisons).toBe(2 * 3 * (1 + 3 * 2));
+    });
+  });
 });

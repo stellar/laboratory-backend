@@ -32,6 +32,43 @@ export interface ContractDataQueryConfig {
 const SELECT_COLUMNS =
   "cd.contract_id, cd.ledger_sequence, cd.key_hash, cd.durability, cd.key_symbol, cd.key, cd.val, cd.closed_at, cd.live_until_ledger_sequence";
 
+const NARROW_PAGE_COLUMNS = "cd.key_hash, cd.closed_at";
+
+/**
+ * Filtered updated_at queries page on (key_hash, closed_at) only, then join
+ * for the full rows. That keeps the page an index-only scan of
+ * (contract_id, key_symbol, closed_at, key_hash). With every column selected,
+ * a low row estimate for a key can make the planner sort all of its rows.
+ */
+const usesNarrowPage = (sortField: SortField, filterKey?: string): boolean =>
+  !!filterKey && sortField === SortField.UPDATED_AT;
+
+/**
+ * Final SELECT over the `paginated_result` CTE, in the requested order.
+ * A narrow page is joined back to contract_data for the full rows.
+ */
+function selectFromPage(
+  narrow: boolean,
+  latestLedgerSequence: number,
+  sortDirection: SortDirection,
+  sortDbField: SortDbField,
+  sortField: SortField,
+): Prisma.Sql {
+  if (!narrow) {
+    return Prisma.sql`
+    SELECT pr.*,
+      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
+    FROM paginated_result pr
+    ${Prisma.raw(orderBy(sortDirection, sortDbField, sortField, ""))}`;
+  }
+  return Prisma.sql`
+    SELECT ${Prisma.raw(SELECT_COLUMNS)},
+      COALESCE(cd.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
+    FROM paginated_result pr
+    JOIN contract_data cd ON cd.key_hash = pr.key_hash
+    ${Prisma.raw(orderBy(sortDirection, sortDbField, sortField, "pr."))}`;
+}
+
 /**
  * Builds an ORDER BY clause for contract_data (or CTE alias).
  * @param direction - ASC or DESC
@@ -84,6 +121,19 @@ function queryWithoutCursor(
   filterKey?: string,
 ): Prisma.Sql {
   const orderByClause = orderBy(sortDirection, sortDbField, sortField, "cd.");
+  if (usesNarrowPage(sortField, filterKey)) {
+    return Prisma.sql`
+    WITH paginated_result AS (
+      SELECT ${Prisma.raw(NARROW_PAGE_COLUMNS)}
+      FROM contract_data cd
+      WHERE cd.contract_id = ${contractId}
+      ${filterClause(filterKey)}
+      ${Prisma.raw(orderByClause)}
+      LIMIT ${limit}
+    )
+    ${selectFromPage(true, latestLedgerSequence, sortDirection, sortDbField, sortField)}
+  `;
+  }
   return Prisma.sql`
     SELECT ${Prisma.raw(SELECT_COLUMNS)},
       COALESCE(cd.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
@@ -123,7 +173,6 @@ function queryWithCursorSortField(
         : SortDirection.ASC;
   const op: ">" | "<" = directionInCTE === SortDirection.DESC ? "<" : ">";
   const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
-  const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
   // ORDER BY for the UNION result (ASC only); union columns have no alias prefix.
   const orderByUnion = orderBy(directionInCTE, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
@@ -140,8 +189,9 @@ function queryWithCursorSortField(
   const rowComparison = Prisma.sql`(${Prisma.raw(sortCol)}, cd.key_hash) ${Prisma.raw(op)} (${sqlVal}, ${cursorKeyHash})`;
 
   // Build a CTE SELECT branch.
+  const narrow = usesNarrowPage(sortField, filterKey);
   const cteBranch = (predicate: Prisma.Sql): Prisma.Sql => Prisma.sql`
-    SELECT ${Prisma.raw(SELECT_COLUMNS)}
+    SELECT ${Prisma.raw(narrow ? NARROW_PAGE_COLUMNS : SELECT_COLUMNS)}
     FROM contract_data cd
     WHERE cd.contract_id = ${contractId}
     ${filterClause(filterKey)}
@@ -166,10 +216,7 @@ function queryWithCursorSortField(
     WITH paginated_result AS (
       ${cteBody}
     )
-    SELECT pr.*,
-      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
-    FROM paginated_result pr
-    ${Prisma.raw(orderByFinal)}
+    ${selectFromPage(narrow, latestLedgerSequence, sortDirection, sortDbField, sortField)}
   `;
 }
 
@@ -237,7 +284,6 @@ function queryWithCursorNullSortField(
         : SortDirection.ASC;
   const keyOp = directionInCTE === SortDirection.DESC ? "<" : ">";
   const orderByInCTE = orderBy(directionInCTE, sortDbField, sortField, "cd.");
-  const orderByFinal = orderBy(sortDirection, sortDbField, sortField, "");
   const orderByUnion = orderBy(directionInCTE, sortDbField, sortField, "");
   const sortCol = `cd.${sortDbField}`;
 
@@ -245,8 +291,9 @@ function queryWithCursorNullSortField(
   // ordered by key_hash alone.
   const nullRegion = Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND cd.key_hash ${Prisma.raw(keyOp)} ${cursorKeyHash}`;
 
+  const narrow = usesNarrowPage(sortField, filterKey);
   const cteBranch = (predicate: Prisma.Sql): Prisma.Sql => Prisma.sql`
-    SELECT ${Prisma.raw(SELECT_COLUMNS)}
+    SELECT ${Prisma.raw(narrow ? NARROW_PAGE_COLUMNS : SELECT_COLUMNS)}
     FROM contract_data cd
     WHERE cd.contract_id = ${contractId}
     ${filterClause(filterKey)}
@@ -272,10 +319,7 @@ function queryWithCursorNullSortField(
     WITH paginated_result AS (
       ${cteBody}
     )
-    SELECT pr.*,
-      COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
-    FROM paginated_result pr
-    ${Prisma.raw(orderByFinal)}
+    ${selectFromPage(narrow, latestLedgerSequence, sortDirection, sortDbField, sortField)}
   `;
 }
 
