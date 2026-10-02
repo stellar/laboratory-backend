@@ -11,6 +11,9 @@ services:
       ENVIRONMENT: ${ENVIRONMENT:-development}
       PORT: ${PORT:-3000}
 
+      # Stellar network
+      NETWORK_PASSPHRASE: ${NETWORK_PASSPHRASE:-}
+
       # DB Connection (Mode A: set DATABASE_URL in .env)
       DATABASE_URL: ${DATABASE_URL:-}
       # Mode B: Cloud SQL Connector with IAM — set these when not using DATABASE_URL

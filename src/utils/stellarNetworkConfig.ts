@@ -37,7 +37,6 @@ export const PASSPHRASE_BY_NETWORK_NAME = {
 /** The network the caller believes it is on, as named in the request. */
 export type NetworkName = keyof typeof PASSPHRASE_BY_NETWORK_NAME;
 
-/** The passphrase of a network this API serves — one of exactly three. */
 export type NetworkPassphrase =
   (typeof PASSPHRASE_BY_NETWORK_NAME)[NetworkName];
 
@@ -210,7 +209,7 @@ export class StellarNetworkConfigService {
     if (network === "testnet") {
       this.rpcUrl = this.resolveTestnetRpcUrl(rpcUrl);
     } else {
-      // Mainnet have no fallback — the caller names the RPC.
+      // Mainnet has no fallback — the caller names the RPC.
       if (!rpcUrl) {
         throw new HttpError("rpc_url is required", 400);
       }
@@ -230,6 +229,10 @@ export class StellarNetworkConfigService {
    * are separate instances behind different path prefixes). A request naming
    * any other network reached the wrong instance and is a caller mistake
    * worth surfacing — never silently answered.
+   *
+   * When NETWORK_PASSPHRASE is unset the check is skipped (with a warning) and
+   * the request alone decides the network; the rpc_url/network agreement
+   * check still applies.
    */
   private checkDeploymentServesNetwork(
     network: NetworkName,
@@ -238,7 +241,10 @@ export class StellarNetworkConfigService {
     const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
 
     if (!deploymentPassphrase) {
-      throw new HttpError("Deployment NETWORK_PASSPHRASE is not set", 500);
+      logger.warn(
+        "Deployment NETWORK_PASSPHRASE is not set; skipping the deployment network check",
+      );
+      return;
     }
 
     if (deploymentPassphrase !== expected) {
@@ -254,9 +260,8 @@ export class StellarNetworkConfigService {
 
   /**
    * Testnet is lenient about rpc_url: a missing value, a non-https URL, or an
-   * https URL on no allowlist all resolve to DEFAULT_TESTNET_RPC_URL. The one
-   * thing still rejected is a URL allowlisted for *another* network — pasting
-   * a mainnet RPC while on testnet is a caller mistake worth surfacing
+   * https URL on no allowlist all resolve to DEFAULT_TESTNET_RPC_URL. A URL
+   * allowlisted for another network is rejected so the caller can correct it.
    */
   private resolveTestnetRpcUrl(rpcUrl: string | undefined): string {
     if (!rpcUrl) {
@@ -278,7 +283,12 @@ export class StellarNetworkConfigService {
     }
 
     if (actual !== Networks.TESTNET) {
-      return DEFAULT_TESTNET_RPC_URL;
+      throw new HttpError(
+        `RPC URL "${normalized}" serves ${NETWORK_NAME_BY_PASSPHRASE[actual]}, ` +
+          `but network=testnet was requested. ` +
+          `Allowed testnet URLs: ${VETTED_RPC_URLS[Networks.TESTNET].join(", ")}`,
+        400,
+      );
     }
 
     return normalized;

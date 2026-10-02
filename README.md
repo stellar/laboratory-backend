@@ -214,22 +214,25 @@ README, and refer to `Makefile` for the current target list.
 
 `curl "http://localhost:3000/api/network_limits?network=mainnet&rpc_url=https://mainnet.sorobanrpc.com"`
 
-- `network` is **required**: `mainnet`, or `testnet` — the network
-  the caller has selected (in the Laboratory UI, the network toggle).
-- `rpc_url` is **required**, and must be one of the vetted public RPC providers
-  in `PUBLIC_RPC_URLS` (`src/utils/stellarNetworkConfig.ts`).
+- `network` is **required**: `mainnet` or `testnet` — the network the caller
+  has selected (in the Laboratory UI, the network toggle).
+- `rpc_url` is **required** for mainnet and must be one of the vetted public RPC
+  providers in `PUBLIC_RPC_URLS` (`src/utils/stellarNetworkConfig.ts`); anything
+  else is rejected with a `400`.
+- `rpc_url` is **optional** for testnet. A missing, non-https, or
+  non-allowlisted value falls back to the SDF testnet RPC
+  (`https://soroban-testnet.stellar.org`).
 - **The two must agree.** Each allowlisted URL belongs to exactly one network, so
-  a Mainnet `rpc_url` sent with `network=testnet` is rejected with a `400` naming
-  both networks and listing the usable Testnet URLs — rather than being answered
-  with Mainnet's limits. Neither param has a default: with no `network`, a
-  mismatch could not be detected; with no `rpc_url`, the response could silently
-  describe a different network than intended.
-- Both come **from the request, not from `NETWORK_PASSPHRASE`**. Unlike the
-  contract-data endpoints — whose network is implicit in which instance you hit
-  — this endpoint reads live from the caller's RPC, so it behaves identically on
-  every deployment regardless of how each instance's env is configured.
-- The response echoes the agreed network as `network_passphrase`, so a caller
-  confirms which network the numbers describe instead of inferring it.
+  a mainnet `rpc_url` sent with `network=testnet` is rejected with a `400` naming
+  both networks and listing the usable testnet URLs — rather than being answered
+  with mainnet's limits.
+- **The deployment must serve the requested network.** Each deployment serves
+  one network, set by its `NETWORK_PASSPHRASE`; a request naming another network
+  is rejected with a `400`. If `NETWORK_PASSPHRASE` is unset, this check is
+  skipped (with a logged warning) and the request alone decides the network.
+- The response echoes the network as `network_passphrase` and the RPC actually
+  used as `rpc_url` (after any testnet fallback), so a caller confirms what the
+  numbers describe instead of inferring it.
 - Results are cached per RPC URL for 5 minutes, with a stale fallback for up to
   10 minutes if a refresh fails. Rate limited to 10 requests/minute per IP.
 
@@ -270,7 +273,7 @@ prisma/
 | `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                                       |
 | `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                                     |
 | `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                             |
-| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. Not used by `/api/network_limits`, which resolves the network from `rpc_url`. |
+| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. The only network `/api/network_limits` serves; the check is skipped if unset. |
 | `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                                   |
 | `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                                   |
 | `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |

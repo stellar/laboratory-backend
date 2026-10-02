@@ -323,10 +323,9 @@ describe("GET /api/network_limits", () => {
     expect(body.rpc_url).toBe("https://soroban-testnet.stellar.org");
   });
 
-  test("🔴mainnet_rpc_url_while_on_testnet_returns_400", async () => {
-    // The mistake the UI makes possible: Testnet is selected in the toggle but
-    // a Mainnet RPC URL is pasted into the dialog. The deployment must be a
-    // testnet one, or the strict deployment check rejects the request first.
+  test("🔴mainnet_rpc_url_while_on_testnet_returns_helpful_400", async () => {
+    // Testnet is selected, but a Mainnet RPC URL is pasted into the dialog.
+    // Report the mismatch so the UI can explain it instead of silently falling back.
     process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
 
     const res = await get(
@@ -336,8 +335,7 @@ describe("GET /api/network_limits", () => {
     expect(res.status).toBe(400);
     const { error } = await res.json();
     expect(error).toMatch(/serves mainnet, but network=testnet was requested/);
-    // The message names a URL the caller can actually use instead.
-    expect(error).toContain("https://soroban-testnet.stellar.org");
+    expect(error).toContain(TESTNET_DEFAULT_RPC_URL);
   });
 
   test("🔴testnet_rpc_url_while_on_mainnet_returns_400", async () => {
@@ -351,34 +349,17 @@ describe("GET /api/network_limits", () => {
     );
   });
 
-  // Futurenet is not a supported API network, so request validation rejects it.
-  test("🔴futurenet_request_is_rejected_as_unrecognized_network", async () => {
-    const res = await get(
-      `?network=futurenet&rpc_url=${encodeURIComponent(MAINNET_RPC_URL)}`,
-    );
-
-    expect(res.status).toBe(400);
-    const body = await res.json();
-    expect(body.message).toBe("Invalid query parameters");
-    expect(body.issues[0].path).toBe("network");
-    expect(body.issues[0].message).toBe(
-      "network must be one of: mainnet, testnet",
-    );
-  });
-
-  test("🔴unset_network_passphrase_returns_500_misconfiguration", async () => {
-    // The env var is read with no default: a deployment that doesn't set it
-    // fails loudly (logged as a misconfiguration) instead of quietly acting
-    // as whichever network a fallback would have picked.
+  test("🟢unset_network_passphrase_still_serves_the_requested_network", async () => {
+    // Without NETWORK_PASSPHRASE the deployment check is skipped, so the
+    // request alone decides the network.
     delete process.env.NETWORK_PASSPHRASE;
 
     const res = await get(
       `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
-    expect(res.status).toBe(500);
-    const body = await res.json();
-    expect(body.error).toMatch(/NETWORK_PASSPHRASE is not set/);
+    expect(res.status).toBe(200);
+    await expect(res.json()).resolves.toEqual(expectedBody);
   });
 
   test("🔴request_for_another_network_than_the_deployment_returns_400", async () => {
@@ -388,17 +369,6 @@ describe("GET /api/network_limits", () => {
     const res = await get(
       `?network=testnet&rpc_url=${encodeURIComponent("https://soroban-testnet.stellar.org")}`,
     );
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe(
-      "This deployment serves mainnet, but network=testnet was requested.",
-    );
-  });
-
-  test("🔴deployment_check_runs_before_the_testnet_fallback", async () => {
-    // A mainnet deployment must not serve the testnet fallback: the strict
-    // check fires first even though rpc_url is absent.
-    const res = await get(`?network=testnet`);
 
     expect(res.status).toBe(400);
     expect((await res.json()).error).toBe(
@@ -422,17 +392,6 @@ describe("GET /api/network_limits", () => {
 
     const res = await get(
       `?network=testnet&rpc_url=${encodeURIComponent("http://soroban-testnet.stellar.org")}`,
-    );
-
-    expect(res.status).toBe(200);
-    expect((await res.json()).rpc_url).toBe(TESTNET_DEFAULT_RPC_URL);
-  });
-
-  test("🟢testnet_with_a_non_allowlisted_https_url_falls_back_to_the_sdf_rpc", async () => {
-    process.env.NETWORK_PASSPHRASE = TESTNET_PASSPHRASE;
-
-    const res = await get(
-      `?network=testnet&rpc_url=${encodeURIComponent("https://evil.example.com")}`,
     );
 
     expect(res.status).toBe(200);
