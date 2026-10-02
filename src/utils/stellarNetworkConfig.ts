@@ -239,11 +239,7 @@ export class StellarNetworkConfigService {
     network: NetworkName,
     expected: NetworkPassphrase,
   ): void {
-    const deploymentPassphrase = process.env.NETWORK_PASSPHRASE;
-    if (!deploymentPassphrase) {
-      throw new HttpError(
-        "NETWORK_PASSPHRASE is not set; this deployment is misconfigured",
-        500,
+const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
       );
     }
 
