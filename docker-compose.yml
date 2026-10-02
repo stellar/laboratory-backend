@@ -25,6 +25,9 @@ services:
       HORIZON_URL: ${HORIZON_URL:-}
       RPC_URL: ${RPC_URL:-}
 
+      # Stellar network
+      NETWORK_PASSPHRASE: ${NETWORK_PASSPHRASE:-}
+
       # DB Connection (Mode A: set DATABASE_URL in .env)
       DATABASE_URL: ${DATABASE_URL:-}
       STATEMENT_TIMEOUT_MS: ${STATEMENT_TIMEOUT_MS:-}
