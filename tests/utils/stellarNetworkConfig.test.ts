@@ -136,26 +136,17 @@ describe("StellarNetworkConfigService (RPC URL handling)", () => {
   // each deployment serves exactly one network, so a request naming another
   // reached the wrong instance.
   describe("deployment network check", () => {
-    it("is skipped when NETWORK_PASSPHRASE is not set, keeping the pair check", () => {
+    it("rejects with a 500 when NETWORK_PASSPHRASE is not set", () => {
       delete process.env.NETWORK_PASSPHRASE;
-      const service = new StellarNetworkConfigService({
-        ...mainnet,
-        rpcUrl: allowlisted,
-      });
-      expect(service.networkPassphrase).toBe(Networks.PUBLIC);
-
-      // The rpc_url/network agreement check still rejects a mismatched pair.
       const err = expectHttpError(
         () =>
           new StellarNetworkConfigService({
             ...mainnet,
-            rpcUrl: "https://soroban-testnet.stellar.org",
+            rpcUrl: allowlisted,
           }),
-        400,
+        500,
       );
-      expect(err.message).toMatch(
-        /serves testnet, but network=mainnet was requested/,
-      );
+      expect(err.message).toMatch(/NETWORK_PASSPHRASE is not set/);
     });
 
     it("rejects a request naming another network than the deployment with a 400", () => {

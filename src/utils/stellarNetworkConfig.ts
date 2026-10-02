@@ -230,9 +230,8 @@ export class StellarNetworkConfigService {
    * any other network reached the wrong instance and is a caller mistake
    * worth surfacing — never silently answered.
    *
-   * When NETWORK_PASSPHRASE is unset the check is skipped (with a warning) and
-   * the request alone decides the network; the rpc_url/network agreement
-   * check still applies.
+   * NETWORK_PASSPHRASE is read with no default: an unset value is a deployment
+   * misconfiguration and fails with a 500 rather than guessing a network.
    */
   private checkDeploymentServesNetwork(
     network: NetworkName,
@@ -241,10 +240,8 @@ export class StellarNetworkConfigService {
     const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
 
     if (!deploymentPassphrase) {
-      logger.warn(
-        "Deployment NETWORK_PASSPHRASE is not set; skipping the deployment network check",
-      );
-      return;
+      // The controller logs every 5xx as a misconfiguration.
+      throw new HttpError("Deployment NETWORK_PASSPHRASE is not set", 500);
     }
 
     if (deploymentPassphrase !== expected) {

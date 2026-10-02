@@ -349,17 +349,19 @@ describe("GET /api/network_limits", () => {
     );
   });
 
-  test("🟢unset_network_passphrase_still_serves_the_requested_network", async () => {
-    // Without NETWORK_PASSPHRASE the deployment check is skipped, so the
-    // request alone decides the network.
+  test("🔴unset_network_passphrase_returns_500_misconfiguration", async () => {
+    // The env var is read with no default: a deployment that doesn't set it
+    // fails loudly (logged as a misconfiguration) instead of quietly acting
+    // as whichever network a fallback would have picked.
     delete process.env.NETWORK_PASSPHRASE;
 
     const res = await get(
       `?network=mainnet&rpc_url=${encodeURIComponent("https://mainnet.sorobanrpc.com")}`,
     );
 
-    expect(res.status).toBe(200);
-    await expect(res.json()).resolves.toEqual(expectedBody);
+    expect(res.status).toBe(500);
+    const body = await res.json();
+    expect(body.error).toMatch(/NETWORK_PASSPHRASE is not set/);
   });
 
   test("🔴request_for_another_network_than_the_deployment_returns_400", async () => {
