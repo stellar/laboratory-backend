@@ -1,7 +1,10 @@
 import { Networks } from "@stellar/stellar-sdk";
 
 import { HttpError } from "../../src/utils/error";
-import { StellarNetworkConfigService } from "../../src/utils/stellarNetworkConfig";
+import {
+  DEFAULT_TESTNET_RPC_URL,
+  StellarNetworkConfigService,
+} from "../../src/utils/stellarNetworkConfig";
 
 // The service keys its module-level cache off the normalized `rpcUrl` it
 // stores, so asserting on that field is the most direct way to prove that two
@@ -126,9 +129,7 @@ describe("StellarNetworkConfigService (RPC URL handling)", () => {
         }),
       400,
     );
-    expect(err.message).toBe(
-      "network must be one of: mainnet, testnet, futurenet",
-    );
+    expect(err.message).toBe("network must be one of: mainnet, testnet");
   });
 
   // The requested network must match the deployment's own NETWORK_PASSPHRASE:
@@ -200,9 +201,9 @@ describe("StellarNetworkConfigService (RPC URL handling)", () => {
     });
   });
 
-  // Testnet is lenient about rpc_url: a missing value, a non-https URL, or an
-  // https URL on no allowlist all resolve to the SDF testnet RPC. Only a URL
-  // allowlisted for another network is still rejected.
+  // Testnet is lenient about rpc_url: a missing value, a non-https URL, an
+  // https URL on no allowlist, or a URL allowlisted for another network all
+  // resolve to the SDF testnet RPC.
   describe("testnet rpc_url fallback", () => {
     beforeEach(() => {
       process.env.NETWORK_PASSPHRASE = Networks.TESTNET;
@@ -240,18 +241,12 @@ describe("StellarNetworkConfigService (RPC URL handling)", () => {
       );
     });
 
-    it("still rejects a URL allowlisted for another network", () => {
-      const err = expectHttpError(
-        () =>
-          new StellarNetworkConfigService({
-            network: "testnet",
-            rpcUrl: allowlisted,
-          }),
-        400,
-      );
-      expect(err.message).toMatch(
-        /serves mainnet, but network=testnet was requested/,
-      );
+    it("falls back when rpcUrl is allowlisted for another network", () => {
+      const service = new StellarNetworkConfigService({
+        network: "testnet",
+        rpcUrl: allowlisted,
+      });
+      expect(storedRpcUrl(service)).toBe(DEFAULT_TESTNET_RPC_URL);
     });
   });
 
@@ -277,38 +272,14 @@ describe("StellarNetworkConfigService (RPC URL handling)", () => {
       expect(storedRpcUrl(service)).toBe("https://soroban-testnet.stellar.org");
     });
 
-    // There is no futurenet deployment, so a futurenet request always reaches
-    // a mainnet or testnet deployment and is rejected.
-    it("rejects network=futurenet on a mainnet deployment", () => {
-      const err = expectHttpError(
-        () =>
-          new StellarNetworkConfigService({
-            network: "futurenet",
-            rpcUrl: "https://rpc-futurenet.stellar.org",
-          }),
-        400,
-      );
-      expect(err.message).toBe(
-        "This deployment serves mainnet, but network=futurenet was requested.",
-      );
-    });
-
     // The case the UI produces: user is on Testnet, pastes a Mainnet RPC URL.
-    it("rejects a mainnet URL for network=testnet, naming both networks", () => {
+    it("falls back to testnet when given a mainnet URL for network=testnet", () => {
       process.env.NETWORK_PASSPHRASE = Networks.TESTNET;
-      const err = expectHttpError(
-        () =>
-          new StellarNetworkConfigService({
-            network: "testnet",
-            rpcUrl: allowlisted,
-          }),
-        400,
-      );
-      expect(err.message).toMatch(
-        /serves mainnet, but network=testnet was requested/,
-      );
-      // The message points at what the caller can actually use instead.
-      expect(err.message).toContain("https://soroban-testnet.stellar.org");
+      const service = new StellarNetworkConfigService({
+        network: "testnet",
+        rpcUrl: allowlisted,
+      });
+      expect(storedRpcUrl(service)).toBe(DEFAULT_TESTNET_RPC_URL);
     });
 
     it("rejects a testnet URL for network=mainnet", () => {

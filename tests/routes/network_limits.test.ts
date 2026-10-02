@@ -306,7 +306,7 @@ describe("GET /api/network_limits", () => {
     const body = await res.json();
     expect(body.issues[0].path).toBe("network");
     expect(body.issues[0].message).toBe(
-      "network must be one of: mainnet, testnet, futurenet",
+      "network must be one of: mainnet, testnet",
     );
   });
 
@@ -351,26 +351,18 @@ describe("GET /api/network_limits", () => {
     );
   });
 
-  // There is no futurenet deployment, so futurenet requests are always rejected.
-  test("🔴futurenet_request_on_mainnet_deployment_returns_400", async () => {
+  // Futurenet is not a supported API network, so request validation rejects it.
+  test("🔴futurenet_request_is_rejected_as_unrecognized_network", async () => {
     const res = await get(
-      `?network=futurenet&rpc_url=${encodeURIComponent("https://rpc-futurenet.stellar.org")}`,
+      `?network=futurenet&rpc_url=${encodeURIComponent(MAINNET_RPC_URL)}`,
     );
 
     expect(res.status).toBe(400);
-    expect((await res.json()).error).toBe(
-      "This deployment serves mainnet, but network=futurenet was requested.",
-    );
-  });
-
-  test("🔴futurenet_rpc_url_while_on_mainnet_returns_400", async () => {
-    const res = await get(
-      `?network=mainnet&rpc_url=${encodeURIComponent("https://rpc-futurenet.stellar.org")}`,
-    );
-
-    expect(res.status).toBe(400);
-    expect((await res.json()).error).toMatch(
-      /serves futurenet, but network=mainnet was requested/,
+    const body = await res.json();
+    expect(body.message).toBe("Invalid query parameters");
+    expect(body.issues[0].path).toBe("network");
+    expect(body.issues[0].message).toBe(
+      "network must be one of: mainnet, testnet",
     );
   });
 

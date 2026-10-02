@@ -214,7 +214,7 @@ README, and refer to `Makefile` for the current target list.
 
 `curl "http://localhost:3000/api/network_limits?network=mainnet&rpc_url=https://mainnet.sorobanrpc.com"`
 
-- `network` is **required**: `mainnet`, `testnet`, or `futurenet` — the network
+- `network` is **required**: `mainnet`, or `testnet` — the network
   the caller has selected (in the Laboratory UI, the network toggle).
 - `rpc_url` is **required**, and must be one of the vetted public RPC providers
   in `PUBLIC_RPC_URLS` (`src/utils/stellarNetworkConfig.ts`).
