@@ -228,8 +228,9 @@ README, and refer to `Makefile` for the current target list.
   with mainnet's limits.
 - **The deployment must serve the requested network.** Each deployment serves
   one network, set by its `NETWORK_PASSPHRASE`; a request naming another network
-  is rejected with a `400`. If `NETWORK_PASSPHRASE` is unset, this check is
-  skipped (with a logged warning) and the request alone decides the network.
+  is rejected with a `400`. `NETWORK_PASSPHRASE` is required for this
+  endpoint: if it is unset, every request fails with a `500` (logged as a
+  misconfiguration).
 - The response echoes the network as `network_passphrase` and the RPC actually
   used as `rpc_url` (after any testnet fallback), so a caller confirms what the
   numbers describe instead of inferring it.
@@ -273,7 +274,7 @@ prisma/
 | `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                                       |
 | `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                                     |
 | `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                             |
-| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. The only network `/api/network_limits` serves; the check is skipped if unset. |
+| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. Required by `/api/network_limits` (500 if unset), which serves only this one. |
 | `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                                   |
 | `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                                   |
 | `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |
