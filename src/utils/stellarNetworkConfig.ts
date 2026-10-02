@@ -279,13 +279,8 @@ const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
       return DEFAULT_TESTNET_RPC_URL;
     }
 
-    if (actual !== Networks.TESTNET) {
-      throw new HttpError(
-        `RPC URL "${normalized}" serves ${NETWORK_NAME_BY_PASSPHRASE[actual]}, ` +
-          `but network=testnet was requested. ` +
-          `Allowed testnet URLs: ${VETTED_RPC_URLS[Networks.TESTNET].join(", ")}`,
-        400,
-      );
+if (actual !== Networks.TESTNET) {
+      return DEFAULT_TESTNET_RPC_URL;
     }
 
     return normalized;
