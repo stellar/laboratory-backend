@@ -6,29 +6,46 @@ import { getNetworkLimits } from "../controllers/network_limits";
 import { NETWORK_NAMES } from "../utils/stellarNetworkConfig";
 import { validateParamsMiddleware } from "./contract_data";
 
-// Both params are required, and both come from the caller rather than the
-// deployment: `network` is the network the caller has selected, `rpc_url` the
-// endpoint to read it from. The controller rejects a pair that disagrees.
-// Neither has a default — falling back to one derived from NETWORK_PASSPHRASE
-// meant a misconfigured instance answered with another network's limits and a
-// 200, which the caller cannot distinguish from a correct response.
-const requestQuerySchema = z.object({
-  network: z.enum(NETWORK_NAMES, {
-    error: issue =>
-      issue.input === undefined
-        ? "network is required"
-        : `network must be one of: ${NETWORK_NAMES.join(", ")}`,
-  }),
-  rpc_url: z
-    .url({
-      protocol: /^https$/,
+// `network` is always required and comes from the caller; the service checks
+// it against the deployment's own NETWORK_PASSPHRASE (each deployment serves
+// exactly one network) and rejects a mismatched pair. `rpc_url` is required
+// for every network except testnet, which falls back to the SDF testnet RPC
+// when it is missing or not on the testnet allowlist
+const requestQuerySchema = z
+  .object({
+    network: z.enum(NETWORK_NAMES, {
       error: issue =>
         issue.input === undefined
-          ? "rpc_url is required"
-          : "rpc_url must be a valid https URL",
-    })
-    .max(2048, "rpc_url must be at most 2048 characters long"),
-});
+          ? "network is required"
+          : `network must be one of: ${NETWORK_NAMES.join(", ")}`,
+    }),
+    rpc_url: z
+      .url({
+        protocol: /^https?$/,
+        error: "rpc_url must be a valid URL",
+      })
+      .max(2048, "rpc_url must be at most 2048 characters long")
+      .optional(),
+  })
+  .superRefine(({ network, rpc_url }, ctx) => {
+    if (rpc_url === undefined) {
+      if (network !== "testnet") {
+        ctx.addIssue({
+          code: "custom",
+          path: ["rpc_url"],
+          message: "rpc_url is required",
+        });
+      }
+      return;
+    }
+    if (network !== "testnet" && !rpc_url.startsWith("https://")) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["rpc_url"],
+        message: "rpc_url must be a valid https URL",
+      });
+    }
+  });
 
 const router: Router = express.Router();
 

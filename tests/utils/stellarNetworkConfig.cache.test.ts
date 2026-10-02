@@ -85,7 +85,14 @@ async function freshService(rpcUrl = RPC_URL): Promise<ServiceType> {
 }
 
 describe("StellarNetworkConfigService caching", () => {
+  const originalPassphrase = process.env.NETWORK_PASSPHRASE;
+
   beforeEach(() => {
+    // The constructor requires the deployment's NETWORK_PASSPHRASE to match
+    // the requested network; freshService always asks for mainnet.
+    process.env.NETWORK_PASSPHRASE =
+      "Public Global Stellar Network ; September 2015";
+
     // Default: RPC succeeds with the captured fixture. Tests override as needed.
     rpcMock.getLedgerEntries = vi.fn(() =>
       Promise.resolve(rpcMock.mockResponse),
@@ -94,6 +101,14 @@ describe("StellarNetworkConfigService caching", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+  });
+
+  afterAll(() => {
+    if (originalPassphrase === undefined) {
+      delete process.env.NETWORK_PASSPHRASE;
+    } else {
+      process.env.NETWORK_PASSPHRASE = originalPassphrase;
+    }
   });
 
   describe("TTL expiry", () => {
