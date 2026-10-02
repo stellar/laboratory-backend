@@ -32,7 +32,6 @@ const LEDGER_ENTRY_KEYS: xdr.LedgerKey[] = LEDGER_ENTRY_KEY_XDRS.map(k =>
 export const PASSPHRASE_BY_NETWORK_NAME = {
   mainnet: Networks.PUBLIC,
   testnet: Networks.TESTNET,
-  futurenet: Networks.FUTURENET,
 } as const;
 
 /** The network the caller believes it is on, as named in the request. */
@@ -95,9 +94,6 @@ export const PUBLIC_RPC_URLS: Record<NetworkPassphrase, string[]> = {
   [Networks.TESTNET]: [
     DEFAULT_TESTNET_RPC_URL, // SDF
     "https://soroban-rpc.testnet.stellar.gateway.fm", // Gateway
-  ],
-  [Networks.FUTURENET]: [
-    "https://rpc-futurenet.stellar.org", // SDF
   ],
 };
 
@@ -239,8 +235,10 @@ export class StellarNetworkConfigService {
     network: NetworkName,
     expected: NetworkPassphrase,
   ): void {
-const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
-      );
+    const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
+
+    if (!deploymentPassphrase) {
+      throw new HttpError("Deployment NETWORK_PASSPHRASE is not set", 500);
     }
 
     if (deploymentPassphrase !== expected) {
@@ -279,7 +277,7 @@ const deploymentPassphrase = process.env.NETWORK_PASSPHRASE?.trim();
       return DEFAULT_TESTNET_RPC_URL;
     }
 
-if (actual !== Networks.TESTNET) {
+    if (actual !== Networks.TESTNET) {
       return DEFAULT_TESTNET_RPC_URL;
     }
 
