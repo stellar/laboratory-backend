@@ -1,0 +1,4 @@
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-12-04
+reason = "braces has no fixed release. Only reachable through the dev-only nodemon -> chokidar file watcher, which parses local watch globs and never request input; not installed in the production image. CI re-scans production dependencies without this ignore. Revisit when braces or chokidar ships a fix."
