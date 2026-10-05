@@ -28,7 +28,7 @@ A Node.js REST API for managing contract data using Express.js with PostgreSQL.
 
 ## Prerequisites
 
-- Node.js (v22 or higher)
+- Node.js (v22.22.1 or higher)
 - pnpm package manager
 - PostgreSQL database
 
