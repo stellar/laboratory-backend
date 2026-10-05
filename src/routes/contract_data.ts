@@ -1,4 +1,5 @@
 import express, { NextFunction, Request, Response, Router } from "express";
+import rateLimit from "express-rate-limit";
 import { z } from "zod";
 
 import { StrKey } from "@stellar/stellar-sdk";
@@ -30,7 +31,11 @@ const requestQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).default("desc"),
   cursor: z.string().trim().optional(),
   sort_by: z.enum(["durability", "key_hash", "ttl", "updated_at"]).optional(),
-  filter_key: z.string().trim().optional(),
+  // Disabled until the key_symbol indexes that keep filtered queries bounded
+  // are deployed. Rejected rather than ignored, so callers never receive
+  // unfiltered results that look filtered.
+  filter_key: z.undefined({ error: "filter_key is not supported" }),
+  // filter_key: z.string().trim().optional(),
 });
 
 /**
@@ -79,9 +84,23 @@ export const validateParamsMiddleware = (
   };
 };
 
+// Rate-limit for the /storage route, tighter than the global limiter: storage
+// queries are heavier than most, so bound how many one client can drive.
+const storageRateLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 100,
+  message: {
+    error: "Too Many Requests",
+    message: "Too many requests from this IP, please try again later.",
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
+});
+
 // Route supports query parameters: ?cursor=xxx&limit=10&order=desc&sort_by=xxx
 router.get(
   "/contract/:contract_id/storage",
+  storageRateLimiter,
   validateParamsMiddleware(requestParamsSchema, "path"),
   validateParamsMiddleware(requestQuerySchema, "query"),
   getContractDataByContractId,

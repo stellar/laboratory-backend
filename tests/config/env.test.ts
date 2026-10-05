@@ -241,6 +241,50 @@ describe("Env", () => {
     });
   });
 
+  describe("cursorSigningKey", () => {
+    test("🟢returns_undefined_when_not_set", () => {
+      delete process.env.CURSOR_SIGNING_KEY;
+      expect(Env.cursorSigningKey).toBeUndefined();
+    });
+
+    test("🟢returns_value_when_set_with_at_least_32_bytes", () => {
+      const key = "k".repeat(32);
+      process.env.CURSOR_SIGNING_KEY = key;
+      expect(Env.cursorSigningKey).toBe(key);
+    });
+
+    test("🟢trims_whitespace", () => {
+      const key = "k".repeat(32);
+      process.env.CURSOR_SIGNING_KEY = `  ${key}  `;
+      expect(Env.cursorSigningKey).toBe(key);
+    });
+
+    test("🟡returns_undefined_for_empty_string", () => {
+      process.env.CURSOR_SIGNING_KEY = "";
+      expect(Env.cursorSigningKey).toBeUndefined();
+    });
+
+    test("🔴throws_when_shorter_than_32_bytes", () => {
+      process.env.CURSOR_SIGNING_KEY = "too-short";
+      expect(() => Env.cursorSigningKey).toThrow(
+        "Invalid CURSOR_SIGNING_KEY: expected at least 32 bytes, got 9.",
+      );
+    });
+
+    test("🔴throws_when_under_32_bytes_after_trimming", () => {
+      process.env.CURSOR_SIGNING_KEY = "  k".repeat(10) + "  ";
+      expect(() => Env.cursorSigningKey).toThrow(
+        "Invalid CURSOR_SIGNING_KEY: expected at least 32 bytes",
+      );
+    });
+
+    test("🟢measures_length_in_bytes", () => {
+      // 16 two-byte characters = 32 bytes → accepted.
+      process.env.CURSOR_SIGNING_KEY = "é".repeat(16);
+      expect(Env.cursorSigningKey).toBe("é".repeat(16));
+    });
+  });
+
   describe("googleCloudSqlIpType", () => {
     test("🟢defaults_to_PRIVATE_when_not_set", () => {
       delete process.env.GOOGLE_CLOUD_SQL_IP_TYPE;

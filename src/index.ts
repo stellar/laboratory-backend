@@ -119,6 +119,23 @@ async function initializeDatabase() {
 let server: ReturnType<typeof app.listen> | null = null;
 
 async function startServer() {
+  // Validate configuration before touching the database so a bad value is
+  // reported as such rather than as a connection failure.
+  try {
+    // Reading the key fails fast if it's set but invalid (the getter throws).
+    // Warn when it's absent so operators and metrics can see cursors are unsigned.
+    if (!Env.cursorSigningKey) {
+      logger.warn(
+        "⚠️ CURSOR_SIGNING_KEY is not set — pagination cursors are unsigned",
+      );
+    }
+  } catch (error) {
+    Sentry.captureException(error);
+    await Sentry.flush(2000);
+    logger.fatal({ err: error }, "Invalid configuration");
+    process.exit(1);
+  }
+
   try {
     await initializeDatabase();
 

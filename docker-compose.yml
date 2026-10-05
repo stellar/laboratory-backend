@@ -7,9 +7,23 @@ services:
     ports:
       - "3000:3000"
     environment:
+      # Every variable documented in .env.example must be listed here: Compose
+      # only forwards what is enumerated (tests/config/docker-compose.test.ts).
       NODE_ENV: ${NODE_ENV:-development}
       ENVIRONMENT: ${ENVIRONMENT:-development}
       PORT: ${PORT:-3000}
+      DEBUG: ${DEBUG:-}
+      GIT_COMMIT: ${GIT_COMMIT:-}
+      LOG_LEVEL: ${LOG_LEVEL:-}
+      TRUST_PROXY: ${TRUST_PROXY:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      PATH_PREFIX: ${PATH_PREFIX:-}
+      CURSOR_SIGNING_KEY: ${CURSOR_SIGNING_KEY:-}
+
+      # Stellar network
+      NETWORK_PASSPHRASE: ${NETWORK_PASSPHRASE:-}
+      HORIZON_URL: ${HORIZON_URL:-}
+      RPC_URL: ${RPC_URL:-}
 
       # DB Connection (Mode A: set DATABASE_URL in .env)
       DATABASE_URL: ${DATABASE_URL:-}
@@ -19,6 +33,9 @@ services:
       POSTGRES_IAM_USER: ${POSTGRES_IAM_USER:-}
       GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/creds.json}
       GOOGLE_CLOUD_SQL_IP_TYPE: ${GOOGLE_CLOUD_SQL_IP_TYPE:-PRIVATE}
+
+      # Sentry error monitoring
+      SENTRY_DSN: ${SENTRY_DSN:-}
 
     volumes:
       # `creds.json` must exist in the directory where you run docker-compose up (the project root):

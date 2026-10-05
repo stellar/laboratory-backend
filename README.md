@@ -137,6 +137,20 @@ The API uses a single connection entrypoint (`src/utils/connect.ts`):
 Prisma CLI tools require `DATABASE_URL` to be set, even when the API connects
 via IAM. Use Mode C (proxy + `DATABASE_URL`) or a direct URL from Mode A.
 
+#### Cursor signing key
+
+`CURSOR_SIGNING_KEY` is optional. When set, pagination cursors carry an
+HMAC-SHA256 signature and only cursors this server issued are accepted.
+Generate it as 32 random bytes, base64url-encoded (43 characters):
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+```
+
+- Startup fails if the key is shorter than 32 bytes.
+- Rotating the key rejects every outstanding cursor; clients restart from the first page.
+- Leave it empty to issue unsigned cursors.
+
 ### 3. Database setup
 
 #### Introspect your database
@@ -208,7 +222,7 @@ README, and refer to `Makefile` for the current target list.
 - ?sort_by=durability&order=desc - Sort by durability descending
 - ?sort_by=ttl&order=asc - Sort by TTL ascending
 - ?sort_by=updated_at&order=desc - Sort by updated timestamp descending
-- ?filter_key=Balance - Filter results by key symbol
+- ?filter_key=Balance - Filter results by key symbol (currently disabled; returns 400)
 
 `curl http://localhost:3000/api/contract/{contract_id}/keys`
 
@@ -280,6 +294,7 @@ prisma/
 | `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -                                | Path to service account credentials file                                                                  |
 | `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                                          |
 | `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                                  |
+| `CURSOR_SIGNING_KEY`             | No       | -                                | HMAC-SHA256 key for signing pagination cursors, see [Cursor signing key](#cursor-signing-key)             |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 

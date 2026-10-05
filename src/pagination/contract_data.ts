@@ -89,19 +89,22 @@ export const buildPaginationLinks = (
   // (optional) links.next:
   if (results.length >= limit) {
     const lastRecord = results[results.length - 1];
-    const nextCursor = encodeCursor({
-      cursorType: "next",
-      sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
-      sortDirection,
-      filterKey: filterKey ?? undefined,
-      position: {
-        keyHash: lastRecord.key_hash,
-        sortValue:
-          sortField !== SortField.KEY_HASH
-            ? extractSortValue(lastRecord, sortDbField)
-            : undefined,
+    const nextCursor = encodeCursor(
+      {
+        cursorType: "next",
+        sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
+        sortDirection,
+        filterKey: filterKey ?? undefined,
+        position: {
+          keyHash: lastRecord.key_hash,
+          sortValue:
+            sortField !== SortField.KEY_HASH
+              ? extractSortValue(lastRecord, sortDbField)
+              : undefined,
+        },
       },
-    });
+      contractId,
+    );
     links.next = {
       href: buildPaginationLinkHref(baseUrl, {
         ...queryParams,
@@ -113,19 +116,22 @@ export const buildPaginationLinks = (
   // (optional) links.prev:
   if (cursor && results.length > 0) {
     const firstRecord = results[0];
-    const prevCursor = encodeCursor({
-      cursorType: "prev",
-      sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
-      sortDirection,
-      filterKey: filterKey ?? undefined,
-      position: {
-        keyHash: firstRecord.key_hash,
-        sortValue:
-          sortField !== SortField.KEY_HASH
-            ? extractSortValue(firstRecord, sortDbField)
-            : undefined,
+    const prevCursor = encodeCursor(
+      {
+        cursorType: "prev",
+        sortField: sortField !== SortField.KEY_HASH ? sortField : undefined,
+        sortDirection,
+        filterKey: filterKey ?? undefined,
+        position: {
+          keyHash: firstRecord.key_hash,
+          sortValue:
+            sortField !== SortField.KEY_HASH
+              ? extractSortValue(firstRecord, sortDbField)
+              : undefined,
+        },
       },
-    });
+      contractId,
+    );
     links.prev = {
       href: buildPaginationLinkHref(baseUrl, {
         ...queryParams,

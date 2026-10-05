@@ -49,3 +49,16 @@ jobs:
         with:
           scan-args: |-
             --lockfile=pnpm-lock.yaml
+
+      # osv-scanner.toml ignores apply to the full lockfile above. Re-scan the
+      # production dependency tree with no ignores, so an ignored advisory
+      # fails CI if it ever reaches a production dependency.
+      - name: Install production dependencies only
+        run: pnpm install --frozen-lockfile --prod --ignore-scripts
+
+      - name: Audit production dependencies (OSV-Scanner, no ignores)
+        uses: google/osv-scanner-action/osv-scanner-action@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+        with:
+          scan-args: |-
+            --config=/dev/null
+            --lockfile=pnpm-lock.yaml:node_modules/.pnpm/lock.yaml

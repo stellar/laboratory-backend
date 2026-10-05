@@ -4,6 +4,7 @@ import { encodeCursor } from "../../src/helpers/cursor";
 const getLatestLedgerMock = vi.fn();
 
 let mockPathPrefix: string | undefined = undefined;
+let mockCursorSigningKey: string | undefined = undefined;
 
 vi.mock("../../src/config/env", () => ({
   Env: {
@@ -18,6 +19,9 @@ vi.mock("../../src/config/env", () => ({
     },
     get logLevel() {
       return "silent";
+    },
+    get cursorSigningKey() {
+      return mockCursorSigningKey;
     },
     get pathPrefix() {
       if (!mockPathPrefix) {
@@ -58,6 +62,7 @@ describe("GET /api/contract/:contract_id/storage", () => {
   beforeEach(() => {
     getLatestLedgerMock.mockResolvedValue(700000);
     mockPathPrefix = undefined;
+    mockCursorSigningKey = undefined;
 
     mockRequest = {
       params: {
@@ -442,6 +447,22 @@ describe("GET /api/contract/:contract_id/storage", () => {
       expect(mockResponse.status).toHaveBeenCalledWith(400);
       expect(mockResponse.json).toHaveBeenCalledWith({
         error: "Invalid cursor: invalid_cursor",
+      });
+    });
+
+    test("🔴array_cursor_returns_400", async () => {
+      // Express parses ?cursor=a&cursor=b into an array; a cursor must be a
+      // single string, so it is rejected before any decoding.
+      mockRequest.query = { cursor: ["a", "b"] };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: "Invalid cursor=a,b, must be a single value",
       });
     });
 
@@ -884,6 +905,336 @@ describe("GET /api/contract/:contract_id/storage", () => {
         expect(mockResponse.json).toHaveBeenCalledWith({
           error: expect.stringContaining("Invalid cursor:"),
         });
+      });
+    });
+  });
+
+  describe("Cursor sortValue range validation", () => {
+    function rawCursor(obj: Record<string, unknown>): string {
+      return Buffer.from(JSON.stringify(obj)).toString("base64");
+    }
+
+    async function requestWithCursor(
+      cursor: string,
+      query: Record<string, string>,
+    ) {
+      (mockResponse.json as Mock).mockClear();
+      (mockResponse.status as Mock).mockClear();
+
+      mockRequest.query = { cursor, ...query };
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+    }
+
+    const ttlCursor = (sortValue: unknown) =>
+      rawCursor({
+        cursorType: "next",
+        sortField: "ttl",
+        sortDirection: "asc",
+        position: { keyHash: "abc", sortValue },
+      });
+
+    test.each([
+      1e19,
+      1e300,
+      -1e19,
+      9e18,
+      -1,
+      2147483648,
+      1000.5,
+      "1e19",
+      "1000.5",
+      "2147483648",
+    ])(
+      "🔴ttl_sortValue_%s_outside_the_int4_domain_returns_400",
+      async sortValue => {
+        await requestWithCursor(ttlCursor(sortValue), {
+          sort_by: "ttl",
+          order: "asc",
+        });
+
+        expect(mockResponse.status).toHaveBeenCalledWith(400);
+        expect(mockResponse.json).toHaveBeenCalledWith({
+          error: expect.stringContaining("Invalid cursor:"),
+        });
+      },
+    );
+
+    test.each([0, 2147483647, 61482901, "2147483647"])(
+      "🟢ttl_sortValue_%s_within_the_int4_domain_returns_200",
+      async sortValue => {
+        await requestWithCursor(ttlCursor(sortValue), {
+          sort_by: "ttl",
+          order: "asc",
+        });
+
+        expect(mockResponse.status).toHaveBeenCalledWith(200);
+        const body = (mockResponse.json as Mock).mock.calls[0][0];
+        expect(Array.isArray(body.results)).toBe(true);
+      },
+    );
+
+    test("🟢valid_ttl_cursor_returns_the_expected_rows", async () => {
+      // Boundary at ee55… (live_until_ledger_sequence = 61482907): the page
+      // must contain the two rows above the boundary followed by the NULL-ttl
+      // row (ascending order, NULLS LAST).
+      const cursor = rawCursor({
+        cursorType: "next",
+        sortField: "ttl",
+        sortDirection: "asc",
+        position: {
+          keyHash:
+            "ee55555555555555555555555555555555555555555555555555555555555555",
+          sortValue: 61482907,
+        },
+      });
+
+      await requestWithCursor(cursor, { sort_by: "ttl", order: "asc" });
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const body = (mockResponse.json as Mock).mock.calls[0][0];
+      expect(body.results.map((r: any) => r.key_hash)).toEqual([
+        "1100000000000000000000000000000000000000000000000000000000000001",
+        "1100000000000000000000000000000000000000000000000000000000000002",
+        "ff66666666666666666666666666666666666666666666666666666666666666",
+      ]);
+      expect(body.results.map((r: any) => r.ttl)).toEqual([
+        61483000,
+        61483001,
+        null,
+      ]);
+    });
+
+    test("🟢updated_at_fractional_sortValue_returns_200", async () => {
+      await requestWithCursor(
+        rawCursor({
+          cursorType: "next",
+          sortField: "updated_at",
+          position: { keyHash: "abc", sortValue: 1_700_000_000.5 },
+        }),
+        { sort_by: "updated_at", order: "asc" },
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const body = (mockResponse.json as Mock).mock.calls[0][0];
+      // All seeded rows are newer than the boundary.
+      expect(body.results).toHaveLength(11);
+    });
+
+    test("🔴updated_at_sortValue_outside_the_supported_range_returns_400", async () => {
+      await requestWithCursor(
+        rawCursor({
+          cursorType: "next",
+          sortField: "updated_at",
+          position: { keyHash: "abc", sortValue: 1e300 },
+        }),
+        { sort_by: "updated_at", order: "asc" },
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: expect.stringContaining("Invalid cursor:"),
+      });
+    });
+  });
+
+  describe("Signed cursors (cursor signing key configured)", () => {
+    const SIGNING_KEY = "controller-test-signing-key-0123456789abcdef";
+    const OTHER_SIGNING_KEY = "controller-test-signing-key-fedcba9876543210";
+    const CONTRACT_B =
+      "CBEARZCPO6YEN2Z7432Z2TXMARQWDFBIACGTFPUR34QEDXABEOJP4CAB";
+
+    function rawCursor(obj: Record<string, unknown>): string {
+      return Buffer.from(JSON.stringify(obj)).toString("base64");
+    }
+
+    /**
+     * Fetches the first page (limit=1) and returns the issued next cursor
+     * together with the page body.
+     */
+    async function fetchFirstPage(query: Record<string, string> = {}) {
+      (mockResponse.json as Mock).mockClear();
+      (mockResponse.status as Mock).mockClear();
+
+      mockRequest.query = { limit: "1", ...query };
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const body = (mockResponse.json as Mock).mock.calls[0][0];
+      const href = body._links.next?.href;
+      expect(href).toBeDefined();
+      const cursor = new URL(href, "http://example.test").searchParams.get(
+        "cursor",
+      )!;
+      expect(cursor).toBeDefined();
+      return { cursor, body };
+    }
+
+    test("🟢issued_cursors_are_signed_and_accepted_on_follow_up_requests", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+
+      const { cursor, body: page1 } = await fetchFirstPage();
+
+      // Signed wire format: <base64url payload>.<43-char base64url HMAC-SHA256>
+      expect(cursor).toMatch(/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]{43}$/);
+
+      // The contract is bound via the signature, not stored in the payload.
+      const [payload] = cursor.split(".");
+      const payloadJson = JSON.parse(
+        Buffer.from(payload, "base64url").toString("utf8"),
+      );
+      expect(payloadJson.contractId).toBeUndefined();
+
+      // Following the signed cursor paginates normally.
+      (mockResponse.json as Mock).mockClear();
+      (mockResponse.status as Mock).mockClear();
+      mockRequest.query = { limit: "1", cursor };
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const page2 = (mockResponse.json as Mock).mock.calls[0][0];
+      expect(page2.results).toHaveLength(1);
+      expect(page2.results[0].key_hash).not.toBe(page1.results[0].key_hash);
+    });
+
+    test("🟢signed_cursor_paginates_with_a_sort_field", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+
+      const { cursor } = await fetchFirstPage({ sort_by: "ttl", order: "asc" });
+
+      (mockResponse.json as Mock).mockClear();
+      (mockResponse.status as Mock).mockClear();
+      mockRequest.query = { limit: "1", sort_by: "ttl", order: "asc", cursor };
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(200);
+      const page2 = (mockResponse.json as Mock).mock.calls[0][0];
+      expect(page2.results).toHaveLength(1);
+    });
+
+    test("🔴unsigned_cursor_is_rejected_when_signing_is_enabled", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+
+      const cursor = rawCursor({
+        cursorType: "next",
+        position: { keyHash: "abc" },
+      });
+      mockRequest.query = { cursor };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${cursor}`,
+      });
+    });
+
+    test("🔴cursor_with_tampered_payload_is_rejected", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+      const { cursor } = await fetchFirstPage();
+
+      const [payload, signature] = cursor.split(".");
+      const tamperedPayload =
+        (payload.startsWith("A") ? "B" : "A") + payload.slice(1);
+      const tampered = `${tamperedPayload}.${signature}`;
+      mockRequest.query = { cursor: tampered };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${tampered}`,
+      });
+    });
+
+    test("🔴cursor_with_truncated_signature_is_rejected", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+      const { cursor } = await fetchFirstPage();
+
+      const truncated = cursor.slice(0, cursor.length - 1);
+      mockRequest.query = { cursor: truncated };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${truncated}`,
+      });
+    });
+
+    test("🔴cursor_with_an_extra_signature_segment_is_rejected", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+      const { cursor } = await fetchFirstPage();
+
+      const malformed = `${cursor}.extra`;
+      mockRequest.query = { cursor: malformed };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${malformed}`,
+      });
+    });
+
+    test("🔴cursor_issued_under_a_different_key_is_rejected", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+      const { cursor } = await fetchFirstPage();
+
+      mockCursorSigningKey = OTHER_SIGNING_KEY;
+      mockRequest.query = { cursor };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${cursor}`,
+      });
+    });
+
+    test("🔴cursor_issued_for_another_contract_is_rejected", async () => {
+      mockCursorSigningKey = SIGNING_KEY;
+      const { cursor } = await fetchFirstPage();
+
+      // Replaying the cursor against a different contract fails the signature
+      // check (the contract is bound into the HMAC), so it never decodes.
+      mockRequest.params = { contract_id: CONTRACT_B };
+      mockRequest.query = { cursor };
+
+      await getContractDataByContractId(
+        mockRequest as Request,
+        mockResponse as Response,
+      );
+
+      expect(mockResponse.status).toHaveBeenCalledWith(400);
+      expect(mockResponse.json).toHaveBeenCalledWith({
+        error: `Invalid cursor: ${cursor}`,
       });
     });
   });
