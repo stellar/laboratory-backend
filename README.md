@@ -222,7 +222,7 @@ README, and refer to `Makefile` for the current target list.
 - ?sort_by=durability&order=desc - Sort by durability descending
 - ?sort_by=ttl&order=asc - Sort by TTL ascending
 - ?sort_by=updated_at&order=desc - Sort by updated timestamp descending
-- ?filter_key=Balance - Filter results by key symbol
+- ?filter_key=Balance - Filter results by key symbol (currently disabled; returns 400)
 
 `curl http://localhost:3000/api/contract/{contract_id}/keys`
 

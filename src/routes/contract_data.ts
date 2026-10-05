@@ -31,7 +31,11 @@ const requestQuerySchema = z.object({
   order: z.enum(["asc", "desc"]).default("desc"),
   cursor: z.string().trim().optional(),
   sort_by: z.enum(["durability", "key_hash", "ttl", "updated_at"]).optional(),
-  filter_key: z.string().trim().optional(),
+  // Disabled until the key_symbol indexes that keep filtered queries bounded
+  // are deployed. Rejected rather than ignored, so callers never receive
+  // unfiltered results that look filtered.
+  filter_key: z.undefined({ error: "filter_key is not supported" }),
+  // filter_key: z.string().trim().optional(),
 });
 
 /**

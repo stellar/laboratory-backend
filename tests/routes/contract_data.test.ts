@@ -130,3 +130,40 @@ describe("GET /api/contract/:contract_id/storage rate limiting", () => {
     );
   });
 });
+
+describe("GET /api/contract/:contract_id/storage query validation", () => {
+  const servers: Server[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      servers
+        .splice(0)
+        .map(s => new Promise<void>(resolve => s.close(() => resolve()))),
+    );
+  });
+
+  test.each(["Balance", ""])(
+    "🔴filter_key_%j_is_rejected_with_400",
+    async filterKey => {
+      const { server, baseUrl } = await startTestServer();
+      servers.push(server);
+
+      const res = await fetch(
+        `${baseUrl}/api/contract/${VALID_CONTRACT_ID}/storage?filter_key=${filterKey}`,
+      );
+
+      expect(res.status).toBe(400);
+      expect(await res.json()).toEqual({
+        message: "Invalid query parameters",
+        issues: [
+          {
+            path: "filter_key",
+            message: "filter_key is not supported",
+            code: "invalid_type",
+          },
+        ],
+      });
+      expect(controllerMock.getContractDataByContractId).not.toHaveBeenCalled();
+    },
+  );
+});
