@@ -86,6 +86,7 @@ export const validateParamsMiddleware = (
 
 // Rate-limit for the /storage route, tighter than the global limiter: storage
 // queries are heavier than most, so bound how many one client can drive.
+// In-memory store: the limit applies per replica.
 const storageRateLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
   limit: 100,
