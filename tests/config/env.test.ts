@@ -37,6 +37,33 @@ describe("Env", () => {
     });
   });
 
+  describe("statementTimeoutMs", () => {
+    test("🟢returns_default_45000_when_not_set", () => {
+      delete process.env.STATEMENT_TIMEOUT_MS;
+      expect(Env.statementTimeoutMs).toBe(45000);
+    });
+
+    test("🟢parses_valid_timeout", () => {
+      process.env.STATEMENT_TIMEOUT_MS = "5000";
+      expect(Env.statementTimeoutMs).toBe(5000);
+    });
+
+    test("🟢accepts_the_100000_upper_bound", () => {
+      process.env.STATEMENT_TIMEOUT_MS = "100000";
+      expect(Env.statementTimeoutMs).toBe(100000);
+    });
+
+    test.each(["abc", "0", "-1", "1.5", "100001"])(
+      "🔴throws_on_invalid_timeout_%j",
+      raw => {
+        process.env.STATEMENT_TIMEOUT_MS = raw;
+        expect(() => Env.statementTimeoutMs).toThrow(
+          `Invalid STATEMENT_TIMEOUT_MS environment variable: "${raw}". Expected an integer between 1 and 100000.`,
+        );
+      },
+    );
+  });
+
   describe("environment", () => {
     test("🟢defaults_to_development_when_not_set", () => {
       delete process.env.ENVIRONMENT;
