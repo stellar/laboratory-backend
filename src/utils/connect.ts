@@ -83,23 +83,18 @@ export type ConnectionResult = {
 };
 
 /**
- * Per-connection statement_timeout (ms) on every Prisma connection, so a
- * single expensive query is cancelled instead of holding a pooled connection.
- * ~2x headroom over the slowest known-legitimate query (~1.5s).
- */
-export const STATEMENT_TIMEOUT_MS = 3000;
-
-/**
- * Returns the datasource URL with statement_timeout applied. It rides on the
- * `options` startup parameter (not a native Prisma URL param) and merges with
- * any existing query string (e.g. the Cloud SQL connector's `?host=...`).
+ * Returns the datasource URL with statement_timeout (Env.statementTimeoutMs)
+ * applied, so a single expensive query is cancelled instead of holding a
+ * pooled connection. It rides on the `options` startup parameter (not a native
+ * Prisma URL param) and merges with any existing query string (e.g. the Cloud
+ * SQL connector's `?host=...`).
  */
 export function withStatementTimeout(databaseUrl: string): string {
   const url = new URL(databaseUrl);
   const existingOptions = url.searchParams.get("options");
   url.searchParams.set(
     "options",
-    [existingOptions, `-c statement_timeout=${STATEMENT_TIMEOUT_MS}`]
+    [existingOptions, `-c statement_timeout=${Env.statementTimeoutMs}`]
       .filter(Boolean)
       .join(" "),
   );

@@ -66,6 +66,23 @@ class Env {
     return key;
   }
 
+  /** Per-connection PostgreSQL statement_timeout in ms (1-100000). Defaults to 45000. */
+  static get statementTimeoutMs(): number {
+    const raw = this.optionalString("STATEMENT_TIMEOUT_MS");
+    if (!raw) {
+      return 45000;
+    }
+
+    const ms = Number(raw);
+    if (!Number.isInteger(ms) || ms <= 0 || ms > 100000) {
+      throw new Error(
+        `Invalid STATEMENT_TIMEOUT_MS environment variable: "${raw}". Expected an integer between 1 and 100000.`,
+      );
+    }
+
+    return ms;
+  }
+
   static get networkPassphrase() {
     return this.optionalString("NETWORK_PASSPHRASE") ?? Networks.TESTNET;
   }

@@ -288,6 +288,7 @@ prisma/
 | `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                                   |
 | `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                                   |
 | `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |
+| `STATEMENT_TIMEOUT_MS`           | No       | `45000`                          | PostgreSQL `statement_timeout` in milliseconds (1-100000)                                                 |
 | `DB_NAME`                        | Mode B   | -                                | PostgreSQL database name                                                                                  |
 | `POSTGRES_CONNECTION_NAME`       | Mode B   | -                                | Cloud SQL instance connection name                                                                        |
 | `POSTGRES_IAM_USER`              | Mode B   | -                                | IAM database user email                                                                                   |
