@@ -151,21 +151,27 @@ function queryWithCursorSortField(
 
   // ASC (NULLS LAST) needs the NULL region too. Split it into two indexable
   // branches — non-NULL rows and the NULL region — each pre-limited; the outer
-  // ORDER BY/LIMIT then keeps the first `limit` rows of the union.
-  const cteBody =
+  // ORDER BY/LIMIT then keeps the first `limit` rows of the union. The NULL
+  // branch runs only if the non-NULL rows don't fill the page: its index
+  // region can hold many dead entries.
+  const ctes =
     directionInCTE === SortDirection.ASC
       ? Prisma.sql`
-      (${cteBranch(rowComparison)})
+    WITH non_null AS MATERIALIZED (${cteBranch(rowComparison)}),
+    paginated_result AS (
+      (SELECT * FROM non_null)
       UNION ALL
-      (${cteBranch(Prisma.sql`${Prisma.raw(sortCol)} IS NULL`)})
+      (${cteBranch(Prisma.sql`${Prisma.raw(sortCol)} IS NULL AND (SELECT count(*) FROM non_null) < ${limit}`)})
       ${Prisma.raw(orderByUnion)}
-      LIMIT ${limit}`
-      : cteBranch(rowComparison);
+      LIMIT ${limit}
+    )`
+      : Prisma.sql`
+    WITH paginated_result AS (
+      ${cteBranch(rowComparison)}
+    )`;
 
   return Prisma.sql`
-    WITH paginated_result AS (
-      ${cteBody}
-    )
+    ${ctes}
     SELECT pr.*,
       COALESCE(pr.live_until_ledger_sequence < ${latestLedgerSequence}, false) AS expired
     FROM paginated_result pr
