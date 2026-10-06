@@ -518,6 +518,49 @@ describe("buildContractDataQuery", () => {
         );
       }
     });
+
+    test("🟢null_region_is_scanned_only_when_the_page_is_not_full", async () => {
+      type PlanNode = {
+        "One-Time Filter"?: string;
+        "Actual Loops": number;
+        Plans?: PlanNode[];
+      };
+      const findGate = (node: PlanNode): PlanNode | undefined =>
+        node["One-Time Filter"] !== undefined
+          ? node
+          : node.Plans?.map(findGate).find(Boolean);
+
+      // 9 non-NULL rows follow the lowest ttl boundary.
+      const [lowest] = boundaries
+        .flatMap(({ key_hash, live_until_ledger_sequence: ttl }) =>
+          ttl === null ? [] : [{ key_hash, ttl }],
+        )
+        .sort((a, b) => a.ttl - b.ttl);
+
+      const nullScanLoops = async (limit: number): Promise<number> => {
+        const query = buildContractDataQuery(
+          configFor({
+            limit,
+            cursorData: cursorAt(
+              "ttl",
+              SortDirection.ASC,
+              lowest.key_hash,
+              lowest.ttl,
+              "next",
+            ),
+          }),
+        );
+        const [{ "QUERY PLAN": plan }] = await prisma.$queryRaw<
+          { "QUERY PLAN": { Plan: PlanNode }[] }[]
+        >(Prisma.sql`EXPLAIN (ANALYZE, FORMAT JSON) ${query}`);
+        const gate = findGate(plan[0].Plan);
+        expect(gate?.Plans).toHaveLength(1);
+        return gate?.Plans?.[0]["Actual Loops"] ?? -1;
+      };
+
+      expect(await nullScanLoops(3)).toBe(0);
+      expect(await nullScanLoops(20)).toBe(1);
+    });
   });
   describe("NULL-boundary restructure", () => {
     // The NULL-ttl seed row (ff66...) is the only NULL boundary in the seed
