@@ -1,5 +1,16 @@
 name: Build
 
+# On every push to main: run the test suite, then build the image and push it
+# to Docker Hub as stellar/laboratory-backend:<sha>. The dev environments in
+# stellar/kube pick that tag up automatically (ArgoCD Image Updater).
+#
+# Production is gated: the `promote-to-prd` job runs under the protected
+# `production` GitHub Environment, so it pauses until a required reviewer
+# approves it in the Actions run. On approval it re-tags the same image as
+# stellar/laboratory-backend:prd-<sha>, which is the tag pattern the prd
+# ImageUpdaters in stellar/kube watch. Configure "Required reviewers" on the
+# `production` environment in the repository settings for the gate to apply.
+
 on:
   push:
     branches:
@@ -7,6 +18,7 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
 
 jobs:
   test:
@@ -16,9 +28,14 @@ jobs:
     name: Build and push a sha tagged container image
     needs: test
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push'
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    outputs:
+      label: ${{ steps.vars.outputs.label }}
     steps:
       - uses: actions/checkout@v6
+      - name: Determine image label
+        id: vars
+        run: echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Login to DockerHub
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
         with:
@@ -28,6 +45,31 @@ jobs:
         run: make docker-build
       - name: Push image to DockerHub
         run: make docker-push
+
+  promote-to-prd:
+    name: Promote the sha tagged image to prd
+    needs: build-and-push-sha-tagged-image
+    runs-on: ubuntu-24.04
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Protected environment: "Required reviewers" on `production` makes this
+    # job wait for a manual approval before anything reaches prd.
+    environment: production
+    env:
+      LABEL: ${{ needs.build-and-push-sha-tagged-image.outputs.label }}
+    steps:
+      - name: Login to DockerHub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Tag and push the prd image
+        run: |
+          set -eu
+          TAG="stellar/laboratory-backend:${LABEL}"
+          TAG_PRD="stellar/laboratory-backend:prd-${LABEL}"
+          docker pull "${TAG}"
+          docker tag "${TAG}" "${TAG_PRD}"
+          docker push "${TAG_PRD}"
 
   build-and-push-release-image:
     name: Build and push a release tagged container image
