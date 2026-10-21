@@ -1,4 +1,4 @@
-FROM node:22-alpine AS base
+FROM node:22.23.4-alpine AS base
 
 WORKDIR /app
 
@@ -23,7 +23,7 @@ COPY src ./src
 RUN pnpm prisma:generate && pnpm build
 
 # Runtime stage: start from plain alpine node (no corepack/pnpm needed)
-FROM node:22-alpine AS runtime
+FROM node:22.23.4-alpine AS runtime
 
 WORKDIR /app
 
