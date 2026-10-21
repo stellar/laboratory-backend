@@ -20,6 +20,11 @@ on:
       - published
   workflow_dispatch:
 
+# Nothing here needs the GITHUB_TOKEN beyond checkout; Docker Hub uses its own
+# secrets. The reusable test workflow inherits this.
+permissions:
+  contents: read
+
 jobs:
   test:
     uses: ./.github/workflows/test.yml
