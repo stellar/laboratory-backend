@@ -310,6 +310,10 @@ Merging to `main` runs the [Build](.github/workflows/build.yml) workflow:
 
 To release to production: open the workflow run for the merge commit, click **Review deployments**, and approve `production`. Then confirm in ArgoCD that both prd applications are Synced and Healthy.
 
+The approval pause only exists while the `production` environment has a **Required reviewers** protection rule (repository **Settings → Environments → production**). Without that rule the job runs straight through, so keep it configured.
+
+To promote the current `main` again without a new commit (for example after a run timed out before approval), run the Build workflow manually from `main` via **Run workflow**. It skips the build and promotes the `<sha>` image that already exists for `main`; dispatching from any other branch does nothing.
+
 ## Appendix: Prisma Utilities
 
 - Reset database: `npx prisma migrate reset`

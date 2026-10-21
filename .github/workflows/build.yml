@@ -8,8 +8,12 @@ name: Build
 # `production` GitHub Environment, so it pauses until a required reviewer
 # approves it in the Actions run. On approval it re-tags the same image as
 # stellar/laboratory-backend:prd-<sha>, which is the tag pattern the prd
-# ImageUpdaters in stellar/kube watch. Configure "Required reviewers" on the
-# `production` environment in the repository settings for the gate to apply.
+# ImageUpdaters in stellar/kube watch. The pause only exists while "Required
+# reviewers" is configured on the `production` environment in the repository
+# settings; without it the job runs straight through.
+#
+# `workflow_dispatch` (main only) re-runs just the promotion for the <sha>
+# image that already exists for HEAD; it never rebuilds or overwrites it.
 
 on:
   push:
@@ -33,14 +37,11 @@ jobs:
     name: Build and push a sha tagged container image
     needs: test
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
-    outputs:
-      label: ${{ steps.vars.outputs.label }}
+    # Push only: a manual dispatch never rebuilds, so an already published
+    # <sha> tag (the image dev received) is never overwritten.
+    if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v6
-      - name: Determine image label
-        id: vars
-        run: echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Login to DockerHub
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
         with:
@@ -53,21 +54,33 @@ jobs:
 
   promote-to-prd:
     name: Promote the sha tagged image to prd
-    needs: build-and-push-sha-tagged-image
+    needs: [test, build-and-push-sha-tagged-image]
     runs-on: ubuntu-24.04
-    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    # Runs after a push to main has built the <sha> image, or on a manual
+    # dispatch of `main` only (the build job is skipped then and the <sha>
+    # image that already exists for HEAD is promoted as is). Other branches
+    # can never reach prd.
+    if: >-
+      ${{ !cancelled() && needs.test.result == 'success' &&
+      ((github.event_name == 'push' && needs.build-and-push-sha-tagged-image.result == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
     # Protected environment: "Required reviewers" on `production` makes this
-    # job wait for a manual approval before anything reaches prd.
+    # job wait for a manual approval before anything reaches prd. Without that
+    # rule configured in the repository settings the job runs straight through.
     environment: production
-    env:
-      LABEL: ${{ needs.build-and-push-sha-tagged-image.outputs.label }}
     steps:
+      - uses: actions/checkout@v6
+      - name: Determine image label
+        id: vars
+        run: echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
       - name: Login to DockerHub
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Tag and push the prd image
+        env:
+          LABEL: ${{ steps.vars.outputs.label }}
         run: |
           set -eu
           TAG="stellar/laboratory-backend:${LABEL}"
