@@ -6,14 +6,16 @@ name: Build
 #
 # Production is gated: the `promote-to-prd` job runs under the protected
 # `production` GitHub Environment, so it pauses until a required reviewer
-# approves it in the Actions run. On approval it re-tags the same image as
+# approves it in the Actions run. On approval it re-tags the exact image the
+# build job pushed (pulled by digest, not by tag) as
 # stellar/laboratory-backend:prd-<sha>, which is the tag pattern the prd
 # ImageUpdaters in stellar/kube watch. The pause only exists while "Required
 # reviewers" is configured on the `production` environment in the repository
 # settings; without it the job runs straight through.
 #
 # `workflow_dispatch` (main only) re-runs just the promotion for the <sha>
-# image that already exists for HEAD; it never rebuilds or overwrites it.
+# image that already exists for HEAD; it never rebuilds or overwrites it. With
+# no build job in that run, it promotes whatever the <sha> tag points to.
 
 on:
   push:
@@ -40,6 +42,10 @@ jobs:
     # Push only: a manual dispatch never rebuilds, so an already published
     # <sha> tag (the image dev received) is never overwritten.
     if: github.event_name == 'push'
+    outputs:
+      # Digest of the image this run pushed, so the promotion below re-tags
+      # exactly these bytes even if the <sha> tag is rebuilt in the meantime.
+      digest: ${{ steps.digest.outputs.digest }}
     steps:
       - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Login to DockerHub
@@ -51,6 +57,15 @@ jobs:
         run: make docker-build
       - name: Push image to DockerHub
         run: make docker-push
+      - name: Record the pushed image digest
+        id: digest
+        run: |
+          set -eu
+          IMAGE="stellar/laboratory-backend"
+          # docker push records the repo digest on the local image.
+          DIGEST="$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${IMAGE}:$(git rev-parse --short HEAD)" | grep "^${IMAGE}@" | head -n1 | cut -d@ -f2)"
+          test -n "${DIGEST}"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
 
   promote-to-prd:
     name: Promote the sha tagged image to prd
@@ -81,13 +96,23 @@ jobs:
       - name: Tag and push the prd image
         env:
           LABEL: ${{ steps.vars.outputs.label }}
+          # Empty on workflow_dispatch, where the build job is skipped.
+          DIGEST: ${{ needs.build-and-push-sha-tagged-image.outputs.digest }}
         run: |
           set -eu
-          TAG="stellar/laboratory-backend:${LABEL}"
-          TAG_PRD="stellar/laboratory-backend:prd-${LABEL}"
-          docker pull "${TAG}"
-          docker tag "${TAG}" "${TAG_PRD}"
+          IMAGE="stellar/laboratory-backend"
+          TAG_PRD="${IMAGE}:prd-${LABEL}"
+          if [ -n "${DIGEST}" ]; then
+            # The exact bytes the build job pushed and dev rolled out.
+            SRC="${IMAGE}@${DIGEST}"
+          else
+            # Manual dispatch: promote what the <sha> tag currently points to.
+            SRC="${IMAGE}:${LABEL}"
+          fi
+          docker pull "${SRC}"
+          docker tag "${SRC}" "${TAG_PRD}"
           docker push "${TAG_PRD}"
+          echo "Promoted ${SRC} as ${TAG_PRD}"
 
   build-and-push-release-image:
     name: Build and push a release tagged container image
