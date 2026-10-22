@@ -303,16 +303,15 @@ See [Environment configuration](#2-environment-configuration) for connection mod
 
 Merging to `main` runs the [Build](.github/workflows/build.yml) workflow:
 
-1. The test suite runs, then the image is built and pushed to Docker Hub as `stellar/laboratory-backend:<sha>`.
-2. The **dev** environments (`laboratory-backend-testnet-dev`, `laboratory-backend-pubnet-dev` in [stellar/kube](https://github.com/stellar/kube)) pick that tag up automatically through ArgoCD Image Updater.
-3. The `promote-to-prd` job then waits for a manual approval of the `production` GitHub Environment in the Actions run. Once approved, it re-tags the exact image the build pushed (pulled by digest) as `stellar/laboratory-backend:prd-<sha>`.
-4. The **prd** environments (`laboratory-backend-testnet-prd`, `laboratory-backend-pubnet-prd`) watch the `prd-<sha>` tags through ArgoCD Image Updater and roll the new image out.
+1. Tests run, then the image is pushed to Docker Hub as `stellar/laboratory-backend:<sha>`. The **dev** environments in [stellar/kube](https://github.com/stellar/kube) pick it up automatically (ArgoCD Image Updater).
+2. The `promote-to-prd` job pauses for approval of the `production` GitHub Environment. Once approved, it re-tags the same image (by digest) as `prd-<sha>`, which the **prd** environments pick up the same way.
 
-To release to production: open the workflow run for the merge commit, click **Review deployments**, and approve `production`. Then confirm in ArgoCD that both prd applications are Synced and Healthy.
+To release: open the workflow run for the merge commit, click **Review deployments**, approve `production`, then check that both prd applications are Synced and Healthy in ArgoCD.
 
-The approval pause only exists while the `production` environment has a **Required reviewers** protection rule (repository **Settings → Environments → production**). Without that rule the job runs straight through, so keep it configured.
+Notes:
 
-To promote the current `main` again without a new commit (for example after a run timed out before approval), run the Build workflow manually from `main` via **Run workflow**. It skips the build and promotes the `<sha>` image that already exists for `main`; dispatching from any other branch does nothing.
+- The pause only exists while `production` has a **Required reviewers** rule (Settings → Environments). Without it the job runs straight through.
+- To promote the current `main` again without a new commit, run the Build workflow manually from `main`. It skips the build and promotes the existing `<sha>` image; other branches are ignored.
 
 ## Appendix: Prisma Utilities
 
