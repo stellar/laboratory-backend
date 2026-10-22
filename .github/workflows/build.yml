@@ -1,5 +1,10 @@
 name: Build
 
+# Push to main: test, build and push stellar/laboratory-backend:<sha> (dev
+# follows it), then `promote-to-prd` waits for approval of the `production`
+# environment and re-tags that image as prd-<sha> (prd follows it).
+# See README "Deployment".
+
 on:
   push:
     branches:
@@ -7,6 +12,10 @@ on:
   release:
     types:
       - published
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   test:
@@ -16,9 +25,12 @@ jobs:
     name: Build and push a sha tagged container image
     needs: test
     runs-on: ubuntu-24.04
+    # Push only: a manual dispatch never rebuilds an already published <sha>.
     if: github.event_name == 'push'
+    outputs:
+      digest: ${{ steps.digest.outputs.digest }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Login to DockerHub
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
         with:
@@ -28,6 +40,55 @@ jobs:
         run: make docker-build
       - name: Push image to DockerHub
         run: make docker-push
+      - name: Record the pushed image digest
+        id: digest
+        run: |
+          set -eu
+          IMAGE="stellar/laboratory-backend"
+          DIGEST="$(docker inspect --format '{{range .RepoDigests}}{{println .}}{{end}}' "${IMAGE}:$(git rev-parse --short HEAD)" | grep "^${IMAGE}@" | head -n1 | cut -d@ -f2)"
+          test -n "${DIGEST}"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+  promote-to-prd:
+    name: Promote the sha tagged image to prd
+    needs: [test, build-and-push-sha-tagged-image]
+    runs-on: ubuntu-24.04
+    # After a push build, or on a manual dispatch of main (build skipped).
+    if: >-
+      ${{ !cancelled() && needs.test.result == 'success' &&
+      ((github.event_name == 'push' && needs.build-and-push-sha-tagged-image.result == 'success') ||
+      (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main')) }}
+    # Pauses for approval only while `production` has required reviewers.
+    environment: production
+    steps:
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
+      - name: Determine image label
+        id: vars
+        run: echo "label=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+      - name: Login to DockerHub
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Tag and push the prd image
+        env:
+          LABEL: ${{ steps.vars.outputs.label }}
+          DIGEST: ${{ needs.build-and-push-sha-tagged-image.outputs.digest }}
+        run: |
+          set -eu
+          IMAGE="stellar/laboratory-backend"
+          TAG_PRD="${IMAGE}:prd-${LABEL}"
+          # Exact bytes the build pushed; on manual dispatch (no build job)
+          # fall back to whatever the <sha> tag points to.
+          if [ -n "${DIGEST}" ]; then
+            SRC="${IMAGE}@${DIGEST}"
+          else
+            SRC="${IMAGE}:${LABEL}"
+          fi
+          docker pull "${SRC}"
+          docker tag "${SRC}" "${TAG_PRD}"
+          docker push "${TAG_PRD}"
+          echo "Promoted ${SRC} as ${TAG_PRD}"
 
   build-and-push-release-image:
     name: Build and push a release tagged container image
@@ -35,7 +96,7 @@ jobs:
     runs-on: ubuntu-24.04
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6.0.3
       - name: Login to DockerHub
         uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7
         with:

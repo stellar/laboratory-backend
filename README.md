@@ -301,7 +301,17 @@ See [Environment configuration](#2-environment-configuration) for connection mod
 
 ## Deployment
 
-Merging to `main` does not automatically deploy changes. Production deployment is managed in a separate Kubernetes repository. After merging, the new commit must be updated in the Kubernetes configuration for changes to be reflected in production.
+Merging to `main` runs the [Build](.github/workflows/build.yml) workflow:
+
+1. Tests run, then the image is pushed to Docker Hub as `stellar/laboratory-backend:<sha>`. The **dev** environments in [stellar/kube](https://github.com/stellar/kube) pick it up automatically (ArgoCD Image Updater).
+2. The `promote-to-prd` job pauses for approval of the `production` GitHub Environment. Once approved, it re-tags the same image (by digest) as `prd-<sha>`, which the **prd** environments pick up the same way.
+
+To release: open the workflow run for the merge commit, click **Review deployments**, approve `production`, then check that both prd applications are Synced and Healthy in ArgoCD.
+
+Notes:
+
+- The pause only exists while `production` has a **Required reviewers** rule (Settings → Environments). Without it the job runs straight through.
+- To promote the current `main` again without a new commit, run the Build workflow manually from `main`. It skips the build and promotes the existing `<sha>` image; other branches are ignored.
 
 ## Appendix: Prisma Utilities
 
