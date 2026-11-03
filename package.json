@@ -37,7 +37,7 @@
     "pino": "^10.3.1",
     "pino-http": "^11.0.0",
     "proxy-addr": "^2.0.8",
-    "zod": "^4.3.6"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
