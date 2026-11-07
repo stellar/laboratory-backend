@@ -34,7 +34,7 @@ const requestQuerySchema = z.object({
   // Disabled until the key_symbol indexes that keep filtered queries bounded
   // are deployed. Rejected rather than ignored, so callers never receive
   // unfiltered results that look filtered.
-  filter_key: z.undefined({ error: "filter_key is not supported" }),
+  filter_key: z.undefined({ error: "filter_key is not supported" }).optional(),
   // filter_key: z.string().trim().optional(),
 });
 
