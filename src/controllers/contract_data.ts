@@ -16,6 +16,8 @@ import {
   SortField,
 } from "../types/contract_data";
 import { getPrisma } from "../utils/connect";
+import { HttpError } from "../utils/error";
+import { logger } from "../utils/logger";
 import {
   getLedgerSequenceService,
   LedgerSequenceService,
@@ -151,7 +153,15 @@ const getContractData = async (
     filterKey,
   } = requestParams;
 
-  const latestLedgerSequence = await ledgerService.getLatestLedger();
+  let latestLedgerSequence: number;
+  try {
+    latestLedgerSequence = await ledgerService.getLatestLedger();
+  } catch (err) {
+    // Upstream (RPC/Horizon) failure, not ours: log the cause and surface 502
+    // instead of letting it fall through to the global 500 handler.
+    logger.error({ err }, "⚠️ Failed to fetch latest ledger sequence");
+    throw new HttpError("Failed to fetch latest ledger from Stellar RPC", 502);
+  }
 
   const config: ContractDataQueryConfig = {
     contractId,
@@ -191,6 +201,7 @@ const getContractData = async (
  * }
  *
  * @throws {400} When request parameters are invalid
+ * @throws {502} When the latest ledger can't be fetched from RPC/Horizon
  * @throws {500} When database query fails
  */
 
@@ -205,7 +216,15 @@ export const getContractDataByContractId = async (
     return res.status(400).json({ error: (e as Error).message });
   }
 
-  const contractData = await getContractData(requestParams);
+  let contractData: ContractData[];
+  try {
+    contractData = await getContractData(requestParams);
+  } catch (e) {
+    if (e instanceof HttpError) {
+      return res.status(e.status).json({ error: e.message });
+    }
+    throw e;
+  }
   const links = buildPaginationLinks(requestParams, contractData);
   return res.status(200).json({
     _links: links,
