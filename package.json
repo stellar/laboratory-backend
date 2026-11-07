@@ -29,7 +29,7 @@
   "dependencies": {
     "@google-cloud/cloud-sql-connector": "^1.9.0",
     "@sentry/node": "^10.76.0",
-    "@stellar/stellar-sdk": "^16.0.1",
+    "@stellar/stellar-sdk": "^17.4.0",
     "cors": "^2.8.6",
     "express": "^5.2.1",
     "express-rate-limit": "^8.5.2",
