@@ -167,3 +167,51 @@ describe("GET /api/contract/:contract_id/storage query validation", () => {
     },
   );
 });
+
+describe("GET /api/contract/:contract_id/storage filter_key validation", () => {
+  let server: Server;
+  let baseUrl: string;
+
+  beforeEach(async () => {
+    controllerMock.getContractDataByContractId.mockImplementation(
+      (_req: express.Request, res: express.Response) => {
+        res.status(200).json({ ok: true });
+      },
+    );
+    ({ server, baseUrl } = await startTestServer());
+  });
+
+  afterEach(async () => {
+    controllerMock.getContractDataByContractId.mockReset();
+    await new Promise<void>(resolve => server.close(() => resolve()));
+  });
+
+  test("🟢omitted_filter_key_is_accepted", async () => {
+    const res = await fetch(
+      `${baseUrl}/api/contract/${VALID_CONTRACT_ID}/storage`,
+    );
+    await res.text();
+
+    expect(res.status).toBe(200);
+    expect(controllerMock.getContractDataByContractId).toHaveBeenCalledTimes(1);
+  });
+
+  test.each(["SharedEntry", ""])(
+    "🔴filter_key_%j_is_rejected",
+    async filterKey => {
+      const res = await fetch(
+        `${baseUrl}/api/contract/${VALID_CONTRACT_ID}/storage?filter_key=${encodeURIComponent(filterKey)}`,
+      );
+      const body = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(body.issues).toEqual([
+        expect.objectContaining({
+          path: "filter_key",
+          message: "filter_key is not supported",
+        }),
+      ]);
+      expect(controllerMock.getContractDataByContractId).not.toHaveBeenCalled();
+    },
+  );
+});
