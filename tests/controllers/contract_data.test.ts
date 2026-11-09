@@ -105,6 +105,22 @@ describe("GET /api/contract/:contract_id/storage", () => {
     });
   });
 
+  test("🔴latest_ledger_failure_returns_502", async () => {
+    getLatestLedgerMock.mockRejectedValue(
+      new Error("XDR Read Error: unknown StellarValueType member for value 3"),
+    );
+
+    await getContractDataByContractId(
+      mockRequest as Request,
+      mockResponse as Response,
+    );
+
+    expect(mockResponse.status).toHaveBeenCalledWith(502);
+    expect(mockResponse.json).toHaveBeenCalledWith({
+      error: "Failed to fetch latest ledger from Stellar RPC",
+    });
+  });
+
   test("🔴invalid_sort_parameter_returns_400", async () => {
     mockRequest.query = { sort_by: "invalid_field", order: "invalid_order" };
 
