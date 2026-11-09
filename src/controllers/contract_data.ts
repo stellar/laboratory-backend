@@ -201,8 +201,8 @@ const getContractData = async (
  * }
  *
  * @throws {400} When request parameters are invalid
- * @throws {502} When the latest ledger can't be fetched from RPC/Horizon
  * @throws {500} When database query fails
+ * @throws {502} When the latest ledger can't be fetched from RPC/Horizon
  */
 
 export const getContractDataByContractId = async (
