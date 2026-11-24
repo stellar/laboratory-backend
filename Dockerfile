@@ -37,10 +37,6 @@ COPY --from=build /app/generated ./generated
 COPY package.json ./
 COPY prisma ./prisma
 
-# creds.json is NOT included in the image - it must be mounted at runtime
-#  - For docker-compose: mounted as volume
-#  - For Kubernetes: mounted as secret
-
 EXPOSE 3000
 
 USER node

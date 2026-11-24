@@ -340,21 +340,6 @@ describe("Env", () => {
     });
   });
 
-  describe("googleApplicationCredentials", () => {
-    test("🔴throws_when_missing_in_cloud_sql_mode", () => {
-      delete process.env.DATABASE_URL;
-      delete process.env.GOOGLE_APPLICATION_CREDENTIALS;
-      expect(() => Env.googleApplicationCredentials).toThrow(
-        "Missing required environment variable: GOOGLE_APPLICATION_CREDENTIALS (required when using cloud_sql_connector_iam connection mode)",
-      );
-    });
-
-    test("🟢returns_value_when_set", () => {
-      process.env.GOOGLE_APPLICATION_CREDENTIALS = "./creds.json";
-      expect(Env.googleApplicationCredentials).toBe("./creds.json");
-    });
-  });
-
   describe("corsOrigins", () => {
     test("🟢allows_all_origins_when_not_set", () => {
       delete process.env.CORS_ORIGINS;

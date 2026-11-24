@@ -61,9 +61,10 @@ reachable PostgreSQL instance.
 
 **Mode B: Cloud SQL Connector with IAM**
 Used when `DATABASE_URL` is not set. Required env vars:
-`DB_NAME`, `POSTGRES_CONNECTION_NAME`, `POSTGRES_IAM_USER`,
-`GOOGLE_APPLICATION_CREDENTIALS`. The app uses Google Cloud credentials to
-authenticate via IAM and opens a Unix socket locally to reach Cloud SQL.
+`DB_NAME`, `POSTGRES_CONNECTION_NAME`, `POSTGRES_IAM_USER`. The app uses
+Google Application Default Credentials to authenticate via IAM and opens a Unix
+socket locally to reach Cloud SQL. In Kubernetes these come from GKE Workload
+Identity.
 
 **Mode C: Local Cloud SQL Proxy + direct URL**
 You can run `cloud-sql-proxy` locally, then set `DATABASE_URL` to point at that
@@ -85,18 +86,23 @@ Result: the app connects directly using the provided URL.
 Use this when you want the app to authenticate to Cloud SQL using IAM
 credentials and a local Unix socket.
 
-1. Obtain Google Cloud service account credentials (`creds.json`) from the DATA team.
-   - Place the file in the project root as `creds.json`.
-   - It is already in `.gitignore`.
+1. Sign in with Application Default Credentials:
+
+   ```bash
+   gcloud auth application-default login
+   ```
+
 2. Set these environment variables:
    - `DB_NAME` - PostgreSQL database name
    - `POSTGRES_CONNECTION_NAME` - Cloud SQL instance connection name
    - `POSTGRES_IAM_USER` - IAM database user email
-   - `GOOGLE_APPLICATION_CREDENTIALS` - Path to `creds.json` (e.g., `./creds.json`)
    - `GOOGLE_CLOUD_SQL_IP_TYPE` - (optional) IP type for the connector: `PUBLIC`, `PRIVATE`, or `PSC`. Default: `PRIVATE`.
 3. Ensure `DATABASE_URL` is NOT set.
 
 Result: the app uses IAM auth and opens a local Unix socket to Cloud SQL.
+
+Run it on your machine (`pnpm dev`). The `docker compose` container has no
+Google credentials, so use Mode A or C there.
 
 ##### Mode C: Local Cloud SQL Proxy + direct URL
 
@@ -273,29 +279,28 @@ prisma/
 
 ## Environment Variables
 
-| Variable                         | Required | Default                          | Description                                                                                               |
-| -------------------------------- | -------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `NODE_ENV`                       | No       | -                                | Node/Express ecosystem convention is to set it to `production` when deploying the application.            |
-| `ENVIRONMENT`                    | No       | `development`                    | Deployment environment (e.g. `dev-testnet`, `prd-testnet`)                                                |
-| `DEBUG`                          | No       | -                                | Set to `true`, `1`, or `yes` to enable debug output (e.g. table listing)                                  |
-| `PORT`                           | No       | `3000`                           | HTTP server port (1-65535)                                                                                |
-| `GIT_COMMIT`                     | No       | -                                | Git commit SHA for release tracking (set at build/deploy time)                                            |
-| `LOG_LEVEL`                      | No       | `info`                           | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                                       |
-| `TRUST_PROXY`                    | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                                       |
-| `CORS_ORIGINS`                   | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                                     |
-| `PATH_PREFIX`                    | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                             |
-| `NETWORK_PASSPHRASE`             | No       | Testnet                          | Stellar network passphrase. Not used by `/api/network_limits`, which resolves the network from `rpc_url`. |
-| `HORIZON_URL`                    | No       | -                                | Stellar Horizon API URL                                                                                   |
-| `RPC_URL`                        | No       | -                                | Stellar Soroban RPC URL                                                                                   |
-| `DATABASE_URL`                   | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |
-| `STATEMENT_TIMEOUT_MS`           | No       | `45000`                          | PostgreSQL `statement_timeout` in milliseconds (1-100000)                                                 |
-| `DB_NAME`                        | Mode B   | -                                | PostgreSQL database name                                                                                  |
-| `POSTGRES_CONNECTION_NAME`       | Mode B   | -                                | Cloud SQL instance connection name                                                                        |
-| `POSTGRES_IAM_USER`              | Mode B   | -                                | IAM database user email                                                                                   |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Mode B   | -                                | Path to service account credentials file                                                                  |
-| `GOOGLE_CLOUD_SQL_IP_TYPE`       | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                                          |
-| `SENTRY_DSN`                     | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                                  |
-| `CURSOR_SIGNING_KEY`             | No       | -                                | HMAC-SHA256 key for signing pagination cursors, see [Cursor signing key](#cursor-signing-key)             |
+| Variable                   | Required | Default                          | Description                                                                                               |
+| -------------------------- | -------- | -------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                 | No       | -                                | Node/Express ecosystem convention is to set it to `production` when deploying the application.            |
+| `ENVIRONMENT`              | No       | `development`                    | Deployment environment (e.g. `dev-testnet`, `prd-testnet`)                                                |
+| `DEBUG`                    | No       | -                                | Set to `true`, `1`, or `yes` to enable debug output (e.g. table listing)                                  |
+| `PORT`                     | No       | `3000`                           | HTTP server port (1-65535)                                                                                |
+| `GIT_COMMIT`               | No       | -                                | Git commit SHA for release tracking (set at build/deploy time)                                            |
+| `LOG_LEVEL`                | No       | `info`                           | Pino log level (`trace`, `debug`, `info`, `warn`, `error`, `fatal`)                                       |
+| `TRUST_PROXY`              | No       | `loopback,linklocal,uniquelocal` | Comma-separated trusted proxy CIDRs or named tokens                                                       |
+| `CORS_ORIGINS`             | No       | All origins allowed              | Comma-separated allowed CORS origins (strings and `/regex/` patterns)                                     |
+| `PATH_PREFIX`              | No       | -                                | URL path prefix prepended to pagination `_links` (e.g. `/pubnet`, `/testnet`)                             |
+| `NETWORK_PASSPHRASE`       | No       | Testnet                          | Stellar network passphrase. Not used by `/api/network_limits`, which resolves the network from `rpc_url`. |
+| `HORIZON_URL`              | No       | -                                | Stellar Horizon API URL                                                                                   |
+| `RPC_URL`                  | No       | -                                | Stellar Soroban RPC URL                                                                                   |
+| `DATABASE_URL`             | Mode A/C | -                                | PostgreSQL connection string for direct connection                                                        |
+| `STATEMENT_TIMEOUT_MS`     | No       | `45000`                          | PostgreSQL `statement_timeout` in milliseconds (1-100000)                                                 |
+| `DB_NAME`                  | Mode B   | -                                | PostgreSQL database name                                                                                  |
+| `POSTGRES_CONNECTION_NAME` | Mode B   | -                                | Cloud SQL instance connection name                                                                        |
+| `POSTGRES_IAM_USER`        | Mode B   | -                                | IAM database user email                                                                                   |
+| `GOOGLE_CLOUD_SQL_IP_TYPE` | No       | `PRIVATE`                        | Cloud SQL IP type: `PUBLIC`, `PRIVATE`, or `PSC`                                                          |
+| `SENTRY_DSN`               | No       | -                                | Sentry DSN for error monitoring (leave empty to disable)                                                  |
+| `CURSOR_SIGNING_KEY`       | No       | -                                | HMAC-SHA256 key for signing pagination cursors, see [Cursor signing key](#cursor-signing-key)             |
 
 See [Environment configuration](#2-environment-configuration) for connection mode details.
 

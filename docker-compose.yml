@@ -28,19 +28,16 @@ services:
       # DB Connection (Mode A: set DATABASE_URL in .env)
       DATABASE_URL: ${DATABASE_URL:-}
       STATEMENT_TIMEOUT_MS: ${STATEMENT_TIMEOUT_MS:-}
-      # Mode B: Cloud SQL Connector with IAM — set these when not using DATABASE_URL
+      # Mode B: Cloud SQL Connector with IAM — set these when not using DATABASE_URL.
+      # The container has no Google credentials, so under Compose use Mode A or C.
       DB_NAME: ${DB_NAME:-}
       POSTGRES_CONNECTION_NAME: ${POSTGRES_CONNECTION_NAME:-}
       POSTGRES_IAM_USER: ${POSTGRES_IAM_USER:-}
-      GOOGLE_APPLICATION_CREDENTIALS: ${GOOGLE_APPLICATION_CREDENTIALS:-/app/creds.json}
       GOOGLE_CLOUD_SQL_IP_TYPE: ${GOOGLE_CLOUD_SQL_IP_TYPE:-PRIVATE}
 
       # Sentry error monitoring
       SENTRY_DSN: ${SENTRY_DSN:-}
 
-    volumes:
-      # `creds.json` must exist in the directory where you run docker-compose up (the project root):
-      - ./creds.json:/app/creds.json:ro
     restart: unless-stopped
     healthcheck:
       test:

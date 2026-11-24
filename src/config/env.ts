@@ -189,18 +189,6 @@ class Env {
     return upper as IpAddressTypes;
   }
 
-  static get googleApplicationCredentials() {
-    const value = this.optionalString("GOOGLE_APPLICATION_CREDENTIALS");
-
-    if (this.connectionMode === "cloud_sql_connector_iam" && !value) {
-      throw new Error(
-        "Missing required environment variable: GOOGLE_APPLICATION_CREDENTIALS (required when using cloud_sql_connector_iam connection mode)",
-      );
-    }
-
-    return value;
-  }
-
   private static optionalString(name: string) {
     const value = process.env[name];
 
